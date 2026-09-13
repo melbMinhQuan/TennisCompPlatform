@@ -11,21 +11,22 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
 model User {
-  id            String     @id @default(uuid())
+  id String @id @default(uuid())
 
-  email         String     @unique
+  email String @unique
 
-  passwordHash  String     @map("password_hash")
+  passwordHash String @map("password_hash")
 
-  status        UserStatus @default(PENDING)
+  status UserStatus @default(PENDING)
 
-  lastLoginAt   DateTime?  @map("last_login_at")
+  lastLoginAt DateTime? @map("last_login_at")
 
-  createdAt     DateTime   @default(now()) @map("created_at")
-  updatedAt     DateTime   @updatedAt      @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  player        Player?
+  player Player?
 
   @@map("user")
 }
@@ -33,34 +34,35 @@ model User {
 enum UserStatus {
   PENDING
   ACTIVE
-  SUSPENDED 
+  SUSPENDED
 }
+
 model Player {
-  id            String       @id @default(uuid())
+  id String @id @default(uuid())
 
-  firstName     String       @map("first_name")
-  lastName      String       @map("last_name")
+  firstName String @map("first_name")
+  lastName  String @map("last_name")
 
-  dateOfBirth   DateTime     @map("date_of_birth") @db.Date
+  dateOfBirth DateTime @map("date_of_birth") @db.Date
 
-  gender        Gender
+  gender Gender
 
-  email         String?
-  phone         String?
+  email String?
+  phone String?
 
-  isJunior      Boolean      @default(false) @map("is_junior")
+  isJunior Boolean @default(false) @map("is_junior")
 
-  status        PlayerStatus @default(ACTIVE)
+  status PlayerStatus @default(ACTIVE)
 
-  createdAt     DateTime     @default(now()) @map("created_at")
-  updatedAt     DateTime     @updatedAt      @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  userId        String?      @unique @map("user_id")
-  user          User?        @relation(fields: [userId], references: [id])
-  clubMemberships ClubMembership[] 
-  mergeIntoId   String?      @map("merge_into_id")
-  mergeInto     Player?      @relation("PlayerMerge", fields: [mergeIntoId], references: [id])
-  mergedFrom    Player[]     @relation("PlayerMerge")
+  userId          String?          @unique @map("user_id")
+  user            User?            @relation(fields: [userId], references: [id])
+  clubMemberships ClubMembership[]
+  mergeIntoId     String?          @map("merge_into_id")
+  mergeInto       Player?          @relation("PlayerMerge", fields: [mergeIntoId], references: [id])
+  mergedFrom      Player[]         @relation("PlayerMerge")
 
   @@index([lastName, firstName, dateOfBirth])
   @@map("player")
@@ -77,20 +79,21 @@ enum PlayerStatus {
   INACTIVE
   SUSPENDED
 }
+
 model Association {
-  id            String   @id @default(uuid())
+  id String @id @default(uuid())
 
-  name          String
-  email         String?
-  address       String?
-  phone         String?
+  name    String
+  email   String?
+  address String?
+  phone   String?
 
-  status        AssociationStatus @default(ACTIVE)
+  status AssociationStatus @default(ACTIVE)
 
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt      @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  clubs         Club[]                    
+  clubs Club[]
 
   @@map("association")
 }
@@ -99,23 +102,24 @@ enum AssociationStatus {
   ACTIVE
   INACTIVE
 }
-model Club {
-  id            String   @id @default(uuid())
 
-  associationId String   @map("association_id")
+model Club {
+  id String @id @default(uuid())
+
+  associationId String      @map("association_id")
   association   Association @relation(fields: [associationId], references: [id])
 
-  name          String
-  address       String?
-  email         String?
-  phone         String?
+  name    String
+  address String?
+  email   String?
+  phone   String?
 
-  status        ClubStatus @default(ACTIVE)
+  status ClubStatus @default(ACTIVE)
 
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt      @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  clubMemberships ClubMembership[] 
+  clubMemberships ClubMembership[]
 
   @@map("club")
 }
@@ -124,24 +128,25 @@ enum ClubStatus {
   ACTIVE
   INACTIVE
 }
+
 model ClubMembership {
-  id            String   @id @default(uuid())
+  id String @id @default(uuid())
 
-  playerId      String   @map("player_id")
-  player        Player   @relation(fields: [playerId], references: [id])
+  playerId String @map("player_id")
+  player   Player @relation(fields: [playerId], references: [id])
 
-  clubId        String   @map("club_id")
-  club          Club     @relation(fields: [clubId], references: [id])
+  clubId String @map("club_id")
+  club   Club   @relation(fields: [clubId], references: [id])
 
-  isPrimary     Boolean  @default(false) @map("is_primary")
+  isPrimary Boolean @default(false) @map("is_primary")
 
-  startDate     DateTime? @map("start_date") @db.Date
-  endDate       DateTime? @map("end_date")   @db.Date
+  startDate DateTime? @map("start_date") @db.Date
+  endDate   DateTime? @map("end_date") @db.Date
 
-  status        MembershipStatus @default(ACTIVE)
+  status MembershipStatus @default(ACTIVE)
 
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt      @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@unique([playerId, clubId])
   @@map("club_membership")
