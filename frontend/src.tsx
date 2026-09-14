@@ -3,6 +3,7 @@ import { BrowserRouter, Link, Route, Routes } from 'react-router'
 import Home from './pages/Home'
 import About from './pages/About'
 import './style.css'
+import LoginPage from './pages/LoginPage'
 
 function Navigation() {
   return <nav className="bg-slate-900 text-white">
@@ -31,10 +32,17 @@ function Navigation() {
 
 function App() {
   return <BrowserRouter>
-    <Navigation />
     <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/about" element={<About />} />
+      <Route path="/" element={<LoginPage />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route
+        path="/home"
+        element={<><Navigation /><Home /></>}
+      />
+      <Route
+        path="/about"
+        element={<><Navigation /><About /></>}
+      />
     </Routes>
   </BrowserRouter>
 }
