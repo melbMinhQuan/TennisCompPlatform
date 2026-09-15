@@ -1,5 +1,6 @@
 import { PrismaClient, UserStatus } from '@prisma/client';
 import * as XLSX from 'xlsx';
+import * as bcrypt from 'bcryptjs';
 import * as path from 'path';
 
 const prisma = new PrismaClient();
@@ -16,13 +17,13 @@ async function main() {
     password: string;
   }>(sheet);
 
-  // Passwords are stored in plain text for now (no hashing yet). The column is
-  // still called `password_hash` in the schema; swap in bcrypt later.
-  const users = rows.map((row) => ({
-    email: row.email.trim().toLowerCase(),
-    passwordHash: String(row.password),
-    status: UserStatus.ACTIVE,
-  }));
+  const users = await Promise.all(
+    rows.map(async (row) => ({
+      email: row.email.trim().toLowerCase(),
+      passwordHash: await bcrypt.hash(String(row.password), 10),
+      status: UserStatus.ACTIVE,
+    }))
+  );
 
   const result = await prisma.user.createMany({
     data: users,

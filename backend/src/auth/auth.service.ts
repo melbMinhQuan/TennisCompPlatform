@@ -1,4 +1,5 @@
 import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common'
+import * as bcrypt from 'bcryptjs'
 import { PrismaService } from '../prisma/prisma.service'
 
 export type LoginResult = 'login_success' | 'login_failed'
@@ -14,8 +15,8 @@ export class AuthService {
    * Returns 'login_success' when they match, 'login_failed' when the email is
    * unknown or the password is wrong.
    *
-   * Passwords are compared in plain text for now - no hashing yet, so this
-   * does not meet the team standard on password storage.
+   * The stored value is a bcrypt hash, so the password is compared with
+   * bcrypt.compare rather than a plain equality check.
    */
   async login(email: string, password: string): Promise<LoginResult> {
     try {
@@ -23,9 +24,12 @@ export class AuthService {
         where: { email: email.trim().toLowerCase() },
       })
 
-      return user && user.passwordHash === password ? 'login_success' : 'login_failed'
+      if (!user) return 'login_failed'
+
+      const passwordMatches = await bcrypt.compare(password, user.passwordHash)
+      return passwordMatches ? 'login_success' : 'login_failed'
     } catch (error) {
-      this.logger.error('Could not read the user table while logging in', error)
+      this.logger.error('Could not verify the login credentials', error)
       throw new InternalServerErrorException('Login is unavailable right now')
     }
   }
