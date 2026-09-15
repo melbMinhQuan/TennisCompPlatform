@@ -11,21 +11,23 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
 model User {
-  id            String     @id @default(uuid())
+  id String @id @default(uuid())
 
-  email         String     @unique
+  email String @unique
 
-  passwordHash  String     @map("password_hash")
+  passwordHash String @map("password_hash")
 
-  status        UserStatus @default(PENDING)
+  status UserStatus @default(PENDING)
 
-  lastLoginAt   DateTime?  @map("last_login_at")
+  lastLoginAt DateTime? @map("last_login_at")
 
-  createdAt     DateTime   @default(now()) @map("created_at")
-  updatedAt     DateTime   @updatedAt      @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  player        Player?
+  player    Player?
+  userRoles UserRole[]
 
   @@map("user")
 }
@@ -33,34 +35,40 @@ model User {
 enum UserStatus {
   PENDING
   ACTIVE
-  SUSPENDED 
+  SUSPENDED
 }
+
 model Player {
-  id            String       @id @default(uuid())
+  id String @id @default(uuid())
 
-  firstName     String       @map("first_name")
-  lastName      String       @map("last_name")
+  firstName String @map("first_name")
+  lastName  String @map("last_name")
 
-  dateOfBirth   DateTime     @map("date_of_birth") @db.Date
+  dateOfBirth DateTime @map("date_of_birth") @db.Date
 
-  gender        Gender
+  gender Gender
 
-  email         String?
-  phone         String?
+  email String?
+  phone String?
 
-  isJunior      Boolean      @default(false) @map("is_junior")
+  isJunior Boolean @default(false) @map("is_junior")
 
-  status        PlayerStatus @default(ACTIVE)
+  status PlayerStatus @default(ACTIVE)
 
-  createdAt     DateTime     @default(now()) @map("created_at")
-  updatedAt     DateTime     @updatedAt      @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  userId        String?      @unique @map("user_id")
-  user          User?        @relation(fields: [userId], references: [id])
-  clubMemberships ClubMembership[] 
-  mergeIntoId   String?      @map("merge_into_id")
-  mergeInto     Player?      @relation("PlayerMerge", fields: [mergeIntoId], references: [id])
-  mergedFrom    Player[]     @relation("PlayerMerge")
+  userId          String?          @unique @map("user_id")
+  user            User?            @relation(fields: [userId], references: [id])
+  clubMemberships ClubMembership[]
+  mergeIntoId     String?          @map("merge_into_id")
+  mergeInto       Player?          @relation("PlayerMerge", fields: [mergeIntoId], references: [id])
+  mergedFrom      Player[]         @relation("PlayerMerge")
+
+  utrLink                UtrLink?
+  associationMemberships AssociationMembership[]
+  teamPlayers            TeamPlayer[]
+  rubberPlayers          RubberPlayer[]
 
   @@index([lastName, firstName, dateOfBirth])
   @@map("player")
@@ -77,20 +85,22 @@ enum PlayerStatus {
   INACTIVE
   SUSPENDED
 }
+
 model Association {
-  id            String   @id @default(uuid())
+  id String @id @default(uuid())
 
-  name          String
-  email         String?
-  address       String?
-  phone         String?
+  name    String
+  email   String?
+  address String?
+  phone   String?
 
-  status        AssociationStatus @default(ACTIVE)
+  status AssociationStatus @default(ACTIVE)
 
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt      @map("updated_at")
-
-  clubs         Club[]                    
+  createdAt              DateTime                @default(now()) @map("created_at")
+  updatedAt              DateTime                @updatedAt @map("updated_at")
+  associationMemberships AssociationMembership[]
+  competitions           Competition[]
+  clubs                  Club[]
 
   @@map("association")
 }
@@ -99,23 +109,24 @@ enum AssociationStatus {
   ACTIVE
   INACTIVE
 }
-model Club {
-  id            String   @id @default(uuid())
 
-  associationId String   @map("association_id")
+model Club {
+  id String @id @default(uuid())
+
+  associationId String      @map("association_id")
   association   Association @relation(fields: [associationId], references: [id])
 
-  name          String
-  address       String?
-  email         String?
-  phone         String?
+  name    String
+  address String?
+  email   String?
+  phone   String?
 
-  status        ClubStatus @default(ACTIVE)
+  status ClubStatus @default(ACTIVE)
 
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt      @map("updated_at")
-
-  clubMemberships ClubMembership[] 
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  teams           Team[]
+  clubMemberships ClubMembership[]
 
   @@map("club")
 }
@@ -124,24 +135,25 @@ enum ClubStatus {
   ACTIVE
   INACTIVE
 }
+
 model ClubMembership {
-  id            String   @id @default(uuid())
+  id String @id @default(uuid())
 
-  playerId      String   @map("player_id")
-  player        Player   @relation(fields: [playerId], references: [id])
+  playerId String @map("player_id")
+  player   Player @relation(fields: [playerId], references: [id])
 
-  clubId        String   @map("club_id")
-  club          Club     @relation(fields: [clubId], references: [id])
+  clubId String @map("club_id")
+  club   Club   @relation(fields: [clubId], references: [id])
 
-  isPrimary     Boolean  @default(false) @map("is_primary")
+  isPrimary Boolean @default(false) @map("is_primary")
 
-  startDate     DateTime? @map("start_date") @db.Date
-  endDate       DateTime? @map("end_date")   @db.Date
+  startDate DateTime? @map("start_date") @db.Date
+  endDate   DateTime? @map("end_date") @db.Date
 
-  status        MembershipStatus @default(ACTIVE)
+  status MembershipStatus @default(ACTIVE)
 
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt      @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@unique([playerId, clubId])
   @@map("club_membership")
@@ -150,4 +162,471 @@ model ClubMembership {
 enum MembershipStatus {
   ACTIVE
   INACTIVE
+}
+
+// UserRole — role-based access control
+model UserRole {
+  id String @id @default(uuid())
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id])
+
+  roleType    RoleType    @map("role_type")
+  contextType ContextType @map("context_type")
+
+  associationId String? @map("association_id")
+  clubId        String? @map("club_id")
+  teamId        String? @map("team_id")
+  competitionId String? @map("competition_id")
+
+  grantedAt DateTime? @map("granted_at")
+  revokedAt DateTime? @map("revoked_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("user_role")
+}
+
+enum RoleType {
+  ADMINISTRATOR
+  RECORDS_SECRETARY
+  CLUB_ADMIN
+  TEAM_MANAGER
+  PLAYER
+  PUBLIC
+}
+
+enum ContextType {
+  ASSOCIATION
+  CLUB
+  TEAM
+  COMPETITION
+  GLOBAL
+}
+
+// UtrLink — player's UTR rating (not calculated here)
+model UtrLink {
+  id String @id @default(uuid())
+
+  playerId String @unique @map("player_id")
+  player   Player @relation(fields: [playerId], references: [id])
+
+  utrAccountId String?   @map("utr_account_id")
+  utrRating    Decimal?  @map("utr_rating") @db.Decimal(5, 2)
+  lastSyncedAt DateTime? @map("last_synced_at")
+
+  status LinkStatus @default(ACTIVE)
+
+  @@map("utr_link")
+}
+
+enum LinkStatus {
+  ACTIVE
+  INACTIVE
+}
+
+// AssociationMembership — player across associations
+model AssociationMembership {
+  id String @id @default(uuid())
+
+  playerId String @map("player_id")
+  player   Player @relation(fields: [playerId], references: [id])
+
+  associationId String      @map("association_id")
+  association   Association @relation(fields: [associationId], references: [id])
+
+  isPrimary Boolean          @default(false) @map("is_primary")
+  status    MembershipStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([playerId, associationId])
+  @@map("association_membership")
+}
+
+// ProfileMergeRequest — merge duplicate player records
+model ProfileMergeRequest {
+  id String @id @default(uuid())
+
+  status MergeStatus @default(PENDING)
+
+  playerAId String @map("player_a_id")
+  playerBId String @map("player_b_id")
+
+  requestingAssociationId String?   @map("requesting_association_id")
+  note                    String?
+  resolvedAt              DateTime? @map("resolved_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("profile_merge_request")
+}
+
+enum MergeStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// Competition
+model Competition {
+  id String @id @default(uuid())
+
+  associationId String      @map("association_id")
+  association   Association @relation(fields: [associationId], references: [id])
+
+  name   String
+  type   String?
+  status CompetitionStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  seasons          Season[]
+  matchFormats     MatchFormat[]
+  eligibilityRules EligibilityRule[]
+
+  @@map("competition")
+}
+
+enum CompetitionStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+// MatchFormat — configurable format (rubbers, sets, tiebreaks)
+model MatchFormat {
+  id String @id @default(uuid())
+
+  competitionId String      @map("competition_id")
+  competition   Competition @relation(fields: [competitionId], references: [id])
+
+  name               String
+  rubberCount        Int?    @map("rubber_count")
+  setFormat          String? @map("set_format")
+  setToWin           Int?    @map("set_to_win")
+  tiebreakRule       String? @map("tiebreak_rule")
+  matchTiebreak      String? @map("match_tiebreak")
+  winnerDeterminedBy String? @map("winner_determined_by")
+  allowDraw          Boolean @default(false) @map("allow_draw")
+  singlesCount       Int?    @map("singles_count")
+  doublesCount       Int?    @map("doubles_count")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  rubbers Rubber[]
+
+  @@map("match_format")
+}
+
+// Season
+model Season {
+  id String @id @default(uuid())
+
+  competitionId String      @map("competition_id")
+  competition   Competition @relation(fields: [competitionId], references: [id])
+
+  year       Int?
+  seasonType String?   @map("season_type")
+  startDate  DateTime? @map("start_date") @db.Date
+  endDate    DateTime? @map("end_date") @db.Date
+
+  status SeasonStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  sections SectionGrade[]
+
+  @@map("season")
+}
+
+enum SeasonStatus {
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+// SectionGrade — division / grade
+model SectionGrade {
+  id String @id @default(uuid())
+
+  seasonId String @map("season_id")
+  season   Season @relation(fields: [seasonId], references: [id])
+
+  name      String
+  gender    Gender?
+  ageGroup  String? @map("age_group")
+  minAge    Int?    @map("min_age")
+  maxAge    Int?    @map("max_age")
+  teamCount Int?    @map("team_count")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  teams    Team[]
+  fixtures Fixture[]
+
+  @@map("section_grade")
+}
+
+// Team
+model Team {
+  id String @id @default(uuid())
+
+  clubId String @map("club_id")
+  club   Club   @relation(fields: [clubId], references: [id])
+
+  sectionId String       @map("section_id")
+  section   SectionGrade @relation(fields: [sectionId], references: [id])
+
+  contactUserId String? @map("contact_user_id")
+
+  name String
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  teamPlayers  TeamPlayer[]
+  homeFixtures Fixture[]    @relation("HomeTeam")
+  awayFixtures Fixture[]    @relation("AwayTeam")
+
+  @@map("team")
+}
+
+// TeamPlayer — team roster
+model TeamPlayer {
+  id String @id @default(uuid())
+
+  teamId String @map("team_id")
+  team   Team   @relation(fields: [teamId], references: [id])
+
+  playerId String @map("player_id")
+  player   Player @relation(fields: [playerId], references: [id])
+
+  status     TeamPlayerStatus @default(ACTIVE)
+  registerAt DateTime?        @map("register_at")
+
+  @@unique([teamId, playerId])
+  @@map("team_player")
+}
+
+enum TeamPlayerStatus {
+  ACTIVE
+  EMERGENCY
+  INACTIVE
+}
+
+// Fixture — scheduled match between two teams
+model Fixture {
+  id String @id @default(uuid())
+
+  sectionId String       @map("section_id")
+  section   SectionGrade @relation(fields: [sectionId], references: [id])
+
+  homeTeamId String @map("home_team_id")
+  homeTeam   Team   @relation("HomeTeam", fields: [homeTeamId], references: [id])
+
+  awayTeamId String @map("away_team_id")
+  awayTeam   Team   @relation("AwayTeam", fields: [awayTeamId], references: [id])
+
+  roundNumber  Int?          @map("round_number")
+  scheduleDate DateTime?     @map("schedule_date") @db.Date
+  scheduleTime DateTime?     @map("schedule_time") @db.Time
+  status       FixtureStatus @default(SCHEDULED)
+  isFinals     Boolean       @default(false) @map("is_finals")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  matchResult MatchResult?
+
+  @@map("fixture")
+}
+
+enum FixtureStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+// MatchResult — result with status and approval flow
+model MatchResult {
+  id String @id @default(uuid())
+
+  fixtureId String  @unique @map("fixture_id")
+  fixture   Fixture @relation(fields: [fixtureId], references: [id])
+
+  homeRubbers Int?         @map("home_rubbers")
+  awayRubbers Int?         @map("away_rubbers")
+  status      ResultStatus @default(DRAFT)
+  outcome     String?
+  notes       String?
+
+  enteredBy   String?   @map("entered_by")
+  finalisedBy String?   @map("finalised_by")
+  enteredAt   DateTime? @map("entered_at")
+  finalisedAt DateTime? @map("finalised_at")
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  rubbers       Rubber[]
+  confirmations ResultConfirmation[]
+  corrections   CorrectionRequest[]
+
+  @@map("match_result")
+}
+
+enum ResultStatus {
+  DRAFT
+  PENDING_CONFIRMATION
+  FINALISED
+  UNDER_CORRECTION
+}
+
+// Rubber — a singles/doubles match within a fixture
+model Rubber {
+  id String @id @default(uuid())
+
+  matchResultId String      @map("match_result_id")
+  matchResult   MatchResult @relation(fields: [matchResultId], references: [id])
+
+  matchFormatId String?      @map("match_format_id")
+  matchFormat   MatchFormat? @relation(fields: [matchFormatId], references: [id])
+
+  rubberNumber     Int?       @map("rubber_number")
+  rubberType       RubberType @map("rubber_type")
+  incompleteReason String?    @map("incomplete_reason")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  rubberSets    RubberSet[]
+  rubberPlayers RubberPlayer[]
+
+  @@map("rubber")
+}
+
+enum RubberType {
+  SINGLES
+  DOUBLES
+}
+
+// RubberSet — set score within a rubber
+model RubberSet {
+  id String @id @default(uuid())
+
+  rubberId String @map("rubber_id")
+  rubber   Rubber @relation(fields: [rubberId], references: [id])
+
+  setNumber  Int?    @map("set_number")
+  homeGames  Int?    @map("home_games")
+  awayGames  Int?    @map("away_games")
+  isTiebreak Boolean @default(false) @map("is_tiebreak")
+
+  @@map("rubber_set")
+}
+
+// RubberPlayer — players in a rubber
+model RubberPlayer {
+  id String @id @default(uuid())
+
+  rubberId String @map("rubber_id")
+  rubber   Rubber @relation(fields: [rubberId], references: [id])
+
+  playerId String @map("player_id")
+  player   Player @relation(fields: [playerId], references: [id])
+
+  isEmergency Boolean @default(false) @map("is_emergency")
+  side        Side
+  playerOrder Int?    @map("player_order")
+
+  @@map("rubber_player")
+}
+
+enum Side {
+  HOME
+  AWAY
+}
+
+// ResultConfirmation — opponent confirms result
+model ResultConfirmation {
+  id String @id @default(uuid())
+
+  matchResultId String      @map("match_result_id")
+  matchResult   MatchResult @relation(fields: [matchResultId], references: [id])
+
+  status          ConfirmationStatus @default(PENDING)
+  homeEnteredBy   String?            @map("home_entered_by")
+  awayConfirmedBy String?            @map("away_confirmed_by")
+  homeEnteredAt   DateTime?          @map("home_entered_at")
+  awayConfirmedAt DateTime?          @map("away_confirmed_at")
+  scoreCorrect    Boolean?           @map("score_correct")
+  commentsCorrect Boolean?           @map("comments_correct")
+  disputeReason   String?            @map("dispute_reason")
+
+  @@map("result_confirmation")
+}
+
+enum ConfirmationStatus {
+  PENDING
+  CONFIRMED
+  DISPUTED
+}
+
+// CorrectionRequest — request to correct a result
+model CorrectionRequest {
+  id String @id @default(uuid())
+
+  matchResultId String      @map("match_result_id")
+  matchResult   MatchResult @relation(fields: [matchResultId], references: [id])
+
+  requestedAt   DateTime?        @map("requested_at")
+  requestedBy   String?          @map("requested_by")
+  reason        String?
+  status        CorrectionStatus @default(PENDING)
+  reviewBy      String?          @map("review_by")
+  reviewAt      DateTime?        @map("review_at")
+  reviewedNotes String?          @map("reviewed_notes")
+
+  @@map("correction_request")
+}
+
+enum CorrectionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// EligibilityRule — configurable eligibility rules
+model EligibilityRule {
+  id String @id @default(uuid())
+
+  competitionId String      @map("competition_id")
+  competition   Competition @relation(fields: [competitionId], references: [id])
+
+  ruleType         String  @map("rule_type")
+  scope            String?
+  minMatchesPlayed Int?    @map("min_matches_played")
+  gradeRestriction String? @map("grade_restriction")
+  description      String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("eligibility_rule")
+}
+
+// AuditLog — log of important admin changes
+model AuditLog {
+  id String @id @default(uuid())
+
+  entityType    String   @map("entity_type")
+  entityId      String?  @map("entity_id")
+  action        String
+  changedAt     DateTime @default(now()) @map("changed_at")
+  changeSummary String?  @map("change_summary")
+  changedBy     String?  @map("changed_by")
+
+  @@map("audit_log")
 }
