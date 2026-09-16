@@ -69,6 +69,14 @@ and the supporting tables. After changing it, create a migration with:
 npm run prisma:migrate --workspace=backend -- --name describe_your_change
 ```
 
+
+
+To generate data on the dashboard
+```bash
+node --env-file=backend/.env --import tsx backend/prisma/seed-dashboard.ts
+```
+
+
 Everyone else then runs `npx prisma migrate deploy` to catch up.
 
 `npx prisma studio` opens a browser view of the data, which is the quickest way to check what
