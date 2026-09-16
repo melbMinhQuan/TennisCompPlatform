@@ -64,10 +64,12 @@ An existing account with no linked profile gives:
 }
 ```
 
-This is the expected live result with the current local seed: 100 users and zero
+This is the expected result when only the original seed has run: 100 users and zero
 players. To see populated cards, import actual player records and related data,
-linking each Player's `userId` to its existing User. No sample records are inserted
-by the showcase. After that data is available, the same queries return it automatically.
+linking each Player's `userId` to its existing User, or run the separate
+[dashboard demo seed](dashboard-seeding.md) to add fictional data for those accounts.
+The frontend itself never inserts records. Once data is available, the same queries
+return it automatically.
 
 ## Current limits
 
