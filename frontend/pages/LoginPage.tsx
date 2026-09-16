@@ -4,7 +4,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center bg-gradient-to-b from-[#1a3049] to-[#3f72af] px-7 py-12">
+    <main className="relative flex min-h-screen items-center justify-center bg-gradient-to-b from-[#1a3049] to-[#3f72af] px-7 py-[120px]">
       {/* Logo */}
       <img
         src="/resources/Logo.png"
@@ -12,25 +12,42 @@ export default function LoginPage() {
         className="absolute left-[32px] top-[10px] h-[80.31px] w-[197.26px] object-contain object-left"
       />
 
-      <section className="min-h-[600px] w-full max-w-[440px] rounded-2xl bg-white px-10 pt-[25px] pb-6 shadow-md">
+      <section className="w-full max-w-[320px] min-h-[660px]
+                          rounded-2xl bg-white
+                          px-[25px] pt-[25px] pb-6 shadow-md
+                          min-[1280px]:max-w-[440px]
+                          min-[1280px]:min-h-[600px]
+                          min-[1280px]:px-10"
+      >
         {/* Welcome heading */}
-        <h1 className="text-center text-[32px] font-semibold leading-[normal] tracking-normal text-[#1a3049]">
+        <h1 className="text-center text-[22px] font-semibold 
+                      leading-[normal] tracking-normal text-[#1a3049]
+                      min-[1280px]:text-[32px]"
+        >
           Welcome Back 👋
         </h1>
 
         {/* Account description */}
-        <p className="mt-4 text-center text-[16px] font-normal leading-[normal] tracking-normal text-black">
+        <p className="mt-[27px] text-center text-[14px] font-normal 
+                      leading-[normal] tracking-normal text-black
+                      min-[1280px]:mt-4
+                      min-[1280px]:text-[16px]"
+        >
           Login to your Waverly Tennis Account
         </p>
 
-        <form className="mt-[36px]" onSubmit={(event) => event.preventDefault()}>
+        <form className="mt-[48px] min-[1280px]:mt-[36px]" onSubmit={(event) => event.preventDefault()}>
           {/* Email input section */}
           <div>
-            <label htmlFor="email" className="-ml-[5px] block text-[16px] font-semibold leading-[19px] text-black">
+            <label 
+              htmlFor="email" 
+              className="block text-[16px] font-semibold leading-[19px] text-black 
+                        min-[1280px]:-ml-[5px]"
+            >
               Email address
             </label>
 
-            <div className="relative mt-[9px]">
+            <div className="relative mt-[12px] min-[1280px]:mt-[9px]">
               {/* Email icon */}
               <svg
                 className="pointer-events-none absolute left-3 top-1/2 h-6 w-6 -translate-y-1/2 text-[#888a8e]"
