@@ -6,7 +6,7 @@ import * as path from 'path';
 const prisma = new PrismaClient();
 
 async function main() {
-  const filePath = path.join(__dirname, 'players_login_data.xlsx');
+  const filePath = path.join(__dirname, '..', '..', 'players_login_data.xlsx');
   const workbook = XLSX.readFile(filePath);
   const sheet = workbook.Sheets['Players'];
 
