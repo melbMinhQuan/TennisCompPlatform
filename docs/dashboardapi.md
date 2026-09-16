@@ -1,6 +1,9 @@
 # Player dashboard API
 
-**Proposed contract — these endpoints are not implemented yet.**
+**Full target contract — partially implemented.** The read-only local showcase
+now implements the dashboard, schedule and results endpoints. Notifications and
+UTR history return unavailable states. Other endpoints below remain proposed.
+See [dashboard-demo.md](dashboard-demo.md) for implemented behavior, setup and limits.
 The [database gap list](dashboard-data-gaps.md) explains which fields need new data.
 The existing [login API](authapi.md) stays unchanged.
 
