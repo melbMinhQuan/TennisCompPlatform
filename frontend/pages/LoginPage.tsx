@@ -7,7 +7,7 @@ export default function LoginPage() {
     <main className="relative flex min-h-screen items-center justify-center bg-gradient-to-b from-[#1a3049] to-[#3f72af] px-7 py-12">
       {/* Logo */}
       <img
-        src="/resources/logo.png"
+        src="/resources/Logo.png"
         alt="Waverly Tennis"
         className="absolute left-[32px] top-[10px] h-[80.31px] w-[197.26px] object-contain object-left"
       />
