@@ -4,6 +4,7 @@ import Home from './pages/Home'
 import About from './pages/About'
 import DashboardDemo from './pages/DashboardDemo'
 import './style.css'
+import LoginPage from './pages/LoginPage'
 
 function Navigation() {
   return <nav className="bg-slate-900 text-white">
@@ -24,7 +25,7 @@ function Navigation() {
         </div>
       </details>
       <div className="hidden gap-4 md:flex">
-        <Link to="/">Home</Link>
+        <Link to="/home">Home</Link>
         <Link to="/about">About us</Link>
         <Link to="/demo">Dashboard demo</Link>
       </div>
@@ -34,10 +35,17 @@ function Navigation() {
 
 function App() {
   return <BrowserRouter>
-    <Navigation />
     <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/about" element={<About />} />
+      <Route path="/" element={<LoginPage />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route
+        path="/home"
+        element={<><Navigation /><Home /></>}
+      />
+      <Route
+        path="/about"
+        element={<><Navigation /><About /></>}
+      />
       <Route path="/demo" element={<DashboardDemo />} />
     </Routes>
   </BrowserRouter>
