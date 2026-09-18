@@ -1,7 +1,44 @@
-import {useState} from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useNavigate } from "react-router";
+import { login } from "../api/dashboard";
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const activeRequest = useRef<AbortController | null>(null);
+  const navigate = useNavigate();
+
+  useEffect(() => () => activeRequest.current?.abort(), []);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    activeRequest.current?.abort();
+    const controller = new AbortController();
+    activeRequest.current = controller;
+    setBusy(true);
+    setError("");
+
+    try {
+      // this is where the page calls the login API.
+      const response = await login(email.trim().toLowerCase(), password, controller.signal);
+      if (controller.signal.aborted) return;
+      if (response.result === "login_failed") {
+        setError("Incorrect email or password.");
+        return;
+      }
+      setPassword("");
+      navigate("/dashboard");
+    } catch (error) {
+      if (!controller.signal.aborted) {
+        setError(error instanceof Error ? error.message : "Could not reach the login server.");
+      }
+    } finally {
+      if (!controller.signal.aborted) setBusy(false);
+    }
+  }
 
   return (
     <main className="relative flex min-h-screen items-center justify-center bg-gradient-to-b from-[#1a3049] to-[#3f72af] px-7 py-[120px]">
@@ -35,8 +72,8 @@ export default function LoginPage() {
         >
           Login to your Waverly Tennis Account
         </p>
-
-        <form className="mt-[48px] min-[1280px]:mt-[36px]" onSubmit={(event) => event.preventDefault()}>
+        {/* The form triggers that code the API request itself once it is submitted */}
+        <form className="mt-[48px] min-[1280px]:mt-[36px]" onSubmit={handleSubmit}>
           {/* Email input section */}
           <div>
             <label 
@@ -69,6 +106,9 @@ export default function LoginPage() {
                 name="email"
                 type="email"
                 autoComplete="email"
+                required
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
                 placeholder="example@email.com"
                 className="h-[48px] w-full rounded-[6px] border border-[#a1a3a7] bg-[#e7e7e7] pl-[48px] pr-3 text-[16px] font-normal text-black placeholder:text-black placeholder:opacity-100 focus:outline-2 focus:outline-offset-2 focus:outline-[#3f72af]"
               />
@@ -102,6 +142,9 @@ export default function LoginPage() {
                 name="password"
                 type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
+                required
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
                 className="h-[48px] w-full rounded-[6px] border border-[#a1a3a7] bg-[#e7e7e7] pl-[48px] pr-3 text-[16px] font-normal text-black focus:outline-2 focus:outline-offset-2 focus:outline-[#3f72af]"
               />
 
@@ -173,12 +216,15 @@ export default function LoginPage() {
             </button>
           </div>
 
+          {error && <p role="alert" className="mt-4 text-sm text-red-700">{error}</p>}
+
           {/* Log in button */}
           <button
             type="submit"
+            disabled={busy}
             className="mt-[28px] flex h-[48px] w-full cursor-pointer items-center justify-center rounded-[8px] bg-gradient-to-r from-[#1a3049] to-[#3f72af] text-[18px] font-semibold leading-[22px] text-white hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3f72af]"
           >
-            Log in
+            {busy ? "Logging in…" : "Log in"}
           </button>
         </form>
 

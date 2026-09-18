@@ -3,6 +3,7 @@ import { BrowserRouter, Link, Route, Routes } from 'react-router'
 import Home from './pages/Home'
 import About from './pages/About'
 import DashboardDemo from './pages/DashboardDemo'
+import DashboardPage from './pages/DashboardPage'
 import './style.css'
 import LoginPage from './pages/LoginPage'
 
@@ -47,6 +48,7 @@ function App() {
         element={<><Navigation /><About /></>}
       />
       <Route path="/demo" element={<DashboardDemo />} />
+      <Route path="/dashboard" element={<DashboardPage />} />
     </Routes>
   </BrowserRouter>
 }
