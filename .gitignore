@@ -3,3 +3,5 @@ dist
 .env
 *.tsbuildinfo
 docker-compose.yml
+players_login_data.xlsx
+.DS_Store

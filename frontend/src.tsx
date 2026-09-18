@@ -2,6 +2,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Link, Route, Routes } from 'react-router'
 import Home from './pages/Home'
 import About from './pages/About'
+import DashboardDemo from './pages/DashboardDemo'
 import './style.css'
 import LoginPage from './pages/LoginPage'
 
@@ -20,11 +21,13 @@ function Navigation() {
         <div className="absolute right-0 top-8 z-10 grid w-32 gap-3 rounded bg-slate-800 p-4">
           <Link to="/">Home</Link>
           <Link to="/about">About us</Link>
+          <Link to="/demo">Dashboard demo</Link>
         </div>
       </details>
       <div className="hidden gap-4 md:flex">
-        <Link to="/">Home</Link>
+        <Link to="/home">Home</Link>
         <Link to="/about">About us</Link>
+        <Link to="/demo">Dashboard demo</Link>
       </div>
     </div>
   </nav>
@@ -43,6 +46,7 @@ function App() {
         path="/about"
         element={<><Navigation /><About /></>}
       />
+      <Route path="/demo" element={<DashboardDemo />} />
     </Routes>
   </BrowserRouter>
 }
