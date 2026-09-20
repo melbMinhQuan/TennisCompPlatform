@@ -178,6 +178,9 @@ carries its own accounts.
 
 ## API
 
+UTR provider scaffold and client connection instructions: [UTR integration](backend/src/utr/README.md).
+Supports development fixtures and an Engage API reader with a replaceable player-token store.
+
 | Method | Route | Body | Response |
 | --- | --- | --- | --- |
 | POST | `/auth/login` | `{ "email": "...", "password": "..." }` | `{ "result": "login_success" }` or `{ "result": "login_failed" }` |
