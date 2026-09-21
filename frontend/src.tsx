@@ -7,6 +7,7 @@ import DashboardPage from './pages/DashboardPage'
 import './style.css'
 import LoginPage from './pages/LoginPage'
 import PlayerLayout from "./components/PlayerLayout";
+import SupportPage from './pages/SupportPage';
 
 function Navigation() {
   return <nav className="bg-slate-900 text-white">
@@ -87,7 +88,7 @@ function App() {
 
         <Route
           path="support"
-          element={<ComingSoonPage title="Help & Support" />}
+          element={<SupportPage />}
         />
       </Route>
     </Routes>
