@@ -1,6 +1,7 @@
 import { NavLink, Outlet, Link, useLocation } from "react-router";
 import { useEffect, useRef, useState } from "react";
 import logo from "../resources/Logo.png";
+import PlayerProfileLink from "./PlayerProfileLink";
 
 const menuItems = [
   { label: "Profile", to: "/dashboard", end: true },
@@ -10,7 +11,8 @@ const menuItems = [
   { label: "Standings & Rankings", to: "/dashboard/rankings" },
 ];
 
-export default function PlayerLayout() {
+// Pass the logged-in player's display name here when the API is connected.
+export default function PlayerLayout({ playerDisplayName }: { playerDisplayName?: string | null }) {
   const [isMenuOpen, setIsMenuOpen] = useState(true);
   const drawerRef = useRef<HTMLDialogElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -62,14 +64,7 @@ export default function PlayerLayout() {
           />
         </Link>
 
-        <Link
-          to="/dashboard"
-          className="flex min-h-11 shrink-0 items-center rounded-[8px] bg-[#1a3049]
-            px-3 py-3 text-[13px] text-white md:px-6 md:text-[14px]
-            hover:bg-[#24415f] focus-visible:outline-2 focus-visible:outline-white"
-        >
-          My profile
-        </Link>
+        <PlayerProfileLink displayName={playerDisplayName} />
       </header>
 
       <div className="hidden px-3 py-2 md:block">

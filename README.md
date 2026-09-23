@@ -128,3 +128,16 @@ TennisComp/
 ├── package.json              # Commands for both applications
 └── README.md
 ```
+
+NOTE FOR ME
+# 1. Start the database (only needed once — stays running until you stop it)
+docker compose up -d
+
+# 2. Backend (NestJS, watch mode) — run in one terminal tab
+npm run dev:backend
+
+# 3. Frontend (Vite) — run in another terminal tab
+npm run dev:frontend
+
+# 4. (optional) Prisma Studio to browse the DB in the browser
+npm run prisma:studio --workspace=backend
