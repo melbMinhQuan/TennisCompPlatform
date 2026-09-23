@@ -5,3 +5,7 @@ dist
 docker-compose.yml
 players_login_data.xlsx
 .DS_Store
+
+# Excel lock files
+.~*
+~$*
