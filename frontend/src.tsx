@@ -1,3 +1,5 @@
+import PlayerSession from "./context/PlayerSession";
+import MyClubsPage from "./pages/MyClubsPage";
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Link, Route, Routes } from 'react-router'
 import Home from './pages/Home'
@@ -50,7 +52,7 @@ function ComingSoonPage({ title }: { title: string }) {
 }
 
 function App() {
-  return <BrowserRouter>
+  return <PlayerSession><BrowserRouter>
     <Routes>
       <Route path="/" element={<LoginPage />} />
       <Route path="/login" element={<LoginPage />} />
@@ -78,7 +80,7 @@ function App() {
 
         <Route
           path="clubs"
-          element={<ComingSoonPage title="My Clubs & Association" />}
+          element={<MyClubsPage />}
         />
 
         <Route
@@ -92,7 +94,7 @@ function App() {
         />
       </Route>
     </Routes>
-  </BrowserRouter>
+  </BrowserRouter></PlayerSession>
 }
 
 createRoot(document.getElementById('root')!).render(<App />)

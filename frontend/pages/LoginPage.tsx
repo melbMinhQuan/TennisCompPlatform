@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { PlayerSessionContext } from "../context/PlayerSession";
+import { useContext, useEffect, useRef, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
 import { login } from "../api/dashboard";
 
@@ -10,11 +11,13 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const activeRequest = useRef<AbortController | null>(null);
   const navigate = useNavigate();
+  const { setEmail: setPlayerEmail } = useContext(PlayerSessionContext);
 
   useEffect(() => () => activeRequest.current?.abort(), []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setPlayerEmail("");
     activeRequest.current?.abort();
     const controller = new AbortController();
     activeRequest.current = controller;
@@ -29,6 +32,7 @@ export default function LoginPage() {
         setError("Incorrect email or password.");
         return;
       }
+      setPlayerEmail(email.trim().toLowerCase());
       setPassword("");
       navigate("/dashboard");
     } catch (error) {

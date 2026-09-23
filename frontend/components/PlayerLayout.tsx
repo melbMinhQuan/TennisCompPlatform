@@ -1,5 +1,6 @@
+import { PlayerSessionContext } from "../context/PlayerSession";
 import { NavLink, Outlet, Link, useLocation } from "react-router";
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import logo from "../resources/Logo.png";
 import PlayerProfileLink from "./PlayerProfileLink";
 
@@ -7,17 +8,19 @@ const menuItems = [
   { label: "Profile", to: "/dashboard", end: true },
   { label: "Competitions", to: "/dashboard/competitions" },
   { label: "Matches", to: "/dashboard/matches" },
-  { label: "My Clubs & Association", to: "/dashboard/clubs" },
+  { label: "My Clubs & Associations & Teams", to: "/dashboard/clubs" },
   { label: "Standings & Rankings", to: "/dashboard/rankings" },
 ];
 
-// Pass the logged-in player's display name here when the API is connected.
-export default function PlayerLayout({ playerDisplayName }: { playerDisplayName?: string | null }) {
+export default function PlayerLayout() {
+  const { data, setEmail: setPlayerEmail } = useContext(PlayerSessionContext);
+  const playerDisplayName = data?.profile.displayName;
   const [isMenuOpen, setIsMenuOpen] = useState(true);
   const drawerRef = useRef<HTMLDialogElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const isSupportPage = useLocation().pathname === "/dashboard/support";
+  const path = useLocation().pathname;
+  const isSupportPage = path === "/dashboard/support" || path === "/dashboard/clubs";
   useEffect(() => {
     if (!isMobileMenuOpen) return;
     const drawer = drawerRef.current;
@@ -91,7 +94,7 @@ export default function PlayerLayout({ playerDisplayName }: { playerDisplayName?
           </nav>
           <div className="mt-auto flex flex-col gap-2.5 pt-12">
             <NavLink to="/dashboard/support" className={menuClass} onClick={() => setIsMobileMenuOpen(false)}>Help &amp; Support</NavLink>
-            <Link to="/login" className="flex min-h-12 items-center justify-center rounded-lg text-sm hover:bg-white/10" onClick={() => setIsMobileMenuOpen(false)}>Log out</Link>
+            <Link to="/login" onClickCapture={() => setPlayerEmail("")} className="flex min-h-12 items-center justify-center rounded-lg text-sm hover:bg-white/10" onClick={() => setIsMobileMenuOpen(false)}>Log out</Link>
           </div>
         </div>
       </dialog>
@@ -126,7 +129,7 @@ export default function PlayerLayout({ playerDisplayName }: { playerDisplayName?
             </NavLink>
 
             <Link
-              to="/login"
+              to="/login" onClickCapture={() => setPlayerEmail("")}
               className="
                 flex min-h-[48px] items-center justify-center
                 rounded-[8px] text-[14px] text-white
