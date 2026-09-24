@@ -16,9 +16,10 @@
  * so a second run inserts nothing new rather than creating duplicates. It only
  * ever inserts: no row is updated or deleted, so hand-edited records survive.
  *
- * The workbook holds no passwords. Player rows are attached to the existing
- * `user` accounts by email; where an account is missing the profile is still
- * created, just without a login link.
+ * The workbook carries its own login accounts, so this is the only seed needed.
+ * Every account uses the development password documented on the README sheet,
+ * and every address is on a reserved .example domain - no real mailbox, and no
+ * real person's contact details, reach a development database.
  */
 import { Prisma, PrismaClient } from '@prisma/client'
 import { createHash } from 'node:crypto'
@@ -63,20 +64,24 @@ export async function seedCompetition(tx: Prisma.TransactionClient, S: Record<st
   const missing = need.filter(n => !S[n]?.length)
   if (missing.length) throw new Error(`Workbook is missing data for: ${missing.join(', ')}`)
 
-  // Link player profiles to the accounts already in the database. The workbook
-  // cannot contain their UUIDs, so it carries the login email instead.
-  const wanted = [...new Set(
+  // The workbook carries its own login accounts, so this is the only seed a
+  // developer needs. Every row that points at a person does so by login email,
+  // because the workbook cannot know the UUIDs the database will assign.
+  const userId = new Map(S.User.map(u => [String(u.email), uuidFor(String(u.id))]))
+  const unlinked = [...new Set(
     ['Player', 'Notification', 'UserRole'].flatMap(s => (S[s] ?? []).map(r => String(r._lookup_user_email))),
-  )].filter(Boolean)
-  const users = await tx.user.findMany({ where: { email: { in: wanted } }, select: { id: true, email: true } })
-  const userId = new Map(users.map(u => [u.email, u.id]))
-  const unlinked = wanted.filter(e => !userId.has(e))
-
-  // notification.user_id and user_role.user_id are NOT NULL, so rows for an
-  // account that does not exist locally are skipped rather than faked.
-  const skipped = { notifications: 0, userRoles: 0 }
+  )].filter(e => e && !userId.has(e))
+  if (unlinked.length) {
+    throw new Error(`${unlinked.length} row(s) reference a login that the User sheet does not define, e.g. ${unlinked[0]}`)
+  }
 
   const steps: [string, () => Promise<{ count: number }>][] = [
+    ['user', () => tx.user.createMany({
+      data: S.User.map(r => ({
+        id: uuidFor(String(r.id)), email: String(r.email), passwordHash: String(r.password_hash),
+        status: String(r.status) as never, lastLoginAt: ts(r.last_login_at),
+      })), skipDuplicates: true })],
+
     ['association', () => tx.association.createMany({
       data: S.Association.map(r => ({
         id: uuidFor(String(r.id)), name: String(r.name), email: str(r.email), address: str(r.address),
@@ -219,6 +224,24 @@ export async function seedCompetition(tx: Prisma.TransactionClient, S: Record<st
         enteredAt: ts(r.entered_at), finalisedAt: ts(r.finalised_at),
       })), skipDuplicates: true })],
 
+    ['resultConfirmation', () => tx.resultConfirmation.createMany({
+      data: S.ResultConfirmation.map(r => ({
+        id: uuidFor(String(r.id)), matchResultId: ref(r.match_result_id)!, status: String(r.status) as never,
+        homeEnteredBy: ref(r.home_entered_by), awayConfirmedBy: ref(r.away_confirmed_by),
+        homeEnteredAt: ts(r.home_entered_at), awayConfirmedAt: ts(r.away_confirmed_at),
+        scoreCorrect: r.score_correct === '' ? null : bool(r.score_correct),
+        commentsCorrect: r.comments_correct === '' ? null : bool(r.comments_correct),
+        disputeReason: str(r.dispute_reason),
+      })), skipDuplicates: true })],
+
+    ['correctionRequest', () => tx.correctionRequest.createMany({
+      data: S.CorrectionRequest.map(r => ({
+        id: uuidFor(String(r.id)), matchResultId: ref(r.match_result_id)!,
+        requestedAt: ts(r.requested_at), requestedBy: ref(r.requested_by), reason: str(r.reason),
+        status: String(r.status) as never, reviewBy: ref(r.review_by), reviewAt: ts(r.review_at),
+        reviewedNotes: str(r.reviewed_notes),
+      })), skipDuplicates: true })],
+
     ['rubber', () => tx.rubber.createMany({
       data: S.Rubber.map(r => ({
         id: uuidFor(String(r.id)), matchResultId: ref(r.match_result_id)!, matchFormatId: ref(r.match_format_id),
@@ -269,32 +292,39 @@ export async function seedCompetition(tx: Prisma.TransactionClient, S: Record<st
         teamId: ref(r.team_id), awardedOn: date(r.awarded_on),
       })), skipDuplicates: true })],
 
-    ['notification', () => {
-      const rows = S.Notification.filter(r => userId.has(String(r._lookup_user_email)))
-      skipped.notifications = S.Notification.length - rows.length
-      return tx.notification.createMany({
-        data: rows.map(r => ({
-          id: uuidFor(String(r.id)), userId: userId.get(String(r._lookup_user_email))!,
-          type: String(r.type) as never, title: String(r.title), message: String(r.message),
-          details: nul(r.details) === null ? Prisma.DbNull : JSON.parse(String(r.details)),
-          targetType: (str(r.target_type) ?? undefined) as never, targetId: ref(r.target_id),
-          channel: String(r.channel) as never, deliveryStatus: String(r.delivery_status) as never,
-          sentAt: ts(r.sent_at), readAt: ts(r.read_at), createdAt: ts(r.created_at)!,
-        })), skipDuplicates: true })
-    }],
+    ['notification', () => tx.notification.createMany({
+      data: S.Notification.map(r => ({
+        id: uuidFor(String(r.id)), userId: userId.get(String(r._lookup_user_email))!,
+        type: String(r.type) as never, title: String(r.title), message: String(r.message),
+        details: nul(r.details) === null ? Prisma.DbNull : JSON.parse(String(r.details)),
+        targetType: (str(r.target_type) ?? undefined) as never, targetId: ref(r.target_id),
+        channel: String(r.channel) as never, deliveryStatus: String(r.delivery_status) as never,
+        sentAt: ts(r.sent_at), readAt: ts(r.read_at), createdAt: ts(r.created_at)!,
+      })), skipDuplicates: true })],
 
-    ['userRole', () => {
-      const rows = S.UserRole.filter(r => userId.has(String(r._lookup_user_email)))
-      skipped.userRoles = S.UserRole.length - rows.length
-      return tx.userRole.createMany({
-        data: rows.map(r => ({
-          id: uuidFor(String(r.id)), userId: userId.get(String(r._lookup_user_email))!,
-          roleType: String(r.role_type) as never, contextType: String(r.context_type) as never,
-          associationId: ref(r.association_id), clubId: ref(r.club_id),
-          teamId: ref(r.team_id), competitionId: ref(r.competition_id),
-          grantedAt: ts(r.granted_at),
-        })), skipDuplicates: true })
-    }],
+    ['userRole', () => tx.userRole.createMany({
+      data: S.UserRole.map(r => ({
+        id: uuidFor(String(r.id)), userId: userId.get(String(r._lookup_user_email))!,
+        roleType: String(r.role_type) as never, contextType: String(r.context_type) as never,
+        associationId: ref(r.association_id), clubId: ref(r.club_id),
+        teamId: ref(r.team_id), competitionId: ref(r.competition_id),
+        grantedAt: ts(r.granted_at),
+      })), skipDuplicates: true })],
+
+    ['profileMergeRequest', () => tx.profileMergeRequest.createMany({
+      data: S.ProfileMergeRequest.map(r => ({
+        id: uuidFor(String(r.id)), status: String(r.status) as never,
+        playerAId: ref(r.player_a_id)!, playerBId: ref(r.player_b_id)!,
+        requestingAssociationId: ref(r.requesting_association_id),
+        note: str(r.note), resolvedAt: ts(r.resolved_at),
+      })), skipDuplicates: true })],
+
+    ['auditLog', () => tx.auditLog.createMany({
+      data: S.AuditLog.map(r => ({
+        id: uuidFor(String(r.id)), entityType: String(r.entity_type), entityId: ref(r.entity_id),
+        action: String(r.action), changedAt: ts(r.changed_at)!,
+        changeSummary: str(r.change_summary), changedBy: ref(r.changed_by),
+      })), skipDuplicates: true })],
   ]
 
   const inserted: Record<string, number> = {}
@@ -304,10 +334,7 @@ export async function seedCompetition(tx: Prisma.TransactionClient, S: Record<st
 
   return {
     dryRun,
-    accountsLinked: users.length,
-    accountsMissing: unlinked.length,
-    unlinkedSample: unlinked.slice(0, 5),
-    skipped,
+    accounts: S.User.length,
     [dryRun ? 'rowsInWorkbook' : 'inserted']: inserted,
   }
 }
@@ -327,13 +354,8 @@ async function main() {
     })
     console.log(dryRun
       ? 'Dry run: nothing was written.'
-      : 'Competition data seeded. Existing users and passwords were not modified.')
+      : 'Competition data seeded. Nothing was updated or deleted, so any row you edited by hand survived.')
     console.log(JSON.stringify(result, null, 2))
-    if (result.accountsMissing) {
-      console.log(`\n${result.accountsMissing} login account(s) were not found in this database.`)
-      console.log('Player profiles for them were still created, just without a login link.')
-      console.log('Run the user seed first if you want them connected: npx prisma db seed')
-    }
   } finally {
     await db.$disconnect()
   }

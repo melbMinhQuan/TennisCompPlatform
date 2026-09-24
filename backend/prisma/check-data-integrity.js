@@ -1,23 +1,33 @@
-/** Checks the generated workbook: unique ids, resolvable FKs, consistent scores. */
+/**
+ * Structural check of competition_data.xlsx against schema.prisma:
+ * unique ids, resolvable foreign keys, required fields, unique constraints,
+ * enum members, and scores that agree with the rubber they belong to.
+ *
+ *   npm run data:check   (runs this and the requirements check)
+ */
 const REPO = require('node:path').resolve(__dirname, '../..')
 const XLSX = require(`${REPO}/node_modules/xlsx`)
+const fs = require('node:fs')
+const path = require('node:path')
 
-const wb = XLSX.readFile(process.argv[2] || require('node:path').join(__dirname, 'competition_data.xlsx'))
+const file = process.argv[2] || path.join(__dirname, 'competition_data.xlsx')
+const wb = XLSX.readFile(file)
 const S = {}
-for (const name of wb.SheetNames) S[name] = XLSX.utils.sheet_to_json(wb.Sheets[name], { defval: '' })
+for (const n of wb.SheetNames) S[n] = XLSX.utils.sheet_to_json(wb.Sheets[n], { defval: '' })
+const schema = fs.readFileSync(path.join(__dirname, 'schema.prisma'), 'utf8')
 
 const problems = []
-const fail = m => problems.push(m)
+const bad = m => problems.push(m)
+const ids = n => new Set((S[n] ?? []).map(r => r.id))
 
-// 1. Unique ids per sheet
+// ── unique ids
 for (const [name, rows] of Object.entries(S)) {
   if (name === 'README' || !rows.length || !('id' in rows[0])) continue
-  const ids = rows.map(r => r.id)
-  if (new Set(ids).size !== ids.length) fail(`${name}: duplicate id`)
+  const list = rows.map(r => r.id)
+  if (new Set(list).size !== list.length) bad(`${name}: duplicate id`)
 }
 
-// 2. Every foreign key resolves
-const idsOf = n => new Set(S[n].map(r => r.id))
+// ── foreign keys
 const FK = [
   ['Club', 'association_id', 'Association'], ['Venue', 'club_id', 'Club'],
   ['Competition', 'association_id', 'Association'], ['MatchFormat', 'competition_id', 'Competition'],
@@ -25,150 +35,215 @@ const FK = [
   ['SectionGrade', 'season_id', 'Season'], ['Team', 'club_id', 'Club'],
   ['Team', 'section_id', 'SectionGrade'], ['Team', 'home_venue_id', 'Venue'],
   ['ClubMembership', 'player_id', 'Player'], ['ClubMembership', 'club_id', 'Club'],
-  ['AssociationMembership', 'player_id', 'Player'], ['TeamPlayer', 'team_id', 'Team'],
-  ['TeamPlayer', 'player_id', 'Player'], ['UtrLink', 'player_id', 'Player'],
-  ['UtrRatingSnapshot', 'player_id', 'Player'], ['RankingEntry', 'cohort_id', 'RankingCohort'],
-  ['RankingEntry', 'player_id', 'Player'], ['Fixture', 'section_id', 'SectionGrade'],
-  ['Fixture', 'home_team_id', 'Team'], ['Fixture', 'away_team_id', 'Team'],
-  ['Fixture', 'venue_id', 'Venue'], ['FixtureScheduleChange', 'fixture_id', 'Fixture'],
+  ['AssociationMembership', 'player_id', 'Player'], ['AssociationMembership', 'association_id', 'Association'],
+  ['TeamPlayer', 'team_id', 'Team'], ['TeamPlayer', 'player_id', 'Player'],
+  ['UtrLink', 'player_id', 'Player'], ['UtrRatingSnapshot', 'player_id', 'Player'],
+  ['RankingCohort', 'association_id', 'Association'],
+  ['RankingEntry', 'cohort_id', 'RankingCohort'], ['RankingEntry', 'player_id', 'Player'],
+  ['Fixture', 'section_id', 'SectionGrade'], ['Fixture', 'home_team_id', 'Team'],
+  ['Fixture', 'away_team_id', 'Team'], ['Fixture', 'venue_id', 'Venue'],
+  ['FixtureScheduleChange', 'fixture_id', 'Fixture'],
   ['FixtureScheduleChange', 'previous_venue_id', 'Venue'], ['FixtureScheduleChange', 'new_venue_id', 'Venue'],
-  ['MatchResult', 'fixture_id', 'Fixture'], ['Rubber', 'match_result_id', 'MatchResult'],
-  ['Rubber', 'match_format_id', 'MatchFormat'], ['RubberSet', 'rubber_id', 'Rubber'],
-  ['RubberPlayer', 'rubber_id', 'Rubber'], ['RubberPlayer', 'player_id', 'Player'],
+  ['MatchResult', 'fixture_id', 'Fixture'], ['ResultConfirmation', 'match_result_id', 'MatchResult'],
+  ['CorrectionRequest', 'match_result_id', 'MatchResult'],
+  ['Rubber', 'match_result_id', 'MatchResult'], ['Rubber', 'match_format_id', 'MatchFormat'],
+  ['RubberSet', 'rubber_id', 'Rubber'], ['RubberPlayer', 'rubber_id', 'Rubber'],
+  ['RubberPlayer', 'player_id', 'Player'],
   ['LadderEntry', 'section_id', 'SectionGrade'], ['LadderEntry', 'team_id', 'Team'],
   ['PlayerStanding', 'section_id', 'SectionGrade'], ['PlayerStanding', 'player_id', 'Player'],
   ['PlayerAward', 'player_id', 'Player'], ['PlayerAward', 'competition_id', 'Competition'],
   ['PlayerAward', 'season_id', 'Season'], ['PlayerAward', 'team_id', 'Team'],
-  ['UserRole', 'club_id', 'Club'], ['UserRole', 'team_id', 'Team'],
+  ['ProfileMergeRequest', 'player_a_id', 'Player'], ['ProfileMergeRequest', 'player_b_id', 'Player'],
+  ['ProfileMergeRequest', 'requesting_association_id', 'Association'],
+  ['UserRole', 'association_id', 'Association'], ['UserRole', 'club_id', 'Club'],
+  ['UserRole', 'team_id', 'Team'], ['UserRole', 'competition_id', 'Competition'],
 ]
 for (const [sheet, col, target] of FK) {
-  const valid = idsOf(target)
-  for (const row of S[sheet]) {
-    const v = row[col]
-    if (v !== '' && !valid.has(v)) fail(`${sheet}.${col} = "${v}" not found in ${target}`)
+  const valid = ids(target)
+  for (const row of S[sheet] ?? []) {
+    if (row[col] !== '' && !valid.has(row[col])) bad(`${sheet}.${col} = "${row[col]}" not in ${target}`)
   }
 }
 
-// 3. Emails on Player/Notification/UserRole must be real accounts
-const accounts = new Set(S.Player.map(p => p._lookup_user_email))
-for (const sheet of ['Notification', 'UserRole']) {
-  for (const r of S[sheet]) if (!accounts.has(r._lookup_user_email)) fail(`${sheet}: unknown _lookup_user_email ${r._lookup_user_email}`)
-}
-
-// 4. Home team plays at its own venue, except at the neutral finals venue
-for (const f of S.Fixture) {
-  const home = S.Team.find(t => t.id === f.home_team_id)
-  if (f.venue_id !== home.home_venue_id && f.venue_id !== 'VEN99') {
-    const moved = S.FixtureScheduleChange.some(c => c.fixture_id === f.id && c.change_type === 'VENUE_CHANGED')
-    if (!moved) fail(`${f.id}: venue ${f.venue_id} is neither the home venue nor an explained move`)
+// ── _lookup_user_email must name a row in the User sheet
+const accounts = new Set(S.User.map(u => u.email))
+for (const sheet of ['Player', 'Notification', 'UserRole']) {
+  for (const r of S[sheet]) {
+    if (!accounts.has(r._lookup_user_email)) bad(`${sheet}: no User row for ${r._lookup_user_email}`)
   }
-  if (f.home_team_id === f.away_team_id) fail(`${f.id}: team plays itself`)
 }
 
-// 5. Completed fixtures have exactly one result; scheduled have none
-for (const f of S.Fixture) {
-  const n = S.MatchResult.filter(m => m.fixture_id === f.id).length
-  if (f.status === 'COMPLETED' && n !== 1) fail(`${f.id}: COMPLETED but ${n} results`)
-  if (f.status !== 'COMPLETED' && n !== 0) fail(`${f.id}: ${f.status} but has a result`)
+// ── enum members, read from schema.prisma
+const enums = {}
+for (const m of schema.matchAll(/enum\s+(\w+)\s*\{([^}]*)\}/g)) {
+  enums[m[1]] = m[2].split('\n').map(l => l.replace(/\/\/.*/, '').trim()).filter(Boolean)
+}
+const ENUM_COLS = [
+  ['User', 'status', 'UserStatus'], ['Association', 'status', 'AssociationStatus'],
+  ['Club', 'status', 'ClubStatus'], ['Venue', 'status', 'VenueStatus'],
+  ['Competition', 'status', 'CompetitionStatus'], ['Season', 'status', 'SeasonStatus'],
+  ['SectionGrade', 'gender', 'Gender'], ['Player', 'gender', 'Gender'], ['Player', 'status', 'PlayerStatus'],
+  ['ClubMembership', 'status', 'MembershipStatus'], ['AssociationMembership', 'status', 'MembershipStatus'],
+  ['TeamPlayer', 'status', 'TeamPlayerStatus'], ['UtrLink', 'status', 'LinkStatus'],
+  ['UtrRatingSnapshot', 'discipline', 'Discipline'], ['RankingCohort', 'discipline', 'Discipline'],
+  ['Fixture', 'status', 'FixtureStatus'], ['FixtureScheduleChange', 'change_type', 'ScheduleChangeType'],
+  ['MatchResult', 'status', 'ResultStatus'], ['ResultConfirmation', 'status', 'ConfirmationStatus'],
+  ['CorrectionRequest', 'status', 'CorrectionStatus'], ['ProfileMergeRequest', 'status', 'MergeStatus'],
+  ['Rubber', 'rubber_type', 'RubberType'], ['Rubber', 'winner_side', 'Side'],
+  ['Rubber', 'outcome_type', 'RubberOutcome'], ['RubberPlayer', 'side', 'Side'],
+  ['PlayerAward', 'award_type', 'AwardType'], ['Notification', 'type', 'NotificationType'],
+  ['Notification', 'target_type', 'NotificationTargetType'], ['Notification', 'channel', 'NotificationChannel'],
+  ['Notification', 'delivery_status', 'NotificationDeliveryStatus'],
+  ['UserRole', 'role_type', 'RoleType'], ['UserRole', 'context_type', 'ContextType'],
+]
+for (const [sheet, col, name] of ENUM_COLS) {
+  const allowed = enums[name]
+  if (!allowed) { bad(`schema.prisma has no enum ${name}`); continue }
+  for (const r of S[sheet] ?? []) {
+    if (r[col] !== '' && !allowed.includes(String(r[col]))) bad(`${sheet}.${col} = "${r[col]}" is not a ${name}`)
+  }
 }
 
-// 6. Rubber totals match the result, and the declared winner matches the sets
-for (const res of S.MatchResult) {
-  const rs = S.Rubber.filter(r => r.match_result_id === res.id)
-  const home = rs.filter(r => r.winner_side === 'HOME').length
-  const away = rs.filter(r => r.winner_side === 'AWAY').length
-  if (home !== res.home_rubbers || away !== res.away_rubbers) fail(`${res.id}: rubber tally ${home}-${away} != ${res.home_rubbers}-${res.away_rubbers}`)
-  const expected = home > away ? 'HOME_WIN' : home < away ? 'AWAY_WIN' : 'DRAW'
-  if (res.outcome !== expected) fail(`${res.id}: outcome ${res.outcome} != ${expected}`)
+// ── NOT NULL columns
+const REQUIRED = [
+  ['User', ['email', 'password_hash', 'status']],
+  ['Association', ['name', 'status']], ['Club', ['association_id', 'name', 'status']],
+  ['Venue', ['name', 'time_zone', 'status']], ['Competition', ['association_id', 'name', 'status']],
+  ['MatchFormat', ['competition_id', 'name']], ['EligibilityRule', ['competition_id', 'rule_type']],
+  ['Season', ['competition_id', 'status']], ['SectionGrade', ['season_id', 'name']],
+  ['Team', ['club_id', 'section_id', 'name']],
+  ['Player', ['first_name', 'last_name', 'date_of_birth', 'gender', 'status']],
+  ['ClubMembership', ['player_id', 'club_id', 'status']],
+  ['TeamPlayer', ['team_id', 'player_id', 'status']],
+  ['UtrRatingSnapshot', ['player_id', 'rating', 'recorded_at']],
+  ['RankingEntry', ['cohort_id', 'player_id', 'rank', 'as_of']],
+  ['Fixture', ['section_id', 'home_team_id', 'away_team_id', 'status']],
+  ['FixtureScheduleChange', ['fixture_id', 'change_type', 'changed_at']],
+  ['MatchResult', ['fixture_id', 'status']], ['Rubber', ['match_result_id', 'rubber_type']],
+  ['RubberPlayer', ['rubber_id', 'player_id', 'side']],
+  ['LadderEntry', ['section_id', 'team_id', 'calculated_at']],
+  ['PlayerStanding', ['section_id', 'player_id', 'calculated_at']],
+  ['PlayerAward', ['player_id', 'award_type', 'title']],
+  ['Notification', ['_lookup_user_email', 'type', 'title', 'message', 'channel', 'delivery_status', 'created_at']],
+  ['UserRole', ['_lookup_user_email', 'role_type', 'context_type']],
+  ['AuditLog', ['entity_type', 'action', 'changed_at']],
+]
+for (const [sheet, cols] of REQUIRED) {
+  for (const r of S[sheet] ?? []) {
+    for (const c of cols) if (r[c] === '' || r[c] === undefined) bad(`${sheet}.${c} blank on ${r.id}`)
+  }
 }
 
+// ── @@unique constraints
+const UNIQUE = [
+  ['User', ['email']], ['Player', ['_lookup_user_email']],
+  ['ClubMembership', ['player_id', 'club_id']], ['AssociationMembership', ['player_id', 'association_id']],
+  ['TeamPlayer', ['team_id', 'player_id']], ['UtrLink', ['player_id']],
+  ['UtrRatingSnapshot', ['player_id', 'discipline', 'recorded_at']],
+  ['RankingEntry', ['cohort_id', 'player_id', 'as_of']],
+  ['LadderEntry', ['section_id', 'team_id']], ['PlayerStanding', ['section_id', 'player_id']],
+  ['MatchResult', ['fixture_id']],
+]
+for (const [sheet, cols] of UNIQUE) {
+  const seen = new Set()
+  for (const r of S[sheet] ?? []) {
+    const key = cols.map(c => r[c]).join('|')
+    if (seen.has(key)) bad(`${sheet}: duplicate ${cols.join('+')} = ${key}`)
+    seen.add(key)
+  }
+}
+
+// ── a completed rubber's winner comes from its sets, so winner_side stays blank
+const setsOf = new Map()
+for (const s of S.RubberSet) {
+  if (!setsOf.has(s.rubber_id)) setsOf.set(s.rubber_id, [])
+  setsOf.get(s.rubber_id).push(s)
+}
+const winnerOf = r => {
+  if (r.winner_side) return r.winner_side
+  const sets = setsOf.get(r.id) ?? []
+  const h = sets.filter(s => s.home_games > s.away_games).length
+  return h > sets.length - h ? 'HOME' : 'AWAY'
+}
 for (const r of S.Rubber) {
-  const sets = S.RubberSet.filter(s => s.rubber_id === r.id)
-  // A walkover or forfeit is won without sets; everything else must have sets.
-  if (['WALKOVER', 'FORFEIT'].includes(r.outcome_type)) {
-    if (sets.length) fail(`${r.id}: ${r.outcome_type} should have no sets`)
-    continue
-  }
-  if (!sets.length) { fail(`${r.id}: ${r.outcome_type} with no sets`); continue }
+  const sets = setsOf.get(r.id) ?? []
   if (r.outcome_type === 'COMPLETED') {
-    const hs = sets.filter(s => s.home_games > s.away_games).length
-    const as = sets.length - hs
-    const bySets = hs > as ? 'HOME' : 'AWAY'
-    if (bySets !== r.winner_side) fail(`${r.id}: sets say ${bySets}, winner_side says ${r.winner_side}`)
+    if (r.winner_side !== '') bad(`${r.id}: completed rubber stores winner_side; it should be derived`)
+    if (!sets.length) bad(`${r.id}: completed rubber with no sets`)
   }
-  for (const s of sets) {
-    if (s.home_games === s.away_games) fail(`${s.id}: tied set ${s.home_games}-${s.away_games}`)
-    if (s.is_tiebreak === true && (s.home_tiebreak_points === '' || s.away_tiebreak_points === '')) fail(`${s.id}: tiebreak set without points`)
+  if (['WALKOVER', 'FORFEIT'].includes(r.outcome_type)) {
+    if (sets.length) bad(`${r.id}: ${r.outcome_type} should have no sets`)
+    if (!r.winner_side) bad(`${r.id}: ${r.outcome_type} needs an explicit winner_side`)
   }
-}
-
-// 7. Each rubber has the right number of participants per side
-for (const r of S.Rubber) {
+  for (const s of sets) if (s.home_games === s.away_games) bad(`${s.id}: tied set`)
   const want = r.rubber_type === 'SINGLES' ? 1 : 2
   for (const side of ['HOME', 'AWAY']) {
     const n = S.RubberPlayer.filter(p => p.rubber_id === r.id && p.side === side).length
-    if (n !== want) fail(`${r.id}: ${side} has ${n} players, expected ${want}`)
+    if (n !== want) bad(`${r.id}: ${side} has ${n} players, expected ${want}`)
   }
 }
 
-// 8. Players only appear for a team they are registered to
-const registered = new Set(S.TeamPlayer.map(tp => `${tp.team_id}|${tp.player_id}`))
-for (const rp of S.RubberPlayer) {
-  const rubber = S.Rubber.find(r => r.id === rp.rubber_id)
-  const res = S.MatchResult.find(m => m.id === rubber.match_result_id)
-  const fx = S.Fixture.find(f => f.id === res.fixture_id)
-  const teamId = rp.side === 'HOME' ? fx.home_team_id : fx.away_team_id
-  if (!registered.has(`${teamId}|${rp.player_id}`)) fail(`${rp.id}: ${rp.player_id} not registered to ${teamId}`)
+// ── result totals match the rubbers
+const rubbersOf = new Map()
+for (const r of S.Rubber) {
+  if (!rubbersOf.has(r.match_result_id)) rubbersOf.set(r.match_result_id, [])
+  rubbersOf.get(r.match_result_id).push(r)
+}
+for (const res of S.MatchResult) {
+  const rs = rubbersOf.get(res.id) ?? []
+  const h = rs.filter(r => winnerOf(r) === 'HOME').length
+  const a = rs.length - h
+  if (h !== res.home_rubbers || a !== res.away_rubbers) bad(`${res.id}: rubbers ${h}-${a} != ${res.home_rubbers}-${res.away_rubbers}`)
+  const expected = h > a ? 'HOME_WIN' : h < a ? 'AWAY_WIN' : 'DRAW'
+  if (res.outcome !== expected) bad(`${res.id}: outcome ${res.outcome} != ${expected}`)
 }
 
-// 9. Ladder recount
-for (const sec of ['SEC01', 'SEC02']) {
-  const secFixtures = S.Fixture.filter(f => f.section_id === sec)
-  for (const entry of S.LadderEntry.filter(l => l.section_id === sec)) {
+// ── only completed fixtures carry a result
+for (const f of S.Fixture) {
+  const n = S.MatchResult.filter(m => m.fixture_id === f.id).length
+  if (f.status === 'COMPLETED' && n !== 1) bad(`${f.id}: COMPLETED with ${n} results`)
+  if (f.status !== 'COMPLETED' && n !== 0) bad(`${f.id}: ${f.status} but has a result`)
+  if (f.home_team_id === f.away_team_id) bad(`${f.id}: team plays itself`)
+}
+
+// ── ladder recount
+for (const sec of S.SectionGrade) {
+  const entries = S.LadderEntry.filter(l => l.section_id === sec.id)
+  if (!entries.length) continue
+  for (const e of entries) {
     let played = 0, won = 0, rf = 0, points = 0
-    for (const f of secFixtures) {
+    for (const f of S.Fixture.filter(x => x.section_id === sec.id && x.is_finals !== true)) {
       const res = S.MatchResult.find(m => m.fixture_id === f.id)
       if (!res) continue
-      const isHome = f.home_team_id === entry.team_id
-      const isAway = f.away_team_id === entry.team_id
-      if (!isHome && !isAway) continue
+      const home = f.home_team_id === e.team_id, away = f.away_team_id === e.team_id
+      if (!home && !away) continue
       played++
-      const mine = isHome ? res.home_rubbers : res.away_rubbers
+      const mine = home ? res.home_rubbers : res.away_rubbers
       rf += mine; points += mine
-      const winner = res.outcome === 'HOME_WIN' ? f.home_team_id : f.away_team_id
-      if (winner === entry.team_id) { won++; points += 4 }
+      if ((res.outcome === 'HOME_WIN' ? f.home_team_id : f.away_team_id) === e.team_id) { won++; points += 4 }
     }
-    if (played !== entry.played) fail(`${entry.id}: played ${entry.played} != ${played}`)
-    if (won !== entry.won) fail(`${entry.id}: won ${entry.won} != ${won}`)
-    if (rf !== entry.rubbers_for) fail(`${entry.id}: rubbers_for ${entry.rubbers_for} != ${rf}`)
-    if (points !== entry.points) fail(`${entry.id}: points ${entry.points} != ${points}`)
-    if (entry.won + entry.lost + entry.drawn !== entry.played) fail(`${entry.id}: W/L/D does not sum to played`)
+    if (played !== e.played) bad(`${e.id}: played ${e.played} != ${played}`)
+    if (won !== e.won) bad(`${e.id}: won ${e.won} != ${won}`)
+    if (rf !== e.rubbers_for) bad(`${e.id}: rubbers_for ${e.rubbers_for} != ${rf}`)
+    if (points !== e.points) bad(`${e.id}: points ${e.points} != ${points}`)
+    if (e.won + e.lost + e.drawn !== e.played) bad(`${e.id}: W/L/D != played`)
   }
-  const positions = S.LadderEntry.filter(l => l.section_id === sec).map(l => l.position).sort((a, b) => a - b)
-  if (positions.join() !== [1, 2, 3, 4, 5, 6, 7, 8].join()) fail(`${sec}: ladder positions are not 1..8`)
+  const pos = entries.map(e => e.position).sort((a, b) => a - b)
+  if (pos.join() !== entries.map((_, i) => i + 1).join()) bad(`${sec.id}: ladder positions not 1..${entries.length}`)
 }
 
-// 10. Everyone with a roster spot actually played
-const rostered = S.TeamPlayer.filter(tp => tp.status === 'ACTIVE').map(tp => tp.player_id)
-const appeared = new Set(S.RubberPlayer.map(rp => rp.player_id))
-const idle = rostered.filter(p => !appeared.has(p))
-if (idle.length) fail(`${idle.length} rostered players never appear in a rubber (e.g. ${idle.slice(0, 3)})`)
-
-// 11. Notifications point at real fixtures and only IN_APP rows are readable
-for (const n of S.Notification) {
-  if (n.target_type === 'FIXTURE' && !idsOf('Fixture').has(n.target_id)) fail(`${n.id}: unknown fixture ${n.target_id}`)
-  if (n.channel === 'EMAIL' && n.read_at !== '') fail(`${n.id}: EMAIL row must not carry read_at`)
-  try { JSON.parse(n.details) } catch { fail(`${n.id}: details is not valid JSON`) }
+// ── players only appear for a team they are registered to, unless they are an
+// emergency, who by definition is not on the roster
+const registered = new Set(S.TeamPlayer.map(t => `${t.team_id}|${t.player_id}`))
+for (const rp of S.RubberPlayer) {
+  if (rp.is_emergency === true) continue
+  const r = S.Rubber.find(x => x.id === rp.rubber_id)
+  const res = S.MatchResult.find(x => x.id === r.match_result_id)
+  const f = S.Fixture.find(x => x.id === res.fixture_id)
+  const team = rp.side === 'HOME' ? f.home_team_id : f.away_team_id
+  if (!registered.has(`${team}|${rp.player_id}`)) bad(`${rp.id}: ${rp.player_id} not registered to ${team}`)
 }
 
-// 12. One current ranking row per player per cohort
-for (const c of S.RankingCohort) {
-  const rows = S.RankingEntry.filter(r => r.cohort_id === c.id)
-  if (rows.length !== S.Player.length) fail(`${c.id}: ${rows.length} entries for ${S.Player.length} players`)
-  const ranks = rows.map(r => r.rank).sort((a, b) => a - b)
-  if (ranks[0] !== 1 || ranks[ranks.length - 1] !== rows.length) fail(`${c.id}: ranks are not 1..${rows.length}`)
-}
-
-console.log(problems.length ? `FAILED (${problems.length})` : 'All checks passed')
-for (const p of problems.slice(0, 25)) console.log('  - ' + p)
+console.log(problems.length ? `INTEGRITY: ${problems.length} problem(s)` : 'Integrity: all checks passed')
+for (const p of problems.slice(0, 25)) console.log('  x ' + p)
 process.exitCode = problems.length ? 1 : 0
