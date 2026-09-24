@@ -193,12 +193,17 @@ const utrOf = new Map(players.map((p, i) => [p.id, utrRating(i)]))
 // Seasons inside one competition never overlap: Summer starts after the Winter
 // finals are done. Each season owns its own teams - team rows are never reused
 // across seasons, which is what the client specifically warned about.
+// setsToWin comes from the chosen MatchFormat, so the scores a season produces
+// match the format it claims to be played under. MF01 is best of 3 full sets;
+// MF13 (night tennis) decides each rubber on a single set.
 const SEASONS = [
-  { id: 'SEA01', competition_id: 'COMP01', year: 2025, season_type: 'Winter', start_date: '2025-07-05', end_date: '2025-10-25', status: 'COMPLETED', format: 'MF01', playDay: 6, startTime: '13:00', sections: 1, complete: true },
-  { id: 'SEA02', competition_id: 'COMP01', year: 2025, season_type: 'Summer', start_date: '2025-11-01', end_date: '2026-03-28', status: 'COMPLETED', format: 'MF01', playDay: 6, startTime: '13:00', sections: 1, complete: true },
-  { id: 'SEA03', competition_id: 'COMP01', year: 2026, season_type: 'Winter', start_date: '2026-07-04', end_date: '2026-10-24', status: 'ACTIVE', format: 'MF01', playDay: 6, startTime: '13:00', sections: 2, complete: false },
-  // A second competition running its own season proves competitions are independent.
-  { id: 'SEA04', competition_id: 'COMP05', year: 2026, season_type: 'Autumn', start_date: '2026-02-02', end_date: '2026-05-18', status: 'COMPLETED', format: 'MF11', playDay: 1, startTime: '19:30', sections: 1, complete: true },
+  { id: 'SEA01', competition_id: 'COMP01', year: 2025, season_type: 'Winter', start_date: '2025-07-05', end_date: '2025-10-25', status: 'COMPLETED', format: 'MF01', setsToWin: 2, playDay: 6, startTime: '13:00', sections: 1, complete: true },
+  { id: 'SEA02', competition_id: 'COMP01', year: 2025, season_type: 'Summer', start_date: '2025-11-01', end_date: '2026-03-28', status: 'COMPLETED', format: 'MF01', setsToWin: 2, playDay: 6, startTime: '13:00', sections: 1, complete: true },
+  { id: 'SEA03', competition_id: 'COMP01', year: 2026, season_type: 'Winter', start_date: '2026-07-04', end_date: '2026-10-24', status: 'ACTIVE', format: 'MF01', setsToWin: 2, playDay: 6, startTime: '13:00', sections: 2, complete: false },
+  // A second competition running its own season proves competitions are
+  // independent. MF13 is the format whose shape this actually is: two singles
+  // rubbers and one doubles, each decided on a single set.
+  { id: 'SEA04', competition_id: 'COMP05', year: 2026, season_type: 'Autumn', start_date: '2026-02-02', end_date: '2026-05-25', status: 'COMPLETED', format: 'MF13', setsToWin: 1, playDay: 1, startTime: '19:30', sections: 1, complete: true },
 ]
 
 const sections = []
@@ -289,10 +294,57 @@ players.forEach((p, i) => {
   })
 })
 
-players.forEach((p, i) => {
-  associationMemberships.push({ id: `AM${pad(associationMemberships.length + 1, 3)}`, player_id: p.id, association_id: 'ASSOC01', is_primary: true, status: 'ACTIVE' })
-  if (i % 4 === 0) associationMemberships.push({ id: `AM${pad(associationMemberships.length + 1, 3)}`, player_id: p.id, association_id: 'ASSOC02', is_primary: false, status: 'ACTIVE' })
-})
+// Where two people share a name, put one of them at a club in the other
+// association. That is what makes a cross-association look-alike possible, and
+// it is exactly the case the duplicate-profile rules have to handle.
+const duplicateNames = new Map()
+for (const p of players) {
+  const key = `${p.first_name} ${p.last_name}`
+  if (!duplicateNames.has(key)) duplicateNames.set(key, [])
+  duplicateNames.get(key).push(p)
+}
+const otherAssociationClub = clubs.find(c => c.association_id === 'ASSOC02')
+for (const pair of duplicateNames.values()) {
+  if (pair.length !== 2) continue
+  const p = pair[1]
+  if (seenMembership.has(`${p.id}|${otherAssociationClub.id}`)) continue
+  seenMembership.add(`${p.id}|${otherAssociationClub.id}`)
+  clubMemberships.push({
+    id: `CM${pad(clubMemberships.length + 1, 3)}`, player_id: p.id, club_id: otherAssociationClub.id,
+    is_primary: false, start_date: '2025-03-01', end_date: '', status: 'ACTIVE',
+  })
+}
+
+// Association membership follows club membership: belonging to a club means
+// belonging to the association that club sits in. Leaving a member of an
+// ASSOC02 club without an ASSOC02 membership is a contradiction.
+const associationOfClub = new Map(clubs.map(c => [c.id, c.association_id]))
+for (const p of players) {
+  const theirs = [...new Set(
+    clubMemberships.filter(m => m.player_id === p.id).map(m => associationOfClub.get(m.club_id)),
+  )]
+  if (!theirs.includes('ASSOC01')) theirs.unshift('ASSOC01')
+  theirs.forEach((associationId, i) => associationMemberships.push({
+    id: `AM${pad(associationMemberships.length + 1, 3)}`, player_id: p.id,
+    association_id: associationId, is_primary: i === 0, status: 'ACTIVE',
+  }))
+}
+
+// Emergencies must have no team at all in the competition they fill in for,
+// because ELIG03 forbids playing for another club in the same competition.
+const freeForEmergency = new Map()
+for (const competitionId of [...new Set(SEASONS.map(s => s.competition_id))]) {
+  const sectionIds = new Set(sections
+    .filter(sec => SEASONS.some(s => s.id === sec.season_id && s.competition_id === competitionId))
+    .map(sec => sec.id))
+  const committed = new Set(teamPlayers
+    .filter(tp => sectionIds.has(teams.find(t => t.id === tp.team_id).section_id))
+    .map(tp => tp.player_id))
+  freeForEmergency.set(competitionId, players.filter(p => !committed.has(p.id)))
+}
+
+/** Reviews correction requests; also holds the RECORDS_SECRETARY role below. */
+const recordsSecretary = players[1].id
 
 // ─────────────────────────────────────────────────────────────── UTR data
 const utrSnapshots = []
@@ -414,11 +466,13 @@ function buildResult(fixture, season, round) {
   const h = four(home), a = four(away)
 
   // Occasionally a side is a player short and a last-minute emergency steps in.
-  // Emergencies are not on the roster - that is the point of them.
+  // ELIG03 forbids an emergency from playing for another club in the same
+  // competition, so they are drawn only from players with no team at all in it.
   const emergencyFor = side => {
     if (rnd() > 0.05) return null
-    const squad = new Set([...home, ...away].map(p => p.id))
-    return players.find(p => !squad.has(p.id) && Number(p.id.slice(3)) % 3 === (side === 'HOME' ? 0 : 1)) ?? null
+    const free = freeForEmergency.get(season.competition_id) ?? []
+    if (!free.length) return null
+    return free[(Number(fixture.id.slice(3)) + (side === 'HOME' ? 0 : 1)) % free.length]
   }
   const subs = { HOME: emergencyFor('HOME'), AWAY: emergencyFor('AWAY') }
   if (subs.HOME) h[3] = subs.HOME
@@ -460,7 +514,10 @@ function buildResult(fixture, season, round) {
     })
 
     if (outcome === 'WALKOVER' || outcome === 'FORFEIT') continue
-    const setCount = outcome === 'RETIRED' ? 1 : (rnd() < 0.55 ? 2 : 3)
+    // Sets follow the season's format: best of 3 for MF01, a single set for a
+    // format that is decided on one (MF13). Never more than the format allows.
+    const full = season.setsToWin === 1 ? 1 : (rnd() < 0.55 ? 2 : 3)
+    const setCount = outcome === 'RETIRED' ? 1 : full
     for (let n = 1; n <= setCount; n++) {
       const winnerTakesSet = setCount === 3 ? n !== 2 : true
       const { w, l, tb } = setScore()
@@ -477,14 +534,24 @@ function buildResult(fixture, season, round) {
   const awayWon = layout.length - homeWon
   const enteredBy = rosterOf.get(fixture.home_team_id)[0].id
   const confirmedBy = rosterOf.get(fixture.away_team_id)[0].id
-  const enteredAt = utc(fixture.schedule_date, '18:30')
+  // Entered after the last rubber finishes. Added to the start instant rather
+  // than to the clock time, so a night match running past midnight is recorded
+  // on the following day instead of five hours before it began.
+  const enteredAt = new Date(Date.parse(utc(fixture.schedule_date, season.startTime)) + 5 * 3600000)
+    .toISOString().replace('.000', '')
   const finalisedAt = utc(day(fixture.schedule_date, 1), '10:00')
 
-  // Most results run enter -> confirm -> finalise. A few stay pending, and one
-  // in a while is disputed and corrected, so the whole workflow has data.
+  // Most results run enter -> confirm -> finalise. Only recent matches are
+  // still open: a completed season cannot be left with results nobody ever
+  // confirmed, and a final cannot be played while its own result is disputed.
+  const recent = fixture.schedule_date >= day(TODAY, -21)
   const roll = rnd()
-  const pending = roll < 0.05
-  const disputed = !pending && roll < 0.09
+  const pending = recent && !fixture.is_finals && roll < 0.25
+  // Corrections are raised throughout a season, but an old one has long since
+  // been reviewed and the result put back to finalised. Only a recent dispute
+  // is still open, which is why a completed season has nothing left hanging.
+  const correctionRaised = !fixture.is_finals && !pending && roll < 0.45
+  const disputed = correctionRaised && recent
 
   matchResults.push({
     id: resultId, fixture_id: fixture.id, home_rubbers: homeWon, away_rubbers: awayWon,
@@ -496,26 +563,44 @@ function buildResult(fixture, season, round) {
 
   confirmations.push({
     id: `RC${pad(confirmations.length + 1, 4)}`, match_result_id: resultId,
-    status: pending ? 'PENDING' : disputed ? 'DISPUTED' : 'CONFIRMED',
+    status: pending ? 'PENDING' : correctionRaised ? 'DISPUTED' : 'CONFIRMED',
     home_entered_by: enteredBy, away_confirmed_by: pending ? '' : confirmedBy,
     home_entered_at: enteredAt, away_confirmed_at: pending ? '' : finalisedAt,
-    score_correct: pending ? '' : !disputed, comments_correct: pending ? '' : !disputed,
-    dispute_reason: disputed ? 'Away team recorded a different score in the second singles rubber.' : '',
+    score_correct: pending ? '' : !correctionRaised, comments_correct: pending ? '' : !correctionRaised,
+    dispute_reason: correctionRaised ? 'Away team recorded a different score in the second singles rubber.' : '',
   })
 
-  if (disputed) {
+  if (correctionRaised) {
+    const requestedAt = utc(day(fixture.schedule_date, 2), '09:15')
+    // A dispute on an older match has been reviewed either way; only a recent
+    // one is still waiting, so both the approve and reject paths have data.
+    const verdict = disputed ? 'PENDING' : (corrections.length % 2 ? 'REJECTED' : 'APPROVED')
+    const reviewedAt = verdict === 'PENDING' ? '' : utc(day(fixture.schedule_date, 5), '14:00')
     corrections.push({
       id: `CR${pad(corrections.length + 1, 3)}`, match_result_id: resultId,
-      requested_at: utc(day(fixture.schedule_date, 2), '09:15'), requested_by: confirmedBy,
+      requested_at: requestedAt, requested_by: confirmedBy,
       reason: 'Second singles rubber score does not match our scorecard.',
-      status: 'PENDING', review_by: '', review_at: '', reviewed_notes: '',
+      status: verdict,
+      review_by: verdict === 'PENDING' ? '' : recordsSecretary,
+      review_at: reviewedAt,
+      reviewed_notes: verdict === 'APPROVED' ? 'Scorecard photograph supports the away team; score amended.'
+        : verdict === 'REJECTED' ? 'Both scorecards agree with the entered result; no change made.' : '',
     })
     auditLog.push({
       id: `AUD${pad(auditLog.length + 1, 3)}`, entity_type: 'MatchResult', entity_id: resultId,
-      action: 'CORRECTION_REQUESTED', changed_at: utc(day(fixture.schedule_date, 2), '09:15'),
+      action: 'CORRECTION_REQUESTED', changed_at: requestedAt,
       change_summary: 'Away team disputed the second singles rubber score.', changed_by: confirmedBy,
     })
-  } else if (!pending) {
+    if (verdict !== 'PENDING') {
+      auditLog.push({
+        id: `AUD${pad(auditLog.length + 1, 3)}`, entity_type: 'CorrectionRequest', entity_id: resultId,
+        action: `CORRECTION_${verdict}`, changed_at: reviewedAt,
+        change_summary: `Records secretary ${verdict.toLowerCase()} the correction request.`,
+        changed_by: recordsSecretary,
+      })
+    }
+  }
+  if (!pending && !disputed) {
     auditLog.push({
       id: `AUD${pad(auditLog.length + 1, 3)}`, entity_type: 'MatchResult', entity_id: resultId,
       action: 'RESULT_FINALISED', changed_at: finalisedAt,
@@ -542,6 +627,9 @@ function buildLadder(section) {
   for (const res of matchResults) {
     const f = fixtures.find(x => x.id === res.fixture_id)
     if (f.section_id !== section.id || f.is_finals) continue
+    // A result only counts once the opponent has confirmed it. One still
+    // awaiting confirmation, or under correction, must not move the ladder.
+    if (res.status !== 'FINALISED') continue
     const h = tally.get(f.home_team_id), a = tally.get(f.away_team_id)
     h.played++; a.played++
     h.rf += res.home_rubbers; h.ra += res.away_rubbers
@@ -583,7 +671,9 @@ function buildStandings(section) {
     const r = rubbers.find(x => x.id === rp.rubber_id)
     const res = matchResults.find(x => x.id === r.match_result_id)
     const f = fixtures.find(x => x.id === res.fixture_id)
-    if (f.section_id !== section.id) continue
+    // Same basis as the ladder: confirmed home-and-away results only, so the
+    // two tables can never disagree about which matches happened.
+    if (f.section_id !== section.id || f.is_finals || res.status !== 'FINALISED') continue
     if (!per.has(rp.player_id)) per.set(rp.player_id, { rp: 0, rw: 0, rl: 0, sw: 0, sl: 0, gw: 0, gl: 0 })
     const s = per.get(rp.player_id)
     s.rp++
@@ -613,41 +703,64 @@ function winnerOf(rubber) {
   return h > sets.length - h ? 'HOME' : 'AWAY'
 }
 
-const FINALS = [{ label: 'Semi Final', gap: 7, seeds: [[3, 4], [1, 2]] }]
+/**
+ * The Page playoff the association actually uses: the top four qualify, the
+ * two semi finals decide who goes straight through and who is eliminated, and
+ * each round's teams come from the previous round's winners. Matches are built
+ * one at a time so the next pairing can read the result of the last.
+ *
+ * Returns the premiers and runners-up, which is who the awards belong to - a
+ * ladder position cannot decide that once a grand final has been played.
+ */
 function buildFinals(season, section) {
   const ladder = ladderEntries.filter(l => l.section_id === section.id).sort((a, b) => a.position - b.position)
-  if (!ladder.length) return
+  if (ladder.length < 4) return null
   const lastRound = fixtures.filter(f => f.section_id === section.id && !f.is_finals)
     .reduce((m, f) => (f.schedule_date > m ? f.schedule_date : m), '')
-  const top = ladder.slice(0, 4).map(l => l.team_id)
-  const rounds = [
-    { label: 'Semi Final', home: top[0], away: top[3], offset: 7 },
-    { label: 'Semi Final', home: top[1], away: top[2], offset: 7 },
-    { label: 'Preliminary Final', home: top[1], away: top[2], offset: 14 },
-    { label: 'Grand Final', home: top[0], away: top[1], offset: 21 },
-  ]
-  rounds.forEach((r, i) => {
-    const d = day(lastRound, r.offset)
-    const played = d < TODAY
+  const [first, second, third, fourth] = ladder.slice(0, 4).map(l => l.team_id)
+
+  let played = 0
+  const play = (label, home, away, offset) => {
+    const d = day(lastRound, offset)
+    const done = d < TODAY
     const fixture = {
       id: `FIX${pad(fixtures.length + 1, 4)}`, section_id: section.id,
-      home_team_id: r.home, away_team_id: r.away, venue_id: 'VEN99',
-      round_number: '', round_label: r.label, schedule_date: d, schedule_time: season.startTime,
-      status: played ? 'COMPLETED' : 'SCHEDULED', is_finals: true,
+      home_team_id: home, away_team_id: away, venue_id: 'VEN99',
+      round_number: '', round_label: label, schedule_date: d, schedule_time: season.startTime,
+      status: done ? 'COMPLETED' : 'SCHEDULED', is_finals: true,
     }
     fixtures.push(fixture)
-    // A played final carries a result like any other fixture; the ladder
-    // ignores them, so scoring them cannot disturb the home-and-away table.
-    if (played) buildResult(fixture, season, 15 + i)
-  })
-  void FINALS
+    if (!done) return { fixture, winner: null, loser: null }
+    buildResult(fixture, season, 15 + played++)
+    const res = matchResults[matchResults.length - 1]
+    const winner = res.outcome === 'HOME_WIN' ? home : away
+    return { fixture, winner, loser: winner === home ? away : home }
+  }
+
+  // Qualifying final: 1 v 2. The winner goes straight to the grand final.
+  const qualifying = play('Semi Final', first, second, 7)
+  // Elimination final: 3 v 4. The loser's season is over.
+  const elimination = play('Semi Final', third, fourth, 7)
+  if (!qualifying.winner || !elimination.winner) return null
+
+  // Preliminary final: the team that lost the qualifier hosts the survivor.
+  const prelim = play('Preliminary Final', qualifying.loser, elimination.winner, 14)
+  if (!prelim.winner) return null
+
+  const grand = play('Grand Final', qualifying.winner, prelim.winner, 21)
+  if (!grand.winner) return null
+  return { premiers: grand.winner, runnersUp: grand.loser, decidedOn: grand.fixture.schedule_date }
 }
 
 for (const season of SEASONS) buildFixtures(season)
 for (const section of sections) { buildLadder(section); buildStandings(section) }
 // Finals need the ladder, so completed seasons get theirs once it exists.
+const premierships = []
 for (const season of SEASONS.filter(s => s.complete)) {
-  for (const section of sectionsOf(season.id)) buildFinals(season, section)
+  for (const section of sectionsOf(season.id)) {
+    const outcome = buildFinals(season, section)
+    if (outcome) premierships.push({ season, section, ...outcome })
+  }
 }
 
 // ─────────────────────────────────────────────────── schedule changes
@@ -710,33 +823,51 @@ playerStandings.length = 0
 for (const section of sections) { buildLadder(section); buildStandings(section) }
 
 // ───────────────────────────────────────────────────────────────── awards
-// Attached to the teams of the season that was actually won.
+// The premiership belongs to whoever won the grand final, not to whoever
+// finished on top of the ladder, and it is dated the day that match was played.
 const awards = []
-for (const season of SEASONS.filter(s => s.complete)) {
-  for (const section of sectionsOf(season.id)) {
-    const ladder = ladderEntries.filter(l => l.section_id === section.id).sort((a, b) => a.position - b.position)
-    ladder.slice(0, 2).forEach((entry, place) => {
-      const team = teams.find(t => t.id === entry.team_id)
-      for (const p of rosterOf.get(team.id)) {
-        awards.push({
-          id: `AWD${pad(awards.length + 1, 3)}`, player_id: p.id,
-          award_type: place === 0 ? 'SECTION_WINNER' : 'RUNNER_UP',
-          title: `${season.season_type} ${season.year} ${section.name} ${place === 0 ? 'Premiers' : 'Runners-up'}`,
-          competition_id: season.competition_id, season_id: season.id, team_id: team.id,
-          awarded_on: season.end_date,
-        })
-      }
-    })
+for (const { season, section, premiers, runnersUp, decidedOn } of premierships) {
+  for (const [teamId, type, label] of [[premiers, 'SECTION_WINNER', 'Premiers'], [runnersUp, 'RUNNER_UP', 'Runners-up']]) {
+    for (const p of rosterOf.get(teamId)) {
+      awards.push({
+        id: `AWD${pad(awards.length + 1, 3)}`, player_id: p.id,
+        award_type: type,
+        title: `${season.season_type} ${season.year} ${section.name} ${label}`,
+        competition_id: season.competition_id, season_id: season.id, team_id: teamId,
+        awarded_on: decidedOn,
+      })
+    }
   }
 }
 
 // ──────────────────────────────────────────────────── profile merge request
-const merge = [{
-  id: 'PMR01', status: 'PENDING', player_a_id: 'PLR016', player_b_id: 'PLR062',
-  requesting_association_id: 'ASSOC02',
-  note: 'Same name and date of birth registered at two associations; confirm before merging.',
-  resolved_at: '',
-}]
+// A genuine look-alike: two profiles sharing a name, raised because the same
+// person appears to be registered at both associations. Built from the data
+// rather than hard-coded, so it stays a real pair if the roster changes.
+const merge = (() => {
+  const byName = new Map()
+  for (const p of players) {
+    const key = `${p.first_name} ${p.last_name}`
+    if (!byName.has(key)) byName.set(key, [])
+    byName.get(key).push(p)
+  }
+  const associationsOf = id => new Set(
+    associationMemberships.filter(m => m.player_id === id).map(m => m.association_id))
+  for (const [name, pair] of byName) {
+    if (pair.length !== 2) continue
+    const [a, b] = pair
+    const crossAssociation = [...associationsOf(a.id)].some(x => !associationsOf(b.id).has(x))
+      || [...associationsOf(b.id)].some(x => !associationsOf(a.id).has(x))
+    if (!crossAssociation) continue
+    return [{
+      id: 'PMR01', status: 'PENDING', player_a_id: a.id, player_b_id: b.id,
+      requesting_association_id: 'ASSOC02',
+      note: `Two profiles named ${name} are registered across both associations; confirm they are the same person before merging.`,
+      resolved_at: '',
+    }]
+  }
+  return []
+})()
 
 // ────────────────────────────────────────────────────────── notifications
 // Addressed to the recipient, naming the recipient's own team, and never
@@ -866,8 +997,18 @@ const sheets = [
   ['PlayerAward', awards], ['ProfileMergeRequest', merge],
   ['Notification', notifications], ['UserRole', userRoles], ['AuditLog', auditLog],
 ]
+// A NULL has to be a genuinely empty cell. Writing "" produces a text cell
+// holding an empty string, which the import would then try to store as a value
+// - and "" is not a legal enum member, date or number.
+const blankToNull = rows => rows.map(r => Object.fromEntries(
+  Object.entries(r).map(([k, v]) => [k, v === '' ? null : v]),
+))
+
 for (const [name, rows] of sheets) {
-  const ws = XLSX.utils.json_to_sheet(rows)
+  // An empty sheet means a generation rule silently produced nothing, which is
+  // a bug rather than a state to write out.
+  if (!rows.length) throw new Error(`Sheet "${name}" has no rows; a generation rule produced nothing`)
+  const ws = XLSX.utils.json_to_sheet(blankToNull(rows))
   ws['!cols'] = Object.keys(rows[0]).map(k => ({ wch: Math.min(48, Math.max(k.length + 2, 12)) }))
   XLSX.utils.book_append_sheet(book, ws, name)
 }

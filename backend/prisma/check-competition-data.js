@@ -184,6 +184,153 @@ for (const sec of S.SectionGrade) {
   if (!finals.every(f => f.round_label)) bad(`${sec.id}: a finals fixture has no round label`)
 }
 
+// ── Each finals round is contested by teams that won their way there, and the
+// premiership follows the grand final rather than the ladder.
+for (const sec of S.SectionGrade) {
+  const finals = S.Fixture.filter(f => f.section_id === sec.id && f.is_finals === true)
+  if (!finals.length) continue
+  const winnerOfFixture = f => {
+    const res = S.MatchResult.find(m => m.fixture_id === f.id)
+    return res ? (res.outcome === 'HOME_WIN' ? f.home_team_id : f.away_team_id) : null
+  }
+  const semis = finals.filter(f => f.round_label === 'Semi Final')
+  const prelim = finals.find(f => f.round_label === 'Preliminary Final')
+  const grand = finals.find(f => f.round_label === 'Grand Final')
+
+  if (prelim) {
+    const eligible = new Set(semis.flatMap(f => {
+      const w = winnerOfFixture(f)
+      return w ? [w, w === f.home_team_id ? f.away_team_id : f.home_team_id] : []
+    }))
+    for (const id of [prelim.home_team_id, prelim.away_team_id]) {
+      if (!eligible.has(id)) bad(`${prelim.id}: ${teamById.get(id)?.name} did not come through a semi final`)
+    }
+    if (prelim.home_team_id === prelim.away_team_id) bad(`${prelim.id}: same team on both sides`)
+    // The team eliminated in a semi cannot reappear.
+    const eliminated = semis.map(f => {
+      const w = winnerOfFixture(f)
+      return w && w === f.home_team_id ? f.away_team_id : f.home_team_id
+    })
+    if (eliminated.filter(Boolean).length === 2) {
+      const stillAlive = [prelim.home_team_id, prelim.away_team_id]
+      if (eliminated.every(e => stillAlive.includes(e))) bad(`${prelim.id}: both semi losers are in the preliminary final`)
+    }
+  }
+  if (grand) {
+    const survivors = new Set([winnerOfFixture(semis[0]), prelim && winnerOfFixture(prelim)].filter(Boolean))
+    for (const id of [grand.home_team_id, grand.away_team_id]) {
+      if (survivors.size && !survivors.has(id)) {
+        bad(`${grand.id}: ${teamById.get(id)?.name} reached the grand final without winning its previous match`)
+      }
+    }
+    const champion = winnerOfFixture(grand)
+    const season = seasonOfSection.get(sec.id)
+    const premiers = [...new Set(S.PlayerAward
+      .filter(a => a.season_id === season && a.award_type === 'SECTION_WINNER').map(a => a.team_id))]
+    if (champion && premiers.length && !premiers.includes(champion)) {
+      bad(`${season}: ${teamById.get(champion)?.name} won the grand final but ${teamById.get(premiers[0])?.name} is named premiers`)
+    }
+    for (const a of S.PlayerAward.filter(x => x.season_id === season)) {
+      if (a.awarded_on && a.awarded_on < grand.schedule_date) {
+        bad(`${a.id}: awarded ${a.awarded_on}, before the grand final on ${grand.schedule_date}`)
+      }
+    }
+  }
+}
+
+// ── A season's dates cover everything played in it, finals included
+for (const season of S.Season) {
+  const secs = S.SectionGrade.filter(s => s.season_id === season.id).map(s => s.id)
+  for (const f of S.Fixture.filter(x => secs.includes(x.section_id) && x.schedule_date)) {
+    if (season.end_date && f.schedule_date > season.end_date) {
+      bad(`${f.id}: ${f.round_label || 'round ' + f.round_number} on ${f.schedule_date}, after ${season.id} ends ${season.end_date}`)
+    }
+  }
+}
+
+// ── Rubbers match the format their season claims to be played under
+for (const season of S.Season) {
+  const secs = S.SectionGrade.filter(s => s.season_id === season.id).map(s => s.id)
+  const results = S.MatchResult.filter(m => S.Fixture.some(f => f.id === m.fixture_id && secs.includes(f.section_id)))
+  if (!results.length) continue
+  const rs = S.Rubber.filter(r => results.some(m => m.id === r.match_result_id))
+  const formatId = [...new Set(rs.map(r => r.match_format_id))]
+  if (formatId.length > 1) { bad(`${season.id}: rubbers claim several formats`); continue }
+  const format = S.MatchFormat.find(f => f.id === formatId[0])
+  if (!format) continue
+  const perMatch = rs.length / results.length
+  const singles = rs.filter(r => r.rubber_type === 'SINGLES').length / results.length
+  const doubles = rs.filter(r => r.rubber_type === 'DOUBLES').length / results.length
+  if (perMatch !== format.rubber_count) bad(`${season.id}: ${perMatch} rubbers per match, ${format.name} declares ${format.rubber_count}`)
+  if (singles !== format.singles_count) bad(`${season.id}: ${singles} singles per match, format declares ${format.singles_count}`)
+  if (doubles !== format.doubles_count) bad(`${season.id}: ${doubles} doubles per match, format declares ${format.doubles_count}`)
+  const maxSets = format.set_to_win === 1 ? 1 : format.set_to_win * 2 - 1
+  const over = rs.filter(r => S.RubberSet.filter(s => s.rubber_id === r.id).length > maxSets).length
+  if (over) bad(`${season.id}: ${over} rubbers have more than ${maxSets} set(s), which ${format.name} does not allow`)
+}
+
+// ── A result is entered after its last rubber was played, and finalised after
+// it was entered. Comparing instants avoids any timezone guesswork, and it
+// catches a night match whose entry time wrapped past midnight onto the
+// wrong day.
+for (const res of S.MatchResult) {
+  if (!res.entered_at) continue
+  const played = S.Rubber.filter(r => r.match_result_id === res.id)
+    .map(r => r.played_at).filter(Boolean).sort()
+  const last = played[played.length - 1]
+  if (last && Date.parse(res.entered_at) < Date.parse(last)) {
+    bad(`${res.id}: entered ${res.entered_at}, before its last rubber finished at ${last}`)
+  }
+  if (res.finalised_at && Date.parse(res.finalised_at) < Date.parse(res.entered_at)) {
+    bad(`${res.id}: finalised before it was entered`)
+  }
+}
+
+// ── Nothing is left hanging in a season that has finished
+for (const season of S.Season.filter(s => s.status === 'COMPLETED')) {
+  const secs = S.SectionGrade.filter(s => s.season_id === season.id).map(s => s.id)
+  const results = S.MatchResult.filter(m => S.Fixture.some(f => f.id === m.fixture_id && secs.includes(f.section_id)))
+  count(`${season.id} is completed but has unconfirmed results`,
+    results.filter(r => r.status !== 'FINALISED').length)
+  count(`${season.id} is completed but has unreviewed corrections`,
+    S.CorrectionRequest.filter(c => c.status === 'PENDING' && results.some(r => r.id === c.match_result_id)).length)
+}
+for (const verdict of ['APPROVED', 'REJECTED']) {
+  if (!S.CorrectionRequest.some(c => c.status === verdict)) {
+    bad(`no correction request was ever ${verdict.toLowerCase()}, so that path cannot be tested`)
+  }
+}
+
+// ── A merge request pairs two profiles that plausibly are one person
+for (const m of S.ProfileMergeRequest) {
+  const a = S.Player.find(p => p.id === m.player_a_id)
+  const b = S.Player.find(p => p.id === m.player_b_id)
+  if (!a || !b) { bad(`${m.id}: references a player that does not exist`); continue }
+  if (a.id === b.id) bad(`${m.id}: pairs a profile with itself`)
+  const sameName = `${a.first_name} ${a.last_name}` === `${b.first_name} ${b.last_name}`
+  if (!sameName) bad(`${m.id}: pairs ${a.first_name} ${a.last_name} with ${b.first_name} ${b.last_name}, who are plainly different people`)
+  const assoc = id => new Set(S.AssociationMembership.filter(x => x.player_id === id).map(x => x.association_id))
+  const [A, B] = [assoc(a.id), assoc(b.id)]
+  if ([...A].every(x => B.has(x)) && [...B].every(x => A.has(x))) {
+    warn(`${m.id}: both profiles sit in the same association(s), so the note about two associations does not hold`)
+  }
+}
+
+// ── Club membership implies membership of that club's association
+const assocOfClub = new Map(S.Club.map(c => [c.id, c.association_id]))
+count('players in a club whose association they do not belong to',
+  S.ClubMembership.filter(m => !S.AssociationMembership
+    .some(a => a.player_id === m.player_id && a.association_id === assocOfClub.get(m.club_id))).length)
+
+// ── A blank must be a genuinely empty cell, not an empty string
+{
+  const raw = {}
+  for (const n of wb.SheetNames) raw[n] = XLSX.utils.sheet_to_json(wb.Sheets[n], { defval: undefined })
+  let empties = 0
+  for (const rows of Object.values(raw)) for (const r of rows) for (const v of Object.values(r)) if (v === '') empties++
+  count('cells holding an empty string where NULL was meant', empties)
+}
+
 // ── PDF: 6 or 8 team sections, 14 rounds, each pair meeting home and away
 for (const sec of S.SectionGrade) {
   const teams = S.Team.filter(t => t.section_id === sec.id)
