@@ -214,7 +214,9 @@ for (const sec of S.SectionGrade) {
     let played = 0, won = 0, rf = 0, points = 0
     for (const f of S.Fixture.filter(x => x.section_id === sec.id && x.is_finals !== true)) {
       const res = S.MatchResult.find(m => m.fixture_id === f.id)
-      if (!res) continue
+      // Only a confirmed result moves the ladder; one still awaiting
+      // confirmation or under correction must not.
+      if (!res || res.status !== 'FINALISED') continue
       const home = f.home_team_id === e.team_id, away = f.away_team_id === e.team_id
       if (!home && !away) continue
       played++
