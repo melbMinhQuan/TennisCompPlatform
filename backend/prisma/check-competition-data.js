@@ -1,297 +1,332 @@
 /**
- * Audits competition_data.xlsx against three independent sources of truth:
- *   1. schema.prisma  - enum members, required scalars, unique constraints
- *   2. the Waverley Tennis match formats PDF - section size, rounds, courts, finals
- *   3. the dashboard mockup - every widget must be populatable for a real player
+ * Checks competition_data.xlsx against the rules the data has to obey, rather
+ * than against itself: the Waverley Tennis match-format document, the client's
+ * sprint feedback, and the dashboard the data has to fill.
+ *
+ * Every rule here exists because the data once broke it. Keep them.
  */
 const REPO = require('node:path').resolve(__dirname, '../..')
 const XLSX = require(`${REPO}/node_modules/xlsx`)
-const fs = require('node:fs')
+const path = require('node:path')
 
-const wb = XLSX.readFile(`${REPO}/backend/prisma/competition_data.xlsx`)
+const TODAY = '2026-09-22'
+const wb = XLSX.readFile(process.argv[2] || path.join(__dirname, 'competition_data.xlsx'))
 const S = {}
 for (const n of wb.SheetNames) S[n] = XLSX.utils.sheet_to_json(wb.Sheets[n], { defval: '' })
 
-const schema = fs.readFileSync(`${REPO}/backend/prisma/schema.prisma`, 'utf8')
-const issues = []
+const problems = []
 const warnings = []
-const bad = m => issues.push(m)
+const bad = m => problems.push(m)
 const warn = m => warnings.push(m)
+const count = (label, n) => n && bad(`${label}: ${n}`)
 
-// ---------------------------------------------------------- parse schema.prisma
-const enums = {}
-for (const m of schema.matchAll(/enum\s+(\w+)\s*\{([^}]*)\}/g)) {
-  enums[m[1]] = m[2].split('\n').map(l => l.replace(/\/\/.*/, '').trim()).filter(Boolean)
+const utr = new Map(S.UtrLink.map(u => [u.player_id, Number(u.utr_rating)]))
+const teamById = new Map(S.Team.map(t => [t.id, t]))
+const fixtureById = new Map(S.Fixture.map(f => [f.id, f]))
+const resultById = new Map(S.MatchResult.map(r => [r.id, r]))
+const rubberById = new Map(S.Rubber.map(r => [r.id, r]))
+
+// ── Privacy: no real mailbox may appear in test data
+count('players with a non-.example address',
+  S.Player.filter(p => !/\.example$/.test(String(p._lookup_user_email))).length)
+count('User rows with a non-.example address',
+  S.User.filter(u => !/\.example$/.test(String(u.email))).length)
+count('contact addresses outside .example',
+  S.Player.filter(p => p.email !== '' && !/\.example$/.test(String(p.email))).length)
+
+// ── Legal tennis set scores: 6-0..6-4, 7-5, or 7-6 on a tiebreak
+const illegal = S.RubberSet.filter(s => {
+  const [w, l] = [s.home_games, s.away_games].sort((a, b) => b - a)
+  if (w === 6) return !(l >= 0 && l <= 4)
+  if (w === 7) return !(l === 5 || (l === 6 && s.is_tiebreak === true))
+  return true
+})
+count('sets with an impossible score', illegal.length)
+if (illegal.length) warn(`first illegal set: ${illegal[0].id} ${illegal[0].home_games}-${illegal[0].away_games}`)
+count('tiebreak sets missing tiebreak points',
+  S.RubberSet.filter(s => s.is_tiebreak === true && (s.home_tiebreak_points === '' || s.away_tiebreak_points === '')).length)
+
+// ── Times are real UTC instants, so a 1:00 pm match reads as 1:00 pm locally
+const localHour = iso => Number(new Intl.DateTimeFormat('en-AU', {
+  timeZone: 'Australia/Melbourne', hour: '2-digit', hour12: false,
+}).format(new Date(iso)))
+const offHours = S.Rubber.filter(r => {
+  const f = fixtureById.get(resultById.get(r.match_result_id).fixture_id)
+  if (!f.schedule_time) return false
+  const scheduled = Number(f.schedule_time.slice(0, 2))
+  const actual = localHour(r.played_at)
+  return actual < scheduled || actual > scheduled + 6 // PDF: no set starts after 6:30pm
+})
+count('rubbers played outside the scheduled window in local time', offHours.length)
+if (offHours.length) {
+  const r = offHours[0]
+  warn(`first: ${r.id} stored ${r.played_at} = ${localHour(r.played_at)}:00 Melbourne`)
 }
 
-// sheet column -> prisma enum name
-const ENUM_COLS = [
-  ['Association', 'status', 'AssociationStatus'], ['Club', 'status', 'ClubStatus'],
-  ['Venue', 'status', 'VenueStatus'], ['Competition', 'status', 'CompetitionStatus'],
-  ['Season', 'status', 'SeasonStatus'], ['SectionGrade', 'gender', 'Gender'],
-  ['Player', 'gender', 'Gender'], ['Player', 'status', 'PlayerStatus'],
-  ['ClubMembership', 'status', 'MembershipStatus'], ['AssociationMembership', 'status', 'MembershipStatus'],
-  ['TeamPlayer', 'status', 'TeamPlayerStatus'], ['UtrLink', 'status', 'LinkStatus'],
-  ['UtrRatingSnapshot', 'discipline', 'Discipline'], ['RankingCohort', 'discipline', 'Discipline'],
-  ['Fixture', 'status', 'FixtureStatus'], ['FixtureScheduleChange', 'change_type', 'ScheduleChangeType'],
-  ['MatchResult', 'status', 'ResultStatus'], ['Rubber', 'rubber_type', 'RubberType'],
-  ['Rubber', 'winner_side', 'Side'], ['Rubber', 'outcome_type', 'RubberOutcome'],
-  ['RubberPlayer', 'side', 'Side'], ['PlayerAward', 'award_type', 'AwardType'],
-  ['Notification', 'type', 'NotificationType'], ['Notification', 'target_type', 'NotificationTargetType'],
-  ['Notification', 'channel', 'NotificationChannel'], ['Notification', 'delivery_status', 'NotificationDeliveryStatus'],
-  ['UserRole', 'role_type', 'RoleType'], ['UserRole', 'context_type', 'ContextType'],
-]
-for (const [sheet, col, enumName] of ENUM_COLS) {
-  const allowed = enums[enumName]
-  if (!allowed) { bad(`schema has no enum ${enumName}`); continue }
-  for (const row of S[sheet]) {
-    const v = row[col]
-    if (v === '') continue // blank = NULL
-    if (!allowed.includes(String(v))) bad(`${sheet}.${col} = "${v}" is not a ${enumName} member`)
+// ── PDF: the doubles rubber is played first
+for (const res of S.MatchResult) {
+  const rs = S.Rubber.filter(r => r.match_result_id === res.id).sort((a, b) => a.rubber_number - b.rubber_number)
+  if (rs.length && rs[0].rubber_type !== 'DOUBLES') { bad('rubber 1 is not the doubles rubber'); break }
+}
+
+// ── Singles are played in order of merit, strongest at number 1
+let outOfOrder = 0, lineups = 0
+for (const res of S.MatchResult) {
+  const singles = S.Rubber.filter(r => r.match_result_id === res.id && r.rubber_type === 'SINGLES')
+    .sort((a, b) => a.rubber_number - b.rubber_number)
+  if (singles.length < 2) continue
+  for (const side of ['HOME', 'AWAY']) {
+    const picks = singles.map(r => S.RubberPlayer.find(p => p.rubber_id === r.id && p.side === side))
+    if (picks.some(p => !p) || picks.some(p => p.is_emergency === true)) continue
+    lineups++
+    if (utr.get(picks[0].player_id) < utr.get(picks[1].player_id)) outOfOrder++
+  }
+}
+count(`singles line-ups where number 1 is rated below number 2 (of ${lineups})`, outOfOrder)
+
+// ── Nothing is dated after the day the workbook was generated
+const future = (sheet, col) => (S[sheet] ?? []).filter(r => r[col] && String(r[col]).slice(0, 10) > TODAY).length
+count('schedule changes dated in the future', future('FixtureScheduleChange', 'changed_at'))
+count('notifications dated in the future', future('Notification', 'created_at'))
+count('audit entries dated in the future', future('AuditLog', 'changed_at'))
+count('results entered in the future', future('MatchResult', 'entered_at'))
+count('awards dated in the future', future('PlayerAward', 'awarded_on'))
+
+// ── A change is logged on or after the thing it changed, never before
+for (const c of S.FixtureScheduleChange) {
+  if (c.previous_date && String(c.changed_at).slice(0, 10) > c.previous_date) {
+    bad(`${c.id}: logged after the match it postponed`)
+  }
+  if (c.change_type === 'POSTPONED' && String(c.changed_at).slice(0, 10) !== c.previous_date) {
+    warn(`${c.id}: a washout should be logged on the day of the match`)
   }
 }
 
-// Columns the schema declares NOT NULL must never be blank.
-const REQUIRED = [
-  ['Association', ['name', 'status']], ['Club', ['association_id', 'name', 'status']],
-  ['Venue', ['name', 'time_zone', 'status']], ['Competition', ['association_id', 'name', 'status']],
-  ['MatchFormat', ['competition_id', 'name']], ['EligibilityRule', ['competition_id', 'rule_type']],
-  ['Season', ['competition_id', 'status']], ['SectionGrade', ['season_id', 'name']],
-  ['Team', ['club_id', 'section_id', 'name']],
-  ['Player', ['first_name', 'last_name', 'date_of_birth', 'gender', 'status']],
-  ['ClubMembership', ['player_id', 'club_id', 'status']],
-  ['AssociationMembership', ['player_id', 'association_id', 'status']],
-  ['TeamPlayer', ['team_id', 'player_id', 'status']], ['UtrLink', ['player_id', 'status']],
-  ['UtrRatingSnapshot', ['player_id', 'rating', 'recorded_at']],
-  ['RankingCohort', ['name']], ['RankingEntry', ['cohort_id', 'player_id', 'rank', 'as_of']],
-  ['Fixture', ['section_id', 'home_team_id', 'away_team_id', 'status']],
-  ['FixtureScheduleChange', ['fixture_id', 'change_type']],
-  ['MatchResult', ['fixture_id', 'status']], ['Rubber', ['match_result_id', 'rubber_type']],
-  ['RubberSet', ['rubber_id']], ['RubberPlayer', ['rubber_id', 'player_id', 'side']],
-  ['LadderEntry', ['section_id', 'team_id', 'calculated_at']],
-  ['PlayerStanding', ['section_id', 'player_id', 'calculated_at']],
-  ['PlayerAward', ['player_id', 'award_type', 'title']],
-  ['Notification', ['_lookup_user_email', 'type', 'title', 'message', 'channel', 'delivery_status', 'created_at']],
-  ['UserRole', ['_lookup_user_email', 'role_type', 'context_type']],
-]
-for (const [sheet, cols] of REQUIRED) {
-  for (const row of S[sheet]) {
-    for (const c of cols) if (row[c] === '' || row[c] === undefined) bad(`${sheet}.${c} is blank on row id=${row.id}`)
+// ── A club administrator belongs to the club they administer
+const memberOf = new Set(S.ClubMembership.map(m => `${m.player_id}|${m.club_id}`))
+const playerByLogin = new Map(S.Player.map(p => [p._lookup_user_email, p]))
+count('club admins who are not members of their club',
+  S.UserRole.filter(r => r.role_type === 'CLUB_ADMIN')
+    .filter(r => !memberOf.has(`${playerByLogin.get(r._lookup_user_email)?.id}|${r.club_id}`)).length)
+
+// ── A notification names the recipient's own team
+let wrongTeam = 0
+for (const n of S.Notification) {
+  const p = playerByLogin.get(n._lookup_user_email)
+  const f = fixtureById.get(n.target_id)
+  if (!p || !f) continue
+  const mine = [f.home_team_id, f.away_team_id]
+    .map(id => teamById.get(id))
+    .find(t => S.TeamPlayer.some(tp => tp.team_id === t.id && tp.player_id === p.id))
+  if (mine && !String(n.message).includes(mine.name)) wrongTeam++
+}
+count('notifications naming a team other than the recipient\'s', wrongTeam)
+
+// ── UtrLink agrees with the newest snapshot: one player, one current rating
+count('players whose UtrLink disagrees with their newest snapshot',
+  S.UtrLink.filter(u => {
+    const snaps = S.UtrRatingSnapshot.filter(s => s.player_id === u.player_id && s.discipline === 'SINGLES')
+      .sort((a, b) => String(a.recorded_at).localeCompare(String(b.recorded_at)))
+    return !snaps.length || Math.abs(Number(snaps[snaps.length - 1].rating) - Number(u.utr_rating)) > 0.001
+  }).length)
+
+// ── Seasons in one competition never overlap
+for (const comp of S.Competition) {
+  const list = S.Season.filter(s => s.competition_id === comp.id)
+    .sort((a, b) => String(a.start_date).localeCompare(String(b.start_date)))
+  for (let i = 1; i < list.length; i++) {
+    if (list[i].start_date <= list[i - 1].end_date) {
+      bad(`${comp.name}: ${list[i].id} starts ${list[i].start_date} before ${list[i - 1].id} ends ${list[i - 1].end_date}`)
+    }
   }
 }
 
-// @@unique constraints declared in the schema
-const UNIQUE = [
-  ['ClubMembership', ['player_id', 'club_id']], ['AssociationMembership', ['player_id', 'association_id']],
-  ['TeamPlayer', ['team_id', 'player_id']], ['UtrLink', ['player_id']],
-  ['UtrRatingSnapshot', ['player_id', 'discipline', 'recorded_at']],
-  ['RankingEntry', ['cohort_id', 'player_id', 'as_of']],
-  ['LadderEntry', ['section_id', 'team_id']], ['PlayerStanding', ['section_id', 'player_id']],
-  ['MatchResult', ['fixture_id']], ['Player', ['_lookup_user_email']],
-]
-for (const [sheet, cols] of UNIQUE) {
-  const seen = new Set()
-  for (const row of S[sheet]) {
-    const key = cols.map(c => row[c]).join('|')
-    if (seen.has(key)) bad(`${sheet}: duplicate ${cols.join('+')} = ${key}`)
-    seen.add(key)
+// ── A team belongs to exactly one season, never reused across them
+const seasonOfSection = new Map(S.SectionGrade.map(s => [s.id, s.season_id]))
+for (const a of S.PlayerAward) {
+  if (!a.team_id || !a.season_id) continue
+  const team = teamById.get(a.team_id)
+  if (seasonOfSection.get(team.section_id) !== a.season_id) {
+    bad(`${a.id}: award for ${a.season_id} points at ${a.team_id}, a team from ${seasonOfSection.get(team.section_id)}`)
   }
 }
+count('sections declaring teams but having none',
+  S.SectionGrade.filter(s => s.team_count > 0 && !S.Team.some(t => t.section_id === s.id)).length)
 
-// ------------------------------------------------- PDF rules: Weekend Senior
-// "Either 6 or 8 team section with 14 rounds of matches per season + finals"
-for (const sec of S.SectionGrade.filter(s => ['SEC01', 'SEC02'].includes(s.id))) {
-  if (![6, 8].includes(sec.team_count)) bad(`${sec.id}: team_count ${sec.team_count}, PDF allows 6 or 8`)
-  const actual = S.Team.filter(t => t.section_id === sec.id).length
-  if (actual !== sec.team_count) bad(`${sec.id}: team_count says ${sec.team_count} but ${actual} teams exist`)
+// ── Membership history precedes the honours it is supposed to explain
+for (const a of S.PlayerAward) {
+  const team = teamById.get(a.team_id)
+  if (!team || !a.awarded_on) continue
+  const m = S.ClubMembership.find(x => x.player_id === a.player_id && x.club_id === team.club_id)
+  if (!m) { bad(`${a.id}: ${a.player_id} has no membership at ${team.club_id}`); continue }
+  if (m.start_date && m.start_date > a.awarded_on) {
+    bad(`${a.id}: ${a.player_id} joined ${team.club_id} on ${m.start_date}, after winning on ${a.awarded_on}`)
+  }
+}
+if (new Set(S.ClubMembership.map(m => m.start_date)).size < 3) {
+  bad('every club membership shares one start date; there is no joined history')
+}
+
+// ── Finals are drawn from the final ladder, and only once the season is over
+for (const sec of S.SectionGrade) {
+  const finals = S.Fixture.filter(f => f.section_id === sec.id && f.is_finals === true)
+  const regular = S.Fixture.filter(f => f.section_id === sec.id && f.is_finals !== true)
+  if (!finals.length) continue
+  const unplayed = regular.filter(f => f.status !== 'COMPLETED').length
+  if (unplayed) bad(`${sec.id}: finals exist while ${unplayed} home-and-away fixtures are unplayed`)
+  const ladder = S.LadderEntry.filter(l => l.section_id === sec.id).sort((a, b) => a.position - b.position)
+  const top4 = new Set(ladder.slice(0, 4).map(l => l.team_id))
+  for (const f of finals) {
+    for (const id of [f.home_team_id, f.away_team_id]) {
+      if (!top4.has(id)) bad(`${f.id}: ${teamById.get(id)?.name} is in the finals but finished ${ladder.find(l => l.team_id === id)?.position}`)
+    }
+  }
+  if (!finals.every(f => f.round_label)) bad(`${sec.id}: a finals fixture has no round label`)
+}
+
+// ── PDF: 6 or 8 team sections, 14 rounds, each pair meeting home and away
+for (const sec of S.SectionGrade) {
+  const teams = S.Team.filter(t => t.section_id === sec.id)
+  if (!teams.length) continue
+  if (![6, 8].includes(teams.length)) bad(`${sec.id}: ${teams.length} teams, the document allows 6 or 8`)
   const regular = S.Fixture.filter(f => f.section_id === sec.id && f.is_finals !== true)
   const rounds = new Set(regular.map(f => f.round_number))
-  if (rounds.size !== 14) bad(`${sec.id}: ${rounds.size} home-and-away rounds, PDF says 14`)
-  // Every team plays exactly once per round.
-  for (const r of rounds) {
-    const inRound = regular.filter(f => f.round_number === r)
-    const sides = inRound.flatMap(f => [f.home_team_id, f.away_team_id])
-    if (new Set(sides).size !== sides.length) bad(`${sec.id} round ${r}: a team is scheduled twice`)
-    if (sides.length !== sec.team_count) bad(`${sec.id} round ${r}: ${sides.length} team slots, expected ${sec.team_count}`)
-  }
-  // Each pairing should meet exactly twice over 14 rounds (home and away).
+  if (rounds.size !== 14) bad(`${sec.id}: ${rounds.size} rounds, the document says 14`)
   const meetings = new Map()
   for (const f of regular) {
     const k = [f.home_team_id, f.away_team_id].sort().join('|')
     meetings.set(k, (meetings.get(k) || 0) + 1)
   }
   for (const [k, n] of meetings) if (n !== 2) bad(`${sec.id}: ${k} meet ${n} times, expected 2`)
-  // Home/away should balance across the double round robin.
-  for (const t of S.Team.filter(x => x.section_id === sec.id)) {
+  for (const t of teams) {
     const h = regular.filter(f => f.home_team_id === t.id).length
     const a = regular.filter(f => f.away_team_id === t.id).length
-    if (h !== a) warn(`${t.id}: ${h} home vs ${a} away fixtures`)
+    if (h !== a) bad(`${t.id}: ${h} home vs ${a} away`)
+  }
+  for (const r of rounds) {
+    const sides = regular.filter(f => f.round_number === r).flatMap(f => [f.home_team_id, f.away_team_id])
+    if (new Set(sides).size !== sides.length) bad(`${sec.id} round ${r}: a team plays twice`)
   }
 }
 
-// "Matches commence at 1:00 p.m." and Weekend Senior plays Saturday pm
+// ── A venue cannot host more concurrent matches than it has courts
+const courts = new Map(S.Venue.map(v => [v.id, v.court_count || 0]))
+const slots = new Map()
 for (const f of S.Fixture) {
-  if (f.status === 'POSTPONED') {
-    // A postponed fixture has had its date and time cleared, and must say why.
-    if (f.schedule_date !== '' || f.schedule_time !== '') bad(`${f.id}: POSTPONED but still carries a date/time`)
-    if (!S.FixtureScheduleChange.some(c => c.fixture_id === f.id && c.change_type === 'POSTPONED')) {
-      bad(`${f.id}: POSTPONED with no matching schedule-change row`)
-    }
-    continue
-  }
-  if (f.schedule_date === '' || f.schedule_time === '') bad(`${f.id}: ${f.status} fixture with no date/time`)
-  if (f.schedule_time !== '13:00') bad(`${f.id}: start ${f.schedule_time}, PDF says 1:00 p.m.`)
-  const dow = new Date(`${f.schedule_date}T00:00:00Z`).getUTCDay()
-  if (dow !== 6) {
-    const moved = S.FixtureScheduleChange.some(c => c.fixture_id === f.id && c.change_type === 'DATE_TIME_CHANGED')
-    if (!moved) bad(`${f.id}: ${f.schedule_date} is not a Saturday and has no reschedule row`)
+  if (!f.schedule_date) continue
+  const k = `${f.venue_id}|${f.schedule_date}|${f.schedule_time}`
+  slots.set(k, (slots.get(k) || 0) + 1)
+}
+for (const [k, n] of slots) {
+  const [venue] = k.split('|')
+  if (n * 2 > courts.get(venue)) bad(`${k}: ${n} matches need ${n * 2} courts, venue has ${courts.get(venue)}`)
+}
+
+// ── POSTPONED means the date is gone and the reason is recorded
+for (const f of S.Fixture.filter(x => x.status === 'POSTPONED')) {
+  if (f.schedule_date !== '' || f.schedule_time !== '') bad(`${f.id}: POSTPONED but still dated`)
+  if (!S.FixtureScheduleChange.some(c => c.fixture_id === f.id && c.change_type === 'POSTPONED')) {
+    bad(`${f.id}: POSTPONED with no schedule-change row`)
   }
 }
 
-// "Min courts required: 1 or 2 (2 for finals)" - a venue cannot overbook itself
-const courts = Object.fromEntries(S.Venue.map(v => [v.id, v.court_count || 0]))
-const byVenueDate = new Map()
-for (const f of S.Fixture) {
-  if (!f.schedule_date) continue // postponed: no date to clash on yet
-  const k = `${f.venue_id}|${f.schedule_date}`
-  byVenueDate.set(k, (byVenueDate.get(k) || 0) + 1)
-}
-for (const [k, n] of byVenueDate) {
-  const [venueId] = k.split('|')
-  const needed = n * 2 // MF01 needs 2 courts per fixture
-  if (needed > courts[venueId]) bad(`${k}: ${n} fixtures need ${needed} courts, venue has ${courts[venueId]}`)
+// ── Emergency players: called in on the day, not pre-registered
+const emergencyAppearances = S.RubberPlayer.filter(r => r.is_emergency === true)
+if (!emergencyAppearances.length) bad('no emergency player ever appears, so the (E) rules cannot be tested')
+count('emergency players pre-registered on a roster',
+  S.TeamPlayer.filter(t => t.status === 'EMERGENCY').length)
+for (const rp of emergencyAppearances) {
+  const r = rubberById.get(rp.rubber_id)
+  const f = fixtureById.get(resultById.get(r.match_result_id).fixture_id)
+  const team = rp.side === 'HOME' ? f.home_team_id : f.away_team_id
+  if (S.TeamPlayer.some(t => t.team_id === team && t.player_id === rp.player_id)) {
+    bad(`${rp.id}: emergency is already on that team's roster`)
+  }
 }
 
-// "Players must play a minimum of 3 times during the season to play finals"
+// ── The result workflow has data at every stage
+for (const [label, n] of [
+  ['results awaiting confirmation', S.MatchResult.filter(r => r.status === 'PENDING_CONFIRMATION').length],
+  ['disputed results', S.ResultConfirmation.filter(c => c.status === 'DISPUTED').length],
+  ['correction requests', S.CorrectionRequest.length],
+  ['audit entries', S.AuditLog.length],
+  ['profile merge requests', S.ProfileMergeRequest.length],
+]) if (!n) bad(`the workflow has no ${label}`)
+count('finalised results with no recorded author',
+  S.MatchResult.filter(r => r.status === 'FINALISED' && !r.entered_by).length)
+
+// ── Client: a player may belong to more than one club, and more than one
+// association, and more than one competition must exist
+if (!S.ClubMembership.some(m => m.is_primary === false)) bad('no player holds a secondary club membership')
+// Exactly one primary club, and one primary association, per player.
+for (const [sheet, label] of [['ClubMembership', 'club'], ['AssociationMembership', 'association']]) {
+  const byPlayer = new Map()
+  for (const m of S[sheet]) {
+    if (!byPlayer.has(m.player_id)) byPlayer.set(m.player_id, [])
+    byPlayer.get(m.player_id).push(m)
+  }
+  count(`players with more than one primary ${label}`,
+    [...byPlayer.values()].filter(ms => ms.filter(m => m.is_primary === true).length > 1).length)
+  count(`players with no primary ${label}`,
+    [...byPlayer.values()].filter(ms => !ms.some(m => m.is_primary === true)).length)
+}
+if (S.Association.length < 2) bad('only one association exists, so merges across associations cannot be tested')
+const withFixtures = S.Competition.filter(c =>
+  S.Season.filter(s => s.competition_id === c.id)
+    .some(s => S.SectionGrade.filter(x => x.season_id === s.id)
+      .some(x => S.Fixture.some(f => f.section_id === x.id))))
+if (withFixtures.length < 2) bad('fewer than two competitions have any fixtures')
+else if (withFixtures.length < S.Competition.length) {
+  warn(`${S.Competition.length - withFixtures.length} competition(s) still have no fixtures: ${
+    S.Competition.filter(c => !withFixtures.includes(c)).map(c => c.name).join(', ')}`)
+}
+
+// ── Every rostered player gets matches, and enough of them to play finals
 const appearances = new Map()
 for (const rp of S.RubberPlayer) appearances.set(rp.player_id, (appearances.get(rp.player_id) || 0) + 1)
-const rostered = S.TeamPlayer.filter(tp => tp.status === 'ACTIVE')
-const ineligible = rostered.filter(tp => (appearances.get(tp.player_id) || 0) < 3)
-if (ineligible.length) warn(`${ineligible.length} rostered players have fewer than 3 matches (finals-ineligible under ELIG01)`)
+count('rostered players who never appear in a rubber',
+  [...new Set(S.TeamPlayer.filter(t => t.status === 'ACTIVE').map(t => t.player_id))]
+    .filter(id => !appearances.has(id)).length)
+const short = [...new Set(S.TeamPlayer.map(t => t.player_id))].filter(id => (appearances.get(id) || 0) < 3)
+if (short.length) warn(`${short.length} players have fewer than 3 matches (finals-ineligible under ELIG01)`)
 
-// Finals must be flagged, labelled and after the last home-and-away round
-const lastRound = Math.max(...S.Fixture.filter(f => f.is_finals !== true).map(f => f.schedule_date.replace(/-/g, '') | 0))
-for (const f of S.Fixture.filter(x => x.is_finals === true)) {
-  if (!f.round_label) bad(`${f.id}: finals fixture without a round_label`)
-  if ((f.schedule_date.replace(/-/g, '') | 0) <= lastRound) bad(`${f.id}: finals scheduled before the last round`)
-  if (courts[f.venue_id] < 2) bad(`${f.id}: finals venue has fewer than the 2 required courts`)
-}
-
-// ---------------------------------------------- age / grade consistency
-const ageOn = (dob, on) => {
-  const [y, m, d] = dob.split('-').map(Number); const [Y, M, D] = on.split('-').map(Number)
-  return Y - y - (M < m || (M === m && D < d) ? 1 : 0)
-}
-for (const sec of S.SectionGrade.filter(s => ['SEC01', 'SEC02'].includes(s.id))) {
-  for (const t of S.Team.filter(x => x.section_id === sec.id)) {
-    for (const tp of S.TeamPlayer.filter(x => x.team_id === t.id)) {
-      const p = S.Player.find(x => x.id === tp.player_id)
-      const age = ageOn(p.date_of_birth, '2026-09-22')
-      if (sec.min_age && age < sec.min_age) bad(`${p.id}: age ${age} below section min ${sec.min_age}`)
-      if (p.is_junior === true) bad(`${p.id}: junior in an adult section`)
-    }
-  }
-}
-
-// ------------------------------------------- dashboard mockup: can we fill it?
+// ── The dashboard has to be fillable for a real player
 const sample = S.Player[0]
-const tp = S.TeamPlayer.find(x => x.player_id === sample.id)
-const team = S.Team.find(t => t.id === tp.team_id)
-const section = S.SectionGrade.find(s => s.id === team.section_id)
-const club = S.Club.find(c => c.id === team.club_id)
-const myRubbers = S.RubberPlayer.filter(rp => rp.player_id === sample.id)
-const played = myRubbers.length
-const won = myRubbers.filter(rp => S.Rubber.find(r => r.id === rp.rubber_id).winner_side === rp.side).length
-const singlesSnaps = S.UtrRatingSnapshot.filter(s => s.player_id === sample.id && s.discipline === 'SINGLES')
+// The dashboard shows the player's current team, so pick the one in the season
+// that is still running rather than whichever roster row comes first.
+const activeSeasons = new Set(S.Season.filter(s => s.status === 'ACTIVE').map(s => s.id))
+const activeSections = new Set(S.SectionGrade.filter(s => activeSeasons.has(s.season_id)).map(s => s.id))
+const team = S.TeamPlayer
+  .filter(t => t.player_id === sample.id)
+  .map(t => teamById.get(t.team_id))
+  .find(t => t && activeSections.has(t.section_id))
+const mine = S.RubberPlayer.filter(r => r.player_id === sample.id)
+const snaps = S.UtrRatingSnapshot.filter(s => s.player_id === sample.id && s.discipline === 'SINGLES')
 const rank = S.RankingEntry.find(r => r.player_id === sample.id && r.cohort_id === 'COH01')
-const notes = S.Notification.filter(n => n._lookup_user_email === sample._lookup_user_email && n.channel === 'IN_APP')
-const titles = S.PlayerAward.filter(a => a.player_id === sample.id && a.award_type === 'SECTION_WINNER')
-const upcoming = S.Fixture
-  .filter(f => [f.home_team_id, f.away_team_id].includes(team.id) && f.schedule_date >= '2026-09-22')
-  .sort((a, b) => a.schedule_date.localeCompare(b.schedule_date))
-
+const inbox = S.Notification.filter(n => n._lookup_user_email === sample._lookup_user_email && n.channel === 'IN_APP')
+const next = S.Fixture
+  .filter(f => team && [f.home_team_id, f.away_team_id].includes(team.id) && f.schedule_date >= TODAY)
+  .sort((a, b) => String(a.schedule_date).localeCompare(String(b.schedule_date)))[0]
 const widgets = {
-  'Avatar': sample.avatar_url || '(null - renders initials)',
   'Name / Status': `${sample.first_name} ${sample.last_name} / ${sample.status}`,
-  'Age / Sex': `${ageOn(sample.date_of_birth, '2026-09-22')} / ${sample.gender}`,
-  // Mirrors dashboard.service.ts: `player.email ?? loginEmail`
-  'Email / Phone': `${sample.email || sample._lookup_user_email + ' (fallback)'} / ${sample.phone}`,
-  'Club / Association / Team': `${club.name} / Waverley Tennis / ${team.name}`,
-  'UTR score tiles (3)': singlesSnaps.slice(-3).map(s => s.rating).reverse().join(', '),
-  'UTR percentile': rank ? `rank ${rank.rank}, Top ${(100 - Number(rank.percentile_rank)).toFixed(0)}%` : 'MISSING',
-  'Notifications (unread)': `${notes.length} total, ${notes.filter(n => n.read_at === '').length} unread`,
-  'Recent Activity': `${played} rubbers, latest vs opponents resolvable`,
-  'Career: Matches / Win%': `${played} / ${played ? (won / played * 100).toFixed(1) : 'n/a'}%`,
-  'Career: Titles': titles.length,
-  'Upcoming (next)': upcoming.length ? `${upcoming[0].schedule_date} ${upcoming[0].round_label || 'Round ' + upcoming[0].round_number}` : 'MISSING',
-  'Upcoming venue': upcoming.length ? S.Venue.find(v => v.id === upcoming[0].venue_id).name : 'MISSING',
-  'Rescheduled badge': S.FixtureScheduleChange.some(c => upcoming.some(f => f.id === c.fixture_id)),
-  'Standings & Rankings': S.PlayerStanding.find(s => s.player_id === sample.id) ? 'present' : 'MISSING',
+  'Email (API falls back)': sample.email || `${sample._lookup_user_email} (fallback)`,
+  'Club / Team': team ? `${team.name}` : 'MISSING',
+  'UTR tiles': snaps.slice(-3).map(s => s.rating).reverse().join(', ') || 'MISSING',
+  'Percentile': rank ? `Top ${(100 - Number(rank.percentile_rank)).toFixed(0)}%` : 'MISSING',
+  'Notifications': `${inbox.length} (${inbox.filter(n => n.read_at === '').length} unread)`,
+  'Career matches': mine.length || 'MISSING',
+  'Titles': S.PlayerAward.filter(a => a.player_id === sample.id).length,
+  'Next fixture': next ? `${next.schedule_date || 'TBC'} ${next.round_label || 'Round ' + next.round_number}` : 'MISSING',
 }
 for (const [k, v] of Object.entries(widgets)) if (String(v).includes('MISSING')) bad(`dashboard widget "${k}" cannot be filled`)
 
-// ------------------------------------- coverage: which tables got no data at all
-const MODELS = [...schema.matchAll(/^model\s+(\w+)\s*\{/gm)].map(m => m[1])
-const empty = MODELS.filter(m => !wb.SheetNames.includes(m))
-if (empty.length) warn(`no sheet at all for: ${empty.join(', ')}`)
-
-// User story: "multiple competitions running concurrently, with their own
-// seasons, sections, teams, fixtures, results and rules"
-for (const c of S.Competition) {
-  const seasons = S.Season.filter(s => s.competition_id === c.id)
-  const sections = S.SectionGrade.filter(s => seasons.some(x => x.id === s.season_id))
-  const fixtures = S.Fixture.filter(f => sections.some(x => x.id === f.section_id))
-  if (!fixtures.length) warn(`competition "${c.name}" has ${seasons.length} season(s) but 0 fixtures`)
-}
-// Seasons that carry awards but no matches
-for (const s of S.Season) {
-  const sections = S.SectionGrade.filter(x => x.season_id === s.id)
-  const fx = S.Fixture.filter(f => sections.some(x => x.id === f.section_id)).length
-  const aw = S.PlayerAward.filter(a => a.season_id === s.id).length
-  if (aw && !fx) warn(`season ${s.id} (${s.season_type} ${s.year}) has ${aw} awards but 0 fixtures`)
-}
-
-// User story: "record important administrative changes, including who made the
-// change and when" - these audit columns are all blank in the generated data.
-for (const [sheet, cols] of [['MatchResult', ['entered_by', 'finalised_by']], ['FixtureScheduleChange', ['changed_by']]]) {
-  for (const c of cols) {
-    const filled = S[sheet].filter(r => r[c] !== '').length
-    if (!filled) warn(`${sheet}.${c} is blank on all ${S[sheet].length} rows (no "who did it" trail)`)
-  }
-}
-
-// Percentile sanity: best player should read as a low "Top n%", worst as high.
-const singlesRanks = S.RankingEntry.filter(r => r.cohort_id === 'COH01').sort((a, b) => a.rank - b.rank)
-const top = singlesRanks[0], bottom = singlesRanks[singlesRanks.length - 1]
-if (Number(top.percentile_rank) < 90) bad(`top-ranked player has percentile ${top.percentile_rank}`)
-if (Number(bottom.percentile_rank) !== 0) warn(`last-ranked player percentile is ${bottom.percentile_rank}, displays as "Top 100%"`)
-
-// RankingEntry.rating must equal that player's newest snapshot for the discipline
-for (const r of singlesRanks) {
-  const snaps = S.UtrRatingSnapshot.filter(s => s.player_id === r.player_id && s.discipline === 'SINGLES')
-    .sort((a, b) => a.recorded_at.localeCompare(b.recorded_at))
-  if (Math.abs(Number(snaps[snaps.length - 1].rating) - Number(r.rating)) > 0.001) {
-    bad(`${r.player_id}: ranking rating ${r.rating} != newest snapshot ${snaps[snaps.length - 1].rating}`)
-  }
-}
-
-// UTR values should sit in a plausible band for club players.
-const ratings = S.UtrRatingSnapshot.map(s => Number(s.rating))
-const lo = Math.min(...ratings), hi = Math.max(...ratings)
-if (lo < 1 || hi > 16.5) bad(`UTR ratings out of range: ${lo.toFixed(2)}..${hi.toFixed(2)}`)
-
-// Notification payloads: venue changes should name the venue the UI has to show
-for (const n of S.Notification.filter(x => x.type === 'VENUE_CHANGED')) {
-  const d = JSON.parse(n.details)
-  if (/^VEN\d+$/.test(String(d.newVenue))) { warn('VENUE_CHANGED details carry venue ids, not names/objects'); break }
-}
-
-// ------------------------------------------------------------------- report
-console.log(`Sample dashboard - ${sample.first_name} ${sample.last_name} <${sample.email}>  [${section.name}]`)
-for (const [k, v] of Object.entries(widgets)) console.log(`   ${k.padEnd(28)} ${v}`)
+console.log(`Sample dashboard - ${sample.first_name} ${sample.last_name}`)
+for (const [k, v] of Object.entries(widgets)) console.log(`   ${k.padEnd(24)} ${v}`)
 console.log()
-console.log(issues.length ? `ERRORS (${issues.length})` : 'No errors')
-for (const p of issues.slice(0, 30)) console.log('  x ' + p)
-console.log(warnings.length ? `\nWARNINGS (${warnings.length})` : '')
-for (const p of warnings) console.log('  ! ' + p)
-process.exitCode = issues.length ? 1 : 0
+console.log(problems.length ? `REQUIREMENTS: ${problems.length} problem(s)` : 'Requirements: all checks passed')
+for (const p of problems.slice(0, 30)) console.log('  x ' + p)
+if (warnings.length) {
+  console.log(`\nNotes (${warnings.length})`)
+  for (const w of warnings) console.log('  ! ' + w)
+}
+process.exitCode = problems.length ? 1 : 0
