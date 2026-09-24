@@ -10,7 +10,7 @@
     "prisma:studio": "prisma studio",
     "seed:competition": "tsx prisma/seed-competition.ts",
     "data:generate": "node prisma/generate-competition-data.js",
-    "data:check": "node prisma/check-competition-data.js"
+    "data:check": "node prisma/check-data-integrity.js && node prisma/check-competition-data.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
