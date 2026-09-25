@@ -1,10 +1,15 @@
+import PlayerSession from "./context/PlayerSession";
+import MyClubsPage from "./pages/MyClubsPage";
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Link, Route, Routes } from 'react-router'
 import Home from './pages/Home'
 import About from './pages/About'
 import DashboardDemo from './pages/DashboardDemo'
+import DashboardPage from './pages/DashboardPage'
 import './style.css'
 import LoginPage from './pages/LoginPage'
+import PlayerLayout from "./components/PlayerLayout";
+import SupportPage from './pages/SupportPage';
 
 function Navigation() {
   return <nav className="bg-slate-900 text-white">
@@ -33,8 +38,21 @@ function Navigation() {
   </nav>
 }
 
+function ComingSoonPage({ title }: { title: string }) {
+  return (
+    <section className="rounded-2xl bg-white p-6">
+      <h1 className="text-2xl font-semibold text-[#1a3049]">
+        {title}
+      </h1>
+      <p className="mt-3 text-slate-600">
+        This page is under development.
+      </p>
+    </section>
+  );
+}
+
 function App() {
-  return <BrowserRouter>
+  return <PlayerSession><BrowserRouter>
     <Routes>
       <Route path="/" element={<LoginPage />} />
       <Route path="/login" element={<LoginPage />} />
@@ -47,8 +65,36 @@ function App() {
         element={<><Navigation /><About /></>}
       />
       <Route path="/demo" element={<DashboardDemo />} />
+      <Route path="/dashboard" element={<PlayerLayout />}>
+        <Route index element={<DashboardPage />} />
+
+        <Route
+          path="competitions"
+          element={<ComingSoonPage title="Competitions" />}
+        />
+
+        <Route
+          path="matches"
+          element={<ComingSoonPage title="Matches" />}
+        />
+
+        <Route
+          path="clubs"
+          element={<MyClubsPage />}
+        />
+
+        <Route
+          path="rankings"
+          element={<ComingSoonPage title="Standings & Rankings" />}
+        />
+
+        <Route
+          path="support"
+          element={<SupportPage />}
+        />
+      </Route>
     </Routes>
-  </BrowserRouter>
+  </BrowserRouter></PlayerSession>
 }
 
 createRoot(document.getElementById('root')!).render(<App />)

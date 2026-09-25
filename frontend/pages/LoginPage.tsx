@@ -1,14 +1,57 @@
-import {useState} from "react";
+import { PlayerSessionContext } from "../context/PlayerSession";
+import { useContext, useEffect, useRef, useState, type FormEvent } from "react";
+import { useNavigate } from "react-router";
+import { login } from "../api/dashboard";
+import logo from "../resources/Logo.png";
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
+  const [showSignupInfo, setShowSignupInfo] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const activeRequest = useRef<AbortController | null>(null);
+  const navigate = useNavigate();
+  const { setEmail: setPlayerEmail } = useContext(PlayerSessionContext);
+
+  useEffect(() => () => activeRequest.current?.abort(), []);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setPlayerEmail("");
+    activeRequest.current?.abort();
+    const controller = new AbortController();
+    activeRequest.current = controller;
+    setBusy(true);
+    setError("");
+
+    try {
+      // this is where the page calls the login API.
+      const response = await login(email.trim().toLowerCase(), password, controller.signal);
+      if (controller.signal.aborted) return;
+      if (response.result === "login_failed") {
+        setError("Incorrect email or password.");
+        return;
+      }
+      setPlayerEmail(email.trim().toLowerCase());
+      setPassword("");
+      navigate("/dashboard");
+    } catch (error) {
+      if (!controller.signal.aborted) {
+        setError(error instanceof Error ? error.message : "Could not reach the login server.");
+      }
+    } finally {
+      if (!controller.signal.aborted) setBusy(false);
+    }
+  }
 
   return (
     <main className="relative flex min-h-screen items-center justify-center bg-gradient-to-b from-[#1a3049] to-[#3f72af] px-7 py-[120px]">
       {/* Logo */}
       <img
-        src="/resources/Logo.png"
-        alt="Waverly Tennis"
+        src={logo}
+        alt="Waverley Tennis"
         className="absolute left-[32px] top-[10px] h-[80.31px] w-[197.26px] object-contain object-left"
       />
 
@@ -33,10 +76,10 @@ export default function LoginPage() {
                       min-[1280px]:mt-4
                       min-[1280px]:text-[16px]"
         >
-          Login to your Waverly Tennis Account
+          Login to your Waverley Tennis Account
         </p>
-
-        <form className="mt-[48px] min-[1280px]:mt-[36px]" onSubmit={(event) => event.preventDefault()}>
+        {/* The form triggers that code the API request itself once it is submitted */}
+        <form className="mt-[48px] min-[1280px]:mt-[36px]" onSubmit={handleSubmit}>
           {/* Email input section */}
           <div>
             <label 
@@ -69,6 +112,9 @@ export default function LoginPage() {
                 name="email"
                 type="email"
                 autoComplete="email"
+                required
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
                 placeholder="example@email.com"
                 className="h-[48px] w-full rounded-[6px] border border-[#a1a3a7] bg-[#e7e7e7] pl-[48px] pr-3 text-[16px] font-normal text-black placeholder:text-black placeholder:opacity-100 focus:outline-2 focus:outline-offset-2 focus:outline-[#3f72af]"
               />
@@ -102,6 +148,9 @@ export default function LoginPage() {
                 name="password"
                 type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
+                required
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
                 className="h-[48px] w-full rounded-[6px] border border-[#a1a3a7] bg-[#e7e7e7] pl-[48px] pr-3 text-[16px] font-normal text-black focus:outline-2 focus:outline-offset-2 focus:outline-[#3f72af]"
               />
 
@@ -173,12 +222,15 @@ export default function LoginPage() {
             </button>
           </div>
 
+          {error && <p role="alert" className="mt-4 text-sm text-red-700">{error}</p>}
+
           {/* Log in button */}
           <button
             type="submit"
+            disabled={busy}
             className="mt-[28px] flex h-[48px] w-full cursor-pointer items-center justify-center rounded-[8px] bg-gradient-to-r from-[#1a3049] to-[#3f72af] text-[18px] font-semibold leading-[22px] text-white hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3f72af]"
           >
-            Log in
+            {busy ? "Logging in…" : "Log in"}
           </button>
         </form>
 
@@ -198,10 +250,32 @@ export default function LoginPage() {
           {/* Sign up button */}
           <button
             type="button"
-            className="mx-auto mt-[11px] block h-[25px] w-[114px] cursor-pointer text-[16px] font-bold leading-[19px] text-[#1a3049] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3f72af]"
-          >
-            Sign up
+            onClick={() => setShowSignupInfo((previous) => !previous)}
+            aria-expanded={showSignupInfo}
+            aria-controls="signup-info"
+            className="mx-auto mt-[11px] flex min-h-11 items-center
+                      justify-center rounded px-4 text-[16px] font-bold
+                      text-[#1a3049] hover:underline
+                      focus-visible:outline-2 focus-visible:outline-offset-2
+                      focus-visible:outline-[#3f72af]"
+            >
+              Sign up
           </button>
+
+          <div
+            id="signup-info"
+            hidden={!showSignupInfo}
+            className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-left"
+          >
+            <h2 className="text-sm font-semibold text-[#1a3049]">
+              Registration is not available yet
+            </h2>
+
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              This version supports existing accounts only.
+              Registration instructions will be added when available.
+            </p>
+          </div>
         </div>
       </section>
     </main>
