@@ -5,6 +5,7 @@ import { login } from "../api/dashboard";
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
+  const [showSignupInfo, setShowSignupInfo] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -248,10 +249,32 @@ export default function LoginPage() {
           {/* Sign up button */}
           <button
             type="button"
-            className="mx-auto mt-[11px] block h-[25px] w-[114px] cursor-pointer text-[16px] font-bold leading-[19px] text-[#1a3049] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3f72af]"
-          >
-            Sign up
+            onClick={() => setShowSignupInfo((previous) => !previous)}
+            aria-expanded={showSignupInfo}
+            aria-controls="signup-info"
+            className="mx-auto mt-[11px] flex min-h-11 items-center
+                      justify-center rounded px-4 text-[16px] font-bold
+                      text-[#1a3049] hover:underline
+                      focus-visible:outline-2 focus-visible:outline-offset-2
+                      focus-visible:outline-[#3f72af]"
+            >
+              Sign up
           </button>
+
+          <div
+            id="signup-info"
+            hidden={!showSignupInfo}
+            className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-left"
+          >
+            <h2 className="text-sm font-semibold text-[#1a3049]">
+              Registration is not available yet
+            </h2>
+
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              This version supports existing accounts only.
+              Registration instructions will be added when available.
+            </p>
+          </div>
         </div>
       </section>
     </main>
