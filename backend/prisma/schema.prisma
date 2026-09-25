@@ -26,8 +26,9 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  player    Player?
-  userRoles UserRole[]
+  player        Player?
+  userRoles     UserRole[]
+  notifications Notification[]
 
   @@map("user")
 }
@@ -51,6 +52,9 @@ model Player {
   email String?
   phone String?
 
+  // Dashboard profile photograph. Null means the frontend renders initials.
+  avatarUrl String? @map("avatar_url")
+
   isJunior Boolean @default(false) @map("is_junior")
 
   status PlayerStatus @default(ACTIVE)
@@ -69,6 +73,10 @@ model Player {
   associationMemberships AssociationMembership[]
   teamPlayers            TeamPlayer[]
   rubberPlayers          RubberPlayer[]
+  utrSnapshots           UtrRatingSnapshot[]
+  rankingEntries         RankingEntry[]
+  awards                 PlayerAward[]
+  standings              PlayerStanding[]
 
   @@index([lastName, firstName, dateOfBirth])
   @@map("player")
@@ -101,6 +109,7 @@ model Association {
   associationMemberships AssociationMembership[]
   competitions           Competition[]
   clubs                  Club[]
+  rankingCohorts         RankingCohort[]
 
   @@map("association")
 }
@@ -127,6 +136,7 @@ model Club {
   updatedAt       DateTime         @updatedAt @map("updated_at")
   teams           Team[]
   clubMemberships ClubMembership[]
+  venues          Venue[]
 
   @@map("club")
 }
@@ -286,6 +296,7 @@ model Competition {
   seasons          Season[]
   matchFormats     MatchFormat[]
   eligibilityRules EligibilityRule[]
+  awards           PlayerAward[]
 
   @@map("competition")
 }
@@ -338,6 +349,7 @@ model Season {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   sections SectionGrade[]
+  awards   PlayerAward[]
 
   @@map("season")
 }
@@ -365,8 +377,10 @@ model SectionGrade {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  teams    Team[]
-  fixtures Fixture[]
+  teams           Team[]
+  fixtures        Fixture[]
+  ladderEntries   LadderEntry[]
+  playerStandings PlayerStanding[]
 
   @@map("section_grade")
 }
@@ -383,14 +397,21 @@ model Team {
 
   contactUserId String? @map("contact_user_id")
 
+  // Where this team's home fixtures are played. A club can own several venues,
+  // so the draw generator needs the team's own choice, not just club.venues.
+  homeVenueId String? @map("home_venue_id")
+  homeVenue   Venue?  @relation("TeamHomeVenue", fields: [homeVenueId], references: [id])
+
   name String
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  teamPlayers  TeamPlayer[]
-  homeFixtures Fixture[]    @relation("HomeTeam")
-  awayFixtures Fixture[]    @relation("AwayTeam")
+  teamPlayers   TeamPlayer[]
+  homeFixtures  Fixture[]     @relation("HomeTeam")
+  awayFixtures  Fixture[]     @relation("AwayTeam")
+  ladderEntries LadderEntry[]
+  awards        PlayerAward[]
 
   @@map("team")
 }
@@ -431,7 +452,16 @@ model Fixture {
   awayTeamId String @map("away_team_id")
   awayTeam   Team   @relation("AwayTeam", fields: [awayTeamId], references: [id])
 
-  roundNumber  Int?          @map("round_number")
+  // Null until the venue is allocated; the API then returns venue: null.
+  venueId String? @map("venue_id")
+  venue   Venue?  @relation(fields: [venueId], references: [id])
+
+  roundNumber Int? @map("round_number")
+
+  // Display label for finals rounds ("Semi Final", "Round of 32"). Round 5 must
+  // not be rendered as "Round of 32"; only use this when it is set.
+  roundLabel String? @map("round_label")
+
   scheduleDate DateTime?     @map("schedule_date") @db.Date
   scheduleTime DateTime?     @map("schedule_time") @db.Time
   status       FixtureStatus @default(SCHEDULED)
@@ -440,8 +470,10 @@ model Fixture {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  matchResult MatchResult?
+  matchResult     MatchResult?
+  scheduleChanges FixtureScheduleChange[]
 
+  @@index([venueId, scheduleDate])
   @@map("fixture")
 }
 
@@ -449,6 +481,8 @@ enum FixtureStatus {
   SCHEDULED
   COMPLETED
   CANCELLED
+  // Called off with no replacement date agreed yet.
+  POSTPONED
 }
 
 // MatchResult — result with status and approval flow
@@ -499,6 +533,15 @@ model Rubber {
   rubberType       RubberType @map("rubber_type")
   incompleteReason String?    @map("incomplete_reason")
 
+  // Recorded explicitly, never inferred from set scores: a retirement or
+  // walkover can be won by the side with fewer games. Null = not yet decided.
+  winnerSide  Side?          @map("winner_side")
+  outcomeType RubberOutcome? @map("outcome_type")
+
+  // When the rubber was actually played, which can differ from the fixture's
+  // scheduled date. Results sort on this before falling back to the schedule.
+  playedAt DateTime? @map("played_at")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -513,6 +556,15 @@ enum RubberType {
   DOUBLES
 }
 
+// How a rubber ended. FORFEIT and WALKOVER are excluded from UTR export.
+enum RubberOutcome {
+  COMPLETED
+  RETIRED
+  WALKOVER
+  FORFEIT
+  ABANDONED
+}
+
 // RubberSet — set score within a rubber
 model RubberSet {
   id String @id @default(uuid())
@@ -524,6 +576,10 @@ model RubberSet {
   homeGames  Int?    @map("home_games")
   awayGames  Int?    @map("away_games")
   isTiebreak Boolean @default(false) @map("is_tiebreak")
+
+  // Tiebreak points, e.g. 7-5 inside a 7-6 set. Null when not played.
+  homeTiebreakPoints Int? @map("home_tiebreak_points")
+  awayTiebreakPoints Int? @map("away_tiebreak_points")
 
   @@map("rubber_set")
 }
@@ -629,4 +685,326 @@ model AuditLog {
   changedBy     String?  @map("changed_by")
 
   @@map("audit_log")
+}
+
+// Venue — where a fixture is actually played. A club's own address is not
+// assumed to be the venue: finals and hired courts are often neutral ground.
+model Venue {
+  id String @id @default(uuid())
+
+  name    String
+  address String?
+
+  // IANA zone, e.g. "Australia/Melbourne". Fixture times are local to here;
+  // fall back to the documented application default when a fixture has no venue.
+  timeZone String @map("time_zone")
+
+  // How many fixtures the draw generator may schedule here at the same time.
+  courtCount Int? @map("court_count")
+
+  // Set when the venue belongs to a club; null for neutral/hired courts.
+  clubId String? @map("club_id")
+  club   Club?   @relation(fields: [clubId], references: [id])
+
+  status VenueStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  fixtures        Fixture[]
+  homeTeams       Team[]                  @relation("TeamHomeVenue")
+  changedFromHere FixtureScheduleChange[] @relation("PreviousVenue")
+  changedToHere   FixtureScheduleChange[] @relation("NewVenue")
+
+  @@index([clubId])
+  @@map("venue")
+}
+
+enum VenueStatus {
+  ACTIVE
+  INACTIVE
+}
+
+// FixtureScheduleChange — one row per reschedule or venue move. The dashboard's
+// "rescheduled" badge is derived from the existence of a row, so there is no
+// denormalised flag on Fixture that could drift out of sync.
+model FixtureScheduleChange {
+  id String @id @default(uuid())
+
+  fixtureId String  @map("fixture_id")
+  fixture   Fixture @relation(fields: [fixtureId], references: [id])
+
+  changeType ScheduleChangeType @map("change_type")
+
+  previousDate DateTime? @map("previous_date") @db.Date
+  previousTime DateTime? @map("previous_time") @db.Time
+  newDate      DateTime? @map("new_date") @db.Date
+  newTime      DateTime? @map("new_time") @db.Time
+
+  previousVenueId String? @map("previous_venue_id")
+  previousVenue   Venue?  @relation("PreviousVenue", fields: [previousVenueId], references: [id])
+  newVenueId      String? @map("new_venue_id")
+  newVenue        Venue?  @relation("NewVenue", fields: [newVenueId], references: [id])
+
+  reason String?
+
+  changedBy String?  @map("changed_by")
+  changedAt DateTime @default(now()) @map("changed_at")
+
+  @@index([fixtureId, changedAt])
+  @@map("fixture_schedule_change")
+}
+
+enum ScheduleChangeType {
+  DATE_TIME_CHANGED
+  VENUE_CHANGED
+  POSTPONED
+  CANCELLED
+}
+
+// Notification — one row per recipient per channel. The same event creates an
+// IN_APP row and, where the recipient wants email, a separate EMAIL row; unread
+// counts only ever count IN_APP rows.
+model Notification {
+  id String @id @default(uuid())
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id])
+
+  type    NotificationType
+  title   String
+  message String
+
+  // Type-specific payload, e.g. previousDate/newDate/timeZone for a
+  // DATE_TIME change. Shape per type is documented in dashboardapi.md.
+  details Json?
+
+  // What the card links to. Null means the notification is informational.
+  targetType NotificationTargetType? @map("target_type")
+  targetId   String?                 @map("target_id")
+
+  channel        NotificationChannel        @default(IN_APP)
+  deliveryStatus NotificationDeliveryStatus @default(PENDING) @map("delivery_status")
+  sentAt         DateTime?                  @map("sent_at")
+  failureReason  String?                    @map("failure_reason")
+
+  // Null means unread. In-app only; EMAIL rows leave this null.
+  readAt DateTime? @map("read_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@index([userId, channel, readAt])
+  @@map("notification")
+}
+
+enum NotificationType {
+  MATCH_DATE_CHANGED
+  VENUE_CHANGED
+  DRAW_RELEASED
+  MATCH_REMINDER
+  RESULT_ENTERED
+  RESULT_DISPUTED
+  EMERGENCY_PLAYER_REQUIRED
+  COMPETITION_UPDATE
+}
+
+enum NotificationTargetType {
+  FIXTURE
+  RUBBER
+  MATCH_RESULT
+  COMPETITION
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+}
+
+enum NotificationDeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+// Singles and doubles ratings are separate populations and must not be mixed.
+enum Discipline {
+  SINGLES
+  DOUBLES
+}
+
+// UtrRatingSnapshot — dated rating points supplied by Universal Tennis. The
+// platform stores them, it does not calculate them. UtrLink stays the account
+// link; its single utrRating remains the legacy undifferentiated value.
+model UtrRatingSnapshot {
+  id String @id @default(uuid())
+
+  playerId String @map("player_id")
+  player   Player @relation(fields: [playerId], references: [id])
+
+  // Null only for legacy rows imported before singles/doubles were separated.
+  discipline Discipline?
+
+  rating     Decimal  @db.Decimal(5, 2)
+  recordedAt DateTime @map("recorded_at")
+
+  // Where the value came from, e.g. "UTR_API" or "MANUAL_IMPORT".
+  source String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([playerId, discipline, recordedAt])
+  @@index([playerId, discipline, recordedAt])
+  @@map("utr_rating_snapshot")
+}
+
+// RankingCohort — the comparison population a percentile is measured against.
+// "Top 12%" is meaningless without naming the group it is 12% of.
+model RankingCohort {
+  id String @id @default(uuid())
+
+  name        String
+  description String?
+
+  // Null for a platform-wide cohort.
+  associationId String?      @map("association_id")
+  association   Association? @relation(fields: [associationId], references: [id])
+
+  discipline Discipline?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  entries RankingEntry[]
+
+  @@map("ranking_cohort")
+}
+
+// RankingEntry — one player's dated position within one cohort.
+model RankingEntry {
+  id String @id @default(uuid())
+
+  cohortId String        @map("cohort_id")
+  cohort   RankingCohort @relation(fields: [cohortId], references: [id])
+
+  playerId String @map("player_id")
+  player   Player @relation(fields: [playerId], references: [id])
+
+  rank   Int
+  rating Decimal? @db.Decimal(5, 2)
+
+  // 0-100 within this cohort. Never derived by dividing a rating by 10.
+  percentileRank Decimal? @map("percentile_rank") @db.Decimal(5, 2)
+
+  asOf DateTime @map("as_of")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([cohortId, playerId, asOf])
+  @@index([cohortId, asOf, rank])
+  @@index([playerId, asOf])
+  @@map("ranking_entry")
+}
+
+// PlayerAward — backs the "Title" counter. Which award types count as a title
+// is a product decision; store them all and filter when counting.
+model PlayerAward {
+  id String @id @default(uuid())
+
+  playerId String @map("player_id")
+  player   Player @relation(fields: [playerId], references: [id])
+
+  awardType AwardType @map("award_type")
+  title     String
+
+  competitionId String?      @map("competition_id")
+  competition   Competition? @relation(fields: [competitionId], references: [id])
+
+  seasonId String? @map("season_id")
+  season   Season? @relation(fields: [seasonId], references: [id])
+
+  // Set when the award was won with a team rather than individually.
+  teamId String? @map("team_id")
+  team   Team?   @relation(fields: [teamId], references: [id])
+
+  awardedOn DateTime? @map("awarded_on") @db.Date
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([playerId, awardedOn])
+  @@map("player_award")
+}
+
+enum AwardType {
+  COMPETITION_WINNER
+  SECTION_WINNER
+  RUNNER_UP
+  OTHER
+}
+
+// LadderEntry — cached team ladder for one section. Recalculated whenever a
+// result is finalised or corrected; MatchResult remains the source of truth.
+model LadderEntry {
+  id String @id @default(uuid())
+
+  sectionId String       @map("section_id")
+  section   SectionGrade @relation(fields: [sectionId], references: [id])
+
+  teamId String @map("team_id")
+  team   Team   @relation(fields: [teamId], references: [id])
+
+  // Null while the ladder is being rebuilt. Ties share a position.
+  position Int?
+
+  played Int @default(0)
+  won    Int @default(0)
+  lost   Int @default(0)
+  drawn  Int @default(0)
+
+  rubbersFor     Int @default(0) @map("rubbers_for")
+  rubbersAgainst Int @default(0) @map("rubbers_against")
+  setsFor        Int @default(0) @map("sets_for")
+  setsAgainst    Int @default(0) @map("sets_against")
+  gamesFor       Int @default(0) @map("games_for")
+  gamesAgainst   Int @default(0) @map("games_against")
+
+  points Int @default(0)
+
+  calculatedAt DateTime @map("calculated_at")
+
+  @@unique([sectionId, teamId])
+  @@index([sectionId, position])
+  @@map("ladder_entry")
+}
+
+// PlayerStanding — cached individual standings for one section, counted from
+// finalised rubbers only. A team fixture win is not one win per team member.
+model PlayerStanding {
+  id String @id @default(uuid())
+
+  sectionId String       @map("section_id")
+  section   SectionGrade @relation(fields: [sectionId], references: [id])
+
+  playerId String @map("player_id")
+  player   Player @relation(fields: [playerId], references: [id])
+
+  position Int?
+
+  rubbersPlayed Int @default(0) @map("rubbers_played")
+  rubbersWon    Int @default(0) @map("rubbers_won")
+  rubbersLost   Int @default(0) @map("rubbers_lost")
+  setsWon       Int @default(0) @map("sets_won")
+  setsLost      Int @default(0) @map("sets_lost")
+  gamesWon      Int @default(0) @map("games_won")
+  gamesLost     Int @default(0) @map("games_lost")
+
+  // Null when nothing has been played, or when an outcome is still unresolved.
+  winPercentage Decimal? @map("win_percentage") @db.Decimal(5, 2)
+
+  calculatedAt DateTime @map("calculated_at")
+
+  @@unique([sectionId, playerId])
+  @@index([sectionId, position])
+  @@map("player_standing")
 }
