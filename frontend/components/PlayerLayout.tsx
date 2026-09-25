@@ -12,6 +12,74 @@ const menuItems = [
   { label: "Standings & Rankings", to: "/dashboard/rankings" },
 ];
 
+const menuClass = ({ isActive }: { isActive: boolean }) =>
+  [
+    "flex min-h-[48px] items-center justify-center",
+    "rounded-[8px] px-3 py-3 text-center text-[14px]",
+    "transition-colors",
+    "focus-visible:outline-2 focus-visible:outline-offset-2",
+    "focus-visible:outline-white",
+    isActive ? "bg-[#3f72af] text-white" : "text-white hover:bg-white/10",
+  ].join(" ");
+
+type PlayerNavigationProps = {
+  mobile?: boolean;
+  onNavigate?: () => void;
+  onLogout: () => void;
+};
+
+function PlayerNavigation({
+  mobile = false,
+  onNavigate,
+  onLogout,
+}: PlayerNavigationProps) {
+  const gap = mobile ? "gap-2.5" : "gap-2";
+
+  return (
+    <>
+      <nav
+        aria-label={mobile ? "Mobile player menu" : "Player menu"}
+        className={`flex flex-col ${gap}`}
+      >
+        {menuItems.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={item.end}
+            className={menuClass}
+            onClick={onNavigate}
+          >
+            {item.label}
+          </NavLink>
+        ))}
+      </nav>
+
+      <div className={`mt-auto flex flex-col ${gap} pt-12`}>
+        <NavLink
+          to="/dashboard/support"
+          className={menuClass}
+          onClick={onNavigate}
+        >
+          Help &amp; Support
+        </NavLink>
+
+        <Link
+          to="/login"
+          onClick={() => {
+            onLogout();
+            onNavigate?.();
+          }}
+          className="flex min-h-12 items-center justify-center
+                    rounded-lg text-sm text-white hover:bg-white/10
+                    focus-visible:outline-2 focus-visible:outline-white"
+        >
+          Log out
+        </Link>
+      </div>
+    </>
+  );
+}
+
 export default function PlayerLayout() {
   const { data, setEmail: setPlayerEmail } = useContext(PlayerSessionContext);
   const playerDisplayName = data?.profile.displayName;
@@ -48,24 +116,14 @@ export default function PlayerLayout() {
     };
   }, [isMobileMenuOpen]);
 
-  const menuClass = ({ isActive }: { isActive: boolean }) =>
-    [
-      "flex min-h-[48px] items-center justify-center",
-      "rounded-[8px] px-3 py-3 text-center text-[14px]",
-      "transition-colors",
-      "focus-visible:outline-2 focus-visible:outline-offset-2",
-      "focus-visible:outline-white",
-      isActive ? "bg-[#3f72af] text-white" : "text-white hover:bg-white/10",
-    ].join(" ");
-
   return (
     <div className={`flex min-h-dvh flex-col bg-[#1a3049] ${isSupportPage ? "mobile-support-shell" : ""}`}>
       {/* Top bar */}
       <header
         className="relative flex h-[72px] shrink-0 items-center
-          bg-gradient-to-r from-[#1a3049] to-[#3f72af] px-4
-          min-[768px]:h-20 min-[768px]:justify-between
-          min-[768px]:px-5"
+                  bg-gradient-to-r from-[#1a3049] to-[#3f72af] px-4
+                  min-[768px]:h-20 min-[768px]:justify-between
+                  min-[768px]:px-5"
       >
         {/* Mobile menu */}
         <button
@@ -110,17 +168,29 @@ export default function PlayerLayout() {
 
       <dialog ref={drawerRef} id="mobile-player-menu" aria-label="Player menu" onCancel={(event) => { event.preventDefault(); setIsMobileMenuOpen(false); }} onClick={(event) => { if (event.target === event.currentTarget) setIsMobileMenuOpen(false); }} className="fixed inset-auto top-[72px] left-0 m-0 h-[calc(100dvh-72px)] max-h-none w-[280px] max-w-[calc(100vw-20px)] border-0 bg-[#1a3049] p-0 text-white backdrop:bg-black/35">
         <div className="flex min-h-full flex-col p-5">
-          <button type="button" onClick={() => setIsMobileMenuOpen(false)} className="mb-2.5 flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-white"><span aria-hidden="true">×</span> Close menu</button>
-          <p className="mb-2.5 text-xs text-slate-300">PLAYER MENU</p>
-          <nav aria-label="Mobile player menu" className="flex flex-col gap-2.5">
-            {menuItems.map((item) => <NavLink key={item.to} to={item.to} end={item.end} className={menuClass} onClick={() => setIsMobileMenuOpen(false)}>{item.label}</NavLink>)}
-          </nav>
-          <div className="mt-auto flex flex-col gap-2.5 pt-12">
-            <NavLink to="/dashboard/support" className={menuClass} onClick={() => setIsMobileMenuOpen(false)}>Help &amp; Support</NavLink>
-            <Link to="/login" onClickCapture={() => setPlayerEmail("")} className="flex min-h-12 items-center justify-center rounded-lg text-sm hover:bg-white/10" onClick={() => setIsMobileMenuOpen(false)}>Log out</Link>
-          </div>
+          <button 
+            type="button" 
+            onClick={() => setIsMobileMenuOpen(false)} 
+            className="mb-2.5 flex min-h-11 items-center gap-2 
+                      rounded-lg px-3 text-sm hover:bg-white/10 
+                      focus-visible:outline-2 focus-visible:outline-white"
+          >
+            <span aria-hidden="true">×</span> 
+              Close menu
+          </button>
+
+          <p className="mb-2.5 text-xs text-slate-300">
+            PLAYER MENU
+          </p>
+
+          <PlayerNavigation
+            mobile
+            onNavigate={() => setIsMobileMenuOpen(false)}
+            onLogout={() => setPlayerEmail("")}
+          />
         </div>
       </dialog>
+      
       <div className="flex flex-1 flex-col min-[768px]:flex-row">
         {/* Left sidebar */}
         <aside
@@ -131,38 +201,7 @@ export default function PlayerLayout() {
             PLAYER MENU
           </p>
 
-          <nav aria-label="Player menu" className="flex flex-col gap-2">
-            {menuItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                className={menuClass}
-              >
-                {item.label}
-              </NavLink>
-            ))}
-          </nav>
-
-          <div className="mt-auto flex flex-col gap-2 pt-12">
-            <NavLink
-              to="/dashboard/support"
-              className={menuClass}
-            >
-              Help &amp; Support
-            </NavLink>
-
-            <Link
-              to="/login" onClickCapture={() => setPlayerEmail("")}
-              className="
-                flex min-h-[48px] items-center justify-center
-                rounded-[8px] text-[14px] text-white
-                hover:bg-white/10
-              "
-            >
-              Log out
-            </Link>
-          </div>
+          <PlayerNavigation onLogout={() => setPlayerEmail("")} />
         </aside>
 
         {/* Main content */}

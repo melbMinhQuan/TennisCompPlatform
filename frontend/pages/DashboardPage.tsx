@@ -15,25 +15,24 @@ export default function DashboardPage() {
   if (!email) {
     return (
       <div
-        className="mx-auto max-w-6xl space-y-5 leading-[1.45]
-          md:space-y-6 md:rounded-3xl md:bg-[#eff1f4] md:p-8"
+        className="mx-auto max-w-6xl space-y-5 leading-[1.45] md:space-y-6 md:rounded-3xl md:bg-[#eff1f4] md:p-8"
       >
-      {/* Page title */}
-      <header className="space-y-2">
-        <h1
-          className="text-[28px] font-semibold text-white md:text-[34px] md:text-[#1a3049]"
-        >
-          Profile Dashboard
-        </h1>
+        {/* Page title */}
+        <header className="space-y-2">
+          <h1
+            className="text-[28px] font-semibold text-white md:text-[34px] md:text-[#1a3049]"
+          >
+            Profile Dashboard
+          </h1>
 
-        <p
-          className="text-sm text-white md:text-[#596b80]"
-        >
-          View your player profile, ratings, matches and competitions.
-        </p>
-      </header>
+          <p
+            className="text-sm text-white md:text-[#596b80]"
+          >
+            View your player profile, ratings, matches and competitions.
+          </p>
+        </header>
 
-      {/* Login card */}
+        {/* Login card */}
         <section
           className="rounded-2xl border border-[#dce4ee] bg-white p-6"
         >
@@ -49,48 +48,47 @@ export default function DashboardPage() {
           <Link
             to="/login"
             className="mt-4 inline-flex min-h-11 items-center
-              rounded-lg bg-[#1a3049] px-4 text-sm text-white
-              hover:bg-[#243f5d]"
+                      rounded-lg bg-[#1a3049] px-4 text-sm text-white
+                      hover:bg-[#243f5d]"
           >
             Log in
           </Link>
         </section>
 
-      <p className="text-[13px] text-white md:text-[#596b80]">
-        Your profile information is managed by Waverley Tennis.
-      </p>
-    </div>
-  );
-}
+        <p className="text-[13px] text-white md:text-[#596b80]">
+          Your profile information is managed by Waverley Tennis.
+        </p>
+      </div>
+    );
+  }
 
-if (loading) {
-  return (
-    <div role="status" className="rounded-2xl bg-white p-6">
-      Loading your profile…
-    </div>
-  );
-}
+  if (loading) {
+    return (
+      <div role="status" className="rounded-2xl bg-white p-6">
+        Loading your profile…
+      </div>
+    );
+  }
 
-if (error || !apiData) {
-  return (
-    <div className="rounded-2xl bg-white p-6">
-      <p role="alert" className="text-red-700">
-        {error || "Your profile could not be loaded."}
-      </p>
+  if (error || !apiData) {
+    return (
+      <div className="rounded-2xl bg-white p-6">
+        <p role="alert" className="text-red-700">
+          {error || "Your profile could not be loaded."}
+        </p>
 
-      <button
-        type="button"
-        onClick={reload}
-        className="mt-4 rounded-lg bg-[#1a3049] px-4 py-3 text-white"
-      >
-        Try again
-      </button>
-    </div>
-  );
-}
+        <button
+          type="button"
+          onClick={reload}
+          className="mt-4 rounded-lg bg-[#1a3049] px-4 py-3 text-white"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
 
-const data = apiData;
-
+  const data = apiData;
   const profile = data.profile;
   const status = profile.status;
 

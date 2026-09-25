@@ -2,6 +2,7 @@ import { PlayerSessionContext } from "../context/PlayerSession";
 import { useContext, useEffect, useRef, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
 import { login } from "../api/dashboard";
+import logo from "../resources/Logo.png";
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -49,8 +50,8 @@ export default function LoginPage() {
     <main className="relative flex min-h-screen items-center justify-center bg-gradient-to-b from-[#1a3049] to-[#3f72af] px-7 py-[120px]">
       {/* Logo */}
       <img
-        src="/resources/Logo.png"
-        alt="Waverly Tennis"
+        src={logo}
+        alt="Waverley Tennis"
         className="absolute left-[32px] top-[10px] h-[80.31px] w-[197.26px] object-contain object-left"
       />
 
@@ -75,7 +76,7 @@ export default function LoginPage() {
                       min-[1280px]:mt-4
                       min-[1280px]:text-[16px]"
         >
-          Login to your Waverly Tennis Account
+          Login to your Waverley Tennis Account
         </p>
         {/* The form triggers that code the API request itself once it is submitted */}
         <form className="mt-[48px] min-[1280px]:mt-[36px]" onSubmit={handleSubmit}>
