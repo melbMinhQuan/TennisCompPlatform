@@ -3,6 +3,9 @@ import { NavLink, Outlet, Link, useLocation } from "react-router";
 import { useContext, useEffect, useRef, useState } from "react";
 import logo from "../resources/Logo.png";
 import PlayerProfileLink from "./PlayerProfileLink";
+import { standingsAreMock, standingsPlayerName } from "../api/standings";
+import { membershipsAreMock, mockMembershipPlayer } from "../api/memberships";
+import { supportContactsAreMock } from "../api/support-contacts";
 
 const menuItems = [
   { label: "Profile", to: "/dashboard", end: true },
@@ -82,14 +85,17 @@ function PlayerNavigation({
 
 export default function PlayerLayout() {
   const { data, setEmail: setPlayerEmail } = useContext(PlayerSessionContext);
-  const playerDisplayName = data?.profile.displayName;
 
   const drawerRef = useRef<HTMLDialogElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const path = useLocation().pathname;
-  const isSupportPage = path === "/dashboard/support" || path === "/dashboard/clubs";
+  // Pages still on hardcoded data show the sample player (Chloe Cooper), so the header matches the page.
+  const playerDisplayName = (path === "/dashboard/clubs" || path.startsWith("/dashboard/clubs/")) && membershipsAreMock
+    ? mockMembershipPlayer.displayName : path === "/dashboard/rankings" && standingsAreMock ? standingsPlayerName
+    : path === "/dashboard/support" && supportContactsAreMock ? mockMembershipPlayer.displayName : data?.profile.displayName;
+  const isSupportPage = path === "/dashboard/support" || path === "/dashboard/rankings" || (path === "/dashboard/clubs" || path.startsWith("/dashboard/clubs/"));
   const isProfilePage = path === "/dashboard";
 
   useEffect(() => {

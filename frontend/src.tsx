@@ -1,5 +1,7 @@
 import PlayerSession from "./context/PlayerSession";
 import MyClubsPage from "./pages/MyClubsPage";
+import StandingsPage from "./pages/StandingsPage";
+import TeamDetailsPage from "./pages/TeamDetailsPage";
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Link, Route, Routes } from 'react-router'
 import Home from './pages/Home'
@@ -82,10 +84,11 @@ function App() {
           path="clubs"
           element={<MyClubsPage />}
         />
+        <Route path="clubs/teams/:teamId" element={<TeamDetailsPage />} />
 
         <Route
           path="rankings"
-          element={<ComingSoonPage title="Standings & Rankings" />}
+          element={<StandingsPage />}
         />
 
         <Route

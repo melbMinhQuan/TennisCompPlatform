@@ -1,62 +1,68 @@
-# My Clubs & Association: frontend integration
+# My Clubs, Associations & Teams
 
-Uses the existing `getDashboard(email)` helper and `GET /api/v1/player-dashboard?email=...`. No backend, schema or database changes are included.
+## Current frontend
+Route: /dashboard/clubs. The page uses a fictional sample player by default, independently of login or the dashboard API. The desktop header uses the same sample name on this route.
 
-## Displayed now
+The desktop/mobile layout follows the supplied design: identity and counts, association sections, club cards, badges, and team chips. View Teams expands all the player's teams for that club with competition, season and section details. Counts use distinct entity IDs. The first two teams appear as chips; additional teams have a “+N more” indicator.
 
-- Player name and database Player ID.
-- Header initials generated from `profile.displayName`.
-- Primary club and primary association, when supplied.
-- Active team names, shown separately because their club relationships are not in the response.
-- Loading, login-required, request error/retry and missing-data states.
+## Sample data and Excel relationships
+frontend/data/mock-memberships.ts is hardcoded with Chloe Cooper's (PLR005) rows copied from Project detail/competition_data.xlsx, keeping the workbook IDs (AM006, CM002, CLB01, TEAM018...). After the API is connected, logging in as chloe.cooper005@players.example should show exactly the same page, which is the quickest integration check. She covers two associations, a primary and three additional clubs, a club with no team (Forest Hill), and current and past-season teams in two competitions. The rows follow the workbook relationships:
+- Player → AssociationMembership → Association
+- Player → ClubMembership → Club → Association
+- Player → TeamPlayer → Team → SectionGrade → Season → Competition
 
-A null primary club does not prove that the player has no club memberships. The page says "No primary club recorded" rather than claiming zero clubs. It does not invent membership counts, dates, or relationships.
+The fixture joins these records into the page's response model. Database IDs, membership IDs and relationship IDs remain distinct. The frontend uses camelCase; workbook columns use snake_case.
 
-## Chosen redesign (Figma, final)
+AssociationMembership in the workbook has no start_date, so its sample date is null and “Member since” is omitted. Club membership dates are available. A club's association does not imply an explicit player association membership. Clubs without a corresponding association membership appear under “Other club memberships”.
 
-Direction chosen: association-first grouping (a flattened version of the two directions mocked up earlier — see [the exploration artifact](https://claude.ai/artifact/BjtSbAVo8ggCC4aAsrKjk7)). Confirmed for both desktop and mobile. Layout, top to bottom:
+## API handoff
+frontend/api/memberships.ts owns the PlayerMemberships contract and getPlayerMemberships(signal). The React page consumes only this contract.
 
-- Identity + summary card: player name, `Player · primary association: {name}`, and three counts — **Associations**, **Clubs**, **Teams** — in that order.
-- One section per association membership: association name, `Member since {Month Year} · {status} membership`, and a `PRIMARY ASSOCIATION` / `ADDITIONAL ASSOCIATION` badge.
-- Under each association, one full-width card per club membership in that association: club name, `Member since {Month Year} · {status} membership`, `PRIMARY CLUB` / `ADDITIONAL CLUB` badge, a `MY TEAMS` label with up to two team chips (`{team name} · {competition/season name}`), and a `View Teams →` link.
-- An association with no clubs shows an empty-state card: "No clubs recorded under this association yet."
-- Mobile is the same structure, single column, no left-border nesting — matches desktop exactly, just narrower.
+When the backend is ready:
+1. Implement the authenticated current-player endpoint. Authentication/session handling belongs to the backend; the existing email-based dashboard demo does not establish a secure session.
+2. Return { data: PlayerMemberships }, or adapt the response in getPlayerMemberships.
+3. Set VITE_MEMBERSHIPS_API_URL to that endpoint and restart/rebuild Vite. Requests include credentials and an abort signal. Adjust headers here if the agreed authentication uses bearer tokens.
+4. Check switching accounts, authorization, CORS where applicable, errors, and empty responses together.
 
-Open question, not yet decided: what `View Teams →` links to. The mockup shows at most 2 team chips per club, so if a club/season has more than 2 teams there needs to be a real destination (a full roster view scoped to that club membership, or an expand-in-place) — this needs a product decision before it's built, it isn't just a display-more-of-the-same-array case.
+Without the environment variable, the service returns a cloned sample response. With it, API failures show an error and Retry; they never silently fall back to sample data.
 
-## Information needed from the backend team
+Expected data:
+- player: { id, displayName }
+- associations[]: { id (membership ID), associationId, name, isPrimary, status, startDate, endDate } (AssociationMembership has no dates in the workbook, so both are null)
+- clubs[]: { id (membership ID), clubId, associationId, associationName, name, isPrimary, status, startDate, endDate } (ClubMembership.start_date / end_date)
+- teams[]: { id (team ID), clubId, name, competitionName, seasonLabel, seasonStatus, sectionName }
+  - seasonLabel is Season.season_type + year, e.g. "Winter 2026"
+  - seasonStatus is Season.status (ACTIVE / COMPLETED / ARCHIVED); the page lists ACTIVE (current) teams first and labels the rest "Past season"
 
-The Figma clubs screens and the player user stories ("be associated with one or more than one club/association", "represent different clubs in different competitions") need the full membership lists, not just the primary one. This turns out to be a small change, not a new feature:
+A membership with an endDate shows "Ended {Month Year}" instead of "Active membership".
 
-`DashboardService.dashboard()` (`backend/src/dashboard/dashboard.service.ts`) already loads the full `clubMemberships` and `associationMemberships` arrays for the player via Prisma (`playerInclude`, same file), including `isPrimary`, `status`, and `startDate`/`endDate` on each row. It then narrows them down to a single primary club/association before building the response:
+Membership status is ACTIVE or INACTIVE. Dates are ISO dates or null. Arrays are complete for the agreed membership scope, not paginated fragments. Return only this player's team assignments, with clubId matching a returned club membership; resolve inconsistent relationships before supplying the page. Counts reflect the returned memberships, including inactive records if supplied. Agree active/history filtering with the backend. No membership is inferred from club ownership.
 
-```ts
-const club = player.clubMemberships.find(m => m.isPrimary)?.club
-const association = player.associationMemberships.find(m => m.isPrimary)?.association
-```
+The endpoint name and final backend DTO are not assumed. The existing dashboard endpoint does not yet provide this entire contract. No backend/schema or database changes are included.
 
-and flattens `teamPlayers` to bare `{id, name}` references, dropping each team's club.
 
-What's actually needed:
+## Team member details
+Expand View Teams, then click a team entry or its “View team members” link.
+Route: /dashboard/clubs/teams/:teamId. Direct URLs also load the team.
+The page shows club/association, competition, season, section, and the roster's
+names sorted A–Z. The logged-in player is highlighted with a "You" tag. Only
+unusual TeamPlayer statuses (Emergency, Inactive) get a badge; Active is the default.
+Past seasons remain labelled; a player's ACTIVE roster status is independent of
+whether the season has finished. A back link returns to My Clubs.
 
-1. Return the full `clubMemberships[]` array in the DTO — club ID/name, `isPrimary`, `status`, `startDate`/`endDate` — instead of collapsing to one `primaryClub`. The `Associations`/`Clubs`/`Teams` counts on the identity card are `.length` of these arrays on the frontend; no separate count field needed.
-2. Return the full `associationMemberships[]` array the same way, instead of one `primaryAssociation`.
-3. Nest each club membership under its own association (`club.associationId`), not just the player's primary association — add `club: { include: { association: true } }` to `playerInclude` so each club membership can carry its own association's name and contact details. This is what lets the page group clubs under the right association section.
-4. Add `team: { include: { section: { include: { season: { include: { competition: true } } } } } }` to the `teamPlayers` include, and return each team's club ID plus a competition/season label (`Summer Pennant 2025/26`, etc.) for the `{team name} · {competition/season name}` chip text, so a team can be shown under the right club instead of in an unlinked list.
-5. Authenticated current-user identity for production use — separate, larger item, unchanged from before.
+frontend/data/mock-team-members.ts contains the six Player/TeamPlayer joins for
+each of TEAM001, TEAM018 and TEAM035 from competition_data.xlsx. No contact
+details, birthdays, or invented captain roles are included.
 
-No schema or migration changes are required for 1–4: the tables (`ClubMembership`, `AssociationMembership`, `Team`, `SectionGrade`, `Season`, `Competition`) and their relations already exist in `backend/prisma/schema.prisma`; the club/association/team data is already queried, just narrowed away in the service. This is a DTO shape + two extra `include` joins, not a new endpoint.
+frontend/api/teams.ts is the API adapter. Configure VITE_TEAMS_API_URL to the
+teams collection URL; the encoded team ID is appended. The expected envelope
+is { data: TeamDetails }; TeamDetails extends MembershipTeam with clubName,
+associationName, and members: { id (player ID), name, status
+(ACTIVE/EMERGENCY/INACTIVE), isCurrentPlayer (true only for the logged-in
+player, which the server knows from the session) }[].
+The server must authorize roster access. Map a different backend response here.
 
-One data nuance the redesign surfaced: `AssociationMembership` is independent of `ClubMembership` — a player can hold an explicit association membership with no club of theirs mapped to it (e.g. joined the association directly). The frontend should not assume every association a player belongs to has a corresponding club, or infer association membership purely from a club's `associationId`.
-
-Until the DTO ships, the page marks these details as unavailable. It does not infer association membership from a club, or assign every team to the primary club.
-
-## Current login flow
-
-Successful login stores the submitted email in React memory. The existing dashboard API supplies the header name and clubs page data. Logout clears identity; changing identity aborts pending requests. Refresh requires login again. The profile page remains unchanged.
-
-This is the team's existing email-based local-demo flow, not a secure production session. The backend's existing production guard remains unchanged.
-
-## Validation
-
-Run `npm run build --workspace=frontend`. Backend changes and the added memberships endpoint tests have been removed. No live database mutations were made.
+Mocks are used only when no teams endpoint is configured and memberships are
+also in mock mode. Live failures never fall back to mock rosters. HTTP 404
+shows not found, other failures allow retry, and an empty roster has its own
+message. Pending requests are aborted on navigation or identity changes.

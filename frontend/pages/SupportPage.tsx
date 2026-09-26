@@ -14,13 +14,22 @@ export default function SupportPage() {
     heading?.focus({ preventScroll: true });
     heading?.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   };
+  // Closing the search box also clears its keyword, so no hidden filter keeps hiding answers.
+  const closeSearch = () => {
+    setIsSearchOpen(false);
+    setSearch("");
+    searchToggleRef.current?.focus();
+  };
+  // Choosing a topic always starts a fresh browse, so an old keyword can't hide its answers.
+  // Only the scroll is mobile-specific, because the answers sit below the topic grid there.
   const selectTopic = (topic: string) => {
     setSelectedTopic(topic);
+    setSearch("");
     if (window.matchMedia("(max-width: 767px)").matches) {
-      setSearch("");
       requestAnimationFrame(() => moveToHeading(faqHeadingRef.current));
     }
   };
+  const faqCount = (topic: string) => HELP_FAQS.filter((faq) => faq.topic === topic).length;
   const searchWords = search.trim().toLowerCase().split(/\s+/).filter(Boolean);
   const searchResults = HELP_FAQS.filter((item) => {
     const topicTitle = HELP_TOPICS.find((topic) => topic.id === item.topic)?.title ?? "";
@@ -30,8 +39,8 @@ export default function SupportPage() {
   });
 
   return (
-    <div className="support-page mx-auto max-w-7xl space-y-6">
-    <section className="rounded-2xl bg-white p-6 sm:p-8" aria-labelledby="support-heading">
+    <div className="support-page min-w-0 space-y-5">
+    <section className="rounded-[32px] bg-white p-6" aria-labelledby="support-heading">
       <div className="flex items-center justify-between gap-3">
         <h1 id="support-heading" className="text-2xl font-semibold text-[#1a3049]">
           Help &amp; Support
@@ -42,7 +51,7 @@ export default function SupportPage() {
           aria-label={isSearchOpen ? "Close help search" : "Open help search"}
           aria-expanded={isSearchOpen}
           aria-controls="help-search-panel"
-          onClick={() => setIsSearchOpen(!isSearchOpen)}
+          onClick={() => (isSearchOpen ? closeSearch() : setIsSearchOpen(true))}
           className="flex size-11 shrink-0 items-center justify-center rounded-full text-[#1a3049] hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-[#3f72af]"
         >
           <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className="size-6">
@@ -51,7 +60,7 @@ export default function SupportPage() {
         </button>
       </div>
       <p className="mt-3 text-slate-600">
-        Find answers about your profile, team fixtures, match results, and how to use TennisComp.
+        Find answers about your profile, team fixtures, match results, and how to use your Waverley Tennis account.
       </p>
 
       <div id="help-search-panel" hidden={!isSearchOpen}>
@@ -66,8 +75,7 @@ export default function SupportPage() {
           onKeyDown={(event) => {
             if (event.key === "Escape") {
               event.preventDefault();
-              setIsSearchOpen(false);
-              searchToggleRef.current?.focus();
+              closeSearch();
             }
           }}
           value={search}
@@ -91,7 +99,7 @@ export default function SupportPage() {
               <span className="block font-semibold text-[#1a3049]">{topic.title}</span>
               <span className="mt-2 hidden text-sm leading-6 text-slate-600 md:block">{topic.description}</span>
               <span className="help-topic-count mt-auto flex items-center justify-between pt-3 text-xs md:hidden">
-                <span>{HELP_FAQS.filter((faq) => faq.topic === topic.id).length} FAQs</span>
+                <span>{faqCount(topic.id)} {faqCount(topic.id) === 1 ? "FAQ" : "FAQs"}</span>
                 <span aria-hidden="true">{selectedTopic === topic.id ? "✓" : "→"}</span>
               </span>
             </button>
@@ -100,14 +108,14 @@ export default function SupportPage() {
       </section>
     </section>
 
-    <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-      <section id="help-search-results" className="rounded-2xl bg-white p-6 sm:p-8" aria-labelledby="faq-heading">
+    <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <section id="help-search-results" className="rounded-[32px] bg-white p-6" aria-labelledby="faq-heading">
         {selectedTopicTitle && <p className="mb-2 text-xs font-medium tracking-wide text-[#3f72af]">Frequently asked questions</p>}
         <h2 ref={faqHeadingRef} tabIndex={-1} id="faq-heading" className="scroll-mt-5 text-xl font-semibold text-[#1a3049]">{selectedTopicTitle ?? "Frequently asked questions"}</h2>
         <button type="button" onClick={() => moveToHeading(topicsHeadingRef.current)} className="mt-2 min-h-11 rounded-lg text-sm text-[#1a3049] underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-[#3f72af] md:hidden">← Choose another topic</button>
         <p role="status" className="mt-2 text-sm text-slate-600">
           {searchResults.length === 0
-            ? "No answers found. Try another keyword or use the contact options below."
+            ? "No answers found. Try another keyword, or see “Who should I contact?”."
             : `${searchResults.length} ${searchResults.length === 1 ? "answer" : "answers"} found${selectedTopic === "all" ? "" : ` in ${HELP_TOPICS.find((topic) => topic.id === selectedTopic)?.title}`}.`}
         </p>
         {searchResults.map((item) => (

@@ -1,68 +1,86 @@
-import { useContext } from "react";
+import { useContext, useEffect, useState } from "react";
 import { Link } from "react-router";
+import { getPlayerMemberships, type Membership, type MembershipTeam, type PlayerMemberships } from "../api/memberships";
 import { PlayerSessionContext } from "../context/PlayerSession";
 
-const CARD_CLASS = "rounded-2xl border border-[#dce4ee] bg-white p-6";
+const card = "min-w-0 rounded-[32px] bg-white p-6 text-[#1a3049]";
+const primaryFirst = (a: Membership, b: Membership) => Number(b.isPrimary) - Number(a.isPrimary);
+
+function Badge({ primary, kind }: { primary: boolean; kind: string }) {
+  return <span className="inline-block shrink-0 rounded-md bg-[#e5f4ec] px-5 py-2.5 text-center text-xs font-semibold text-[#197354]">{primary ? "PRIMARY" : "ADDITIONAL"} {kind}</span>;
+}
+
+function monthYear(value: string | null) {
+  const date = value ? new Date(value.slice(0, 10) + "T00:00:00Z") : null;
+  return date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString("en-AU", { month: "long", year: "numeric", timeZone: "UTC" }) : null;
+}
+
+function membershipDetail(m: Membership) {
+  const since = monthYear(m.startDate);
+  const ended = monthYear(m.endDate);
+  return (since ? "Member since " + since + " · " : "")
+    + (ended ? "Ended " + ended : (m.status === "ACTIVE" ? "Active" : "Inactive") + " membership");
+}
+
+// Current-season teams first; past seasons stay listed but are labelled.
+const currentFirst = (a: MembershipTeam, b: MembershipTeam) => Number(b.seasonStatus === "ACTIVE") - Number(a.seasonStatus === "ACTIVE");
+const pastLabel = (team: MembershipTeam) => team.seasonStatus === "ACTIVE" ? "" : " · Past season";
+
+function ClubCard({ club, teams }: { club: PlayerMemberships["clubs"][number]; teams: MembershipTeam[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const panelId = "teams-" + club.id;
+  return <article className={card}>
+    <div className="flex flex-col items-start gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div className="min-w-0"><h3 className="text-base font-bold [overflow-wrap:anywhere]">{club.name}</h3><p className="mt-1 text-[13px] text-[#586f8e]">{membershipDetail(club)}</p></div>
+      <Badge primary={club.isPrimary} kind="CLUB" />
+    </div>
+    <p className="mb-1.5 mt-4 text-[10px] font-medium text-[#506784]">MY TEAMS</p>
+    {teams.length ? <ul className="flex flex-wrap gap-2">{teams.slice(0, 2).map(team => <li key={team.id} className={`max-w-full rounded-2xl px-2.5 py-1 text-xs [overflow-wrap:anywhere] ${team.seasonStatus === "ACTIVE" ? "bg-[#eef1f5] text-[#2868ad]" : "bg-slate-100 text-slate-600"}`}>{team.name} · {team.competitionName} {team.seasonLabel}{pastLabel(team)}</li>)}{teams.length > 2 && <li className="px-2 py-1 text-xs text-[#586f8e]">+{teams.length - 2} more</li>}</ul> : <p className="text-sm text-[#586f8e]">No teams recorded for this club yet.</p>}
+    {teams.length > 0 && <>
+      <button type="button" aria-expanded={expanded} aria-controls={panelId} onClick={() => setExpanded(!expanded)} className="mt-3 flex min-h-11 w-full items-center justify-end gap-1 bg-[#f0f5fc] px-5 text-sm font-medium text-[#075bc5] hover:bg-blue-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700">{expanded ? "Hide Teams" : "View Teams"} <span aria-hidden="true">{expanded ? "▴" : "▾"}</span><span className="sr-only"> for {club.name}</span></button>
+      <div id={panelId} hidden={!expanded}><ul className="mt-3 divide-y divide-[#dce4ee]">{teams.map(team => <li key={team.id} className="text-sm [overflow-wrap:anywhere]"><Link to={`/dashboard/clubs/teams/${encodeURIComponent(team.id)}`} className="block rounded-lg px-2 py-4 hover:bg-[#f0f5fc] focus-visible:outline-2 focus-visible:outline-blue-700"><p className="font-semibold">{team.name}</p><p className="mt-1 text-[#586f8e]">{team.competitionName} · {team.seasonLabel} · {team.sectionName}{pastLabel(team)}</p><span className="mt-3 inline-block font-medium text-[#075bc5]">View team members <span aria-hidden="true">→</span></span></Link></li>)}</ul></div>
+    </>}
+  </article>;
+}
 
 export default function MyClubsPage() {
-  const { email, data, error, loading, reload } = useContext(PlayerSessionContext);
-  const profile = data?.profile;
-  return (
-    <div className="mx-auto max-w-6xl space-y-5 leading-[1.45] md:space-y-6 md:rounded-3xl md:bg-[#eff1f4] md:p-8">
-      <header className="space-y-2">
-        <h1 className="text-[28px] font-semibold text-white md:text-[34px] md:text-[#1a3049]">My Clubs &amp; Associations &amp; Teams</h1>
-        <p className="text-sm text-white md:text-[#596b80]">View your memberships and the teams you belong to.</p>
-      </header>
-      {!email ? (
-        <section className={CARD_CLASS}>
-          <h2 className="text-lg font-semibold text-[#1a3049]">Log in to see your memberships</h2>
-          <p className="mt-3 text-sm text-[#596b80]">Your available clubs, associations, and teams will appear here after you log in.</p>
-          <Link to="/login" className="mt-4 inline-flex min-h-11 items-center rounded-lg bg-[#1a3049] px-4 text-sm text-white">Log in</Link>
-        </section>
-      ) : loading ? <p role="status" className={CARD_CLASS}>Loading your clubs, associations, and teams…</p> : error ? (
-        <section className={CARD_CLASS}>
-          <h2 className="text-lg font-semibold text-[#1a3049]">We couldn’t load your memberships</h2>
-          <p role="alert" className="mt-3 text-sm text-[#596b80]">{error}</p>
-          <button type="button" onClick={reload} className="mt-4 min-h-11 rounded-lg bg-[#1a3049] px-4 text-sm text-white">Try again</button>
-        </section>
-      ) : profile && (
-        <>
-          <section className="space-y-3 rounded-2xl bg-[#1a3049] p-6 text-white">
-            <h2 className="break-words text-lg font-semibold">{profile.displayName}</h2>
-            <p className="break-all text-xs text-blue-100">Player ID: {profile.id}</p>
-            <p className="text-sm text-blue-100">Showing available primary memberships. Your full membership list is not available yet.</p>
-          </section>
-          <div className="grid gap-5 lg:grid-cols-2">
-          <section className={`${CARD_CLASS} space-y-3`}>
-            <h2 className="text-lg font-semibold text-[#1a3049]">My Clubs</h2>
-            <p className="font-semibold text-[#1a3049]">{profile.primaryClub?.name ?? "No primary club recorded"}</p>
-            {profile.primaryClub ? (
-              <>
-                <span className="inline-block rounded-md bg-[#e7f4ec] px-3 py-2 text-xs font-semibold text-[#267054]">PRIMARY CLUB</span>
-                <p className="text-[13px] text-[#596b80]">Membership start date and club contact details are not available yet.</p>
-              </>
-            ) : <p className="text-[13px] text-[#596b80]">A primary club has not been provided. You may still belong to other clubs. Ask your club administrator to confirm your membership.</p>}
-          </section>
-          <section className={`${CARD_CLASS} space-y-3`}>
-            <h2 className="text-lg font-semibold text-[#1a3049]">My Associations</h2>
-            {profile.primaryAssociation ? (
-              <><p className="font-semibold text-[#1a3049]">{profile.primaryAssociation.name}</p><p className="text-[13px] text-[#596b80]">Primary association</p></>
-            ) : <p className="text-[13px] text-[#596b80]">No primary association recorded. Other association memberships are not available here yet.</p>}
-          </section>
-          </div>
-          <section className={`${CARD_CLASS} space-y-3`}>
-            <h2 className="text-lg font-semibold text-[#1a3049]">My Teams <span className="ml-2 rounded-full bg-blue-50 px-2.5 py-1 text-sm text-[#315f96]">{profile.teams.length}</span></h2>
-            {profile.teams.length === 0 ? <p className="text-[13px] text-[#596b80]">No active team assignments recorded.</p> : (
-              <><ul className="grid gap-3 text-[#1a3049] sm:grid-cols-2">{profile.teams.map(team => <li key={team.id} className="rounded-lg border border-[#dce4ee] bg-slate-50 p-4 font-semibold">{team.name}</li>)}</ul><p className="text-[13px] text-[#596b80]">The club, competition, and section for each team are not available yet.</p></>
-            )}
-          </section>
-          <section className={`${CARD_CLASS} space-y-3`}>
-            <h2 className="text-lg font-semibold text-[#1a3049]">More membership information</h2>
-            <p className="text-[13px] text-[#596b80]">Additional clubs and associations, membership dates, and team competition details are not available on this page yet.</p>
-          </section>
-        </>
-      )}
-      <p className="text-[13px] text-white md:text-[#596b80]">Membership changes are managed by your club administrator.</p>
-    </div>
-  );
+  const { email } = useContext(PlayerSessionContext);
+  const [result, setResult] = useState<{ identity: string; data?: PlayerMemberships; error?: string } | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
+    const controller = new AbortController();
+    setResult(null);
+    getPlayerMemberships(controller.signal).then(data => {
+      if (!controller.signal.aborted) setResult({ identity: email, data });
+    }).catch(() => {
+      if (!controller.signal.aborted) setResult({ identity: email, error: "We couldn’t load your memberships. Please try again." });
+    });
+    return () => controller.abort();
+  }, [email, attempt]);
+  const current = result?.identity === email ? result : null;
+  const data = current?.data;
+  const associations = data ? [...data.associations].sort(primaryFirst) : [];
+  const clubs = data ? [...data.clubs].sort(primaryFirst) : [];
+  // Club ownership alone does not establish a player's association membership.
+  const ungroupedClubs = clubs.filter(c => !associations.some(a => a.associationId === c.associationId));
+  const primaryAssociation = associations.find(a => a.isPrimary);
+  const clubCard = (club: PlayerMemberships["clubs"][number]) => <ClubCard key={data!.player.id + club.id} club={club} teams={data!.teams.filter(t => t.clubId === club.clubId).sort(currentFirst)} />;
+  return <div className="min-w-0 space-y-5 leading-[1.45]">
+    <h1 className="text-[28px] font-semibold text-white md:text-[34px] md:text-[#1a3049]">My Clubs &amp; Associations &amp; Teams</h1>
+    {!current ? <p role="status" className={card}>Loading your memberships…</p> : current.error ? <div className={card}><p role="alert">{current.error}</p><button onClick={() => setAttempt(a => a + 1)} className="mt-3 min-h-11 rounded-lg bg-[#1a3049] px-4 text-white">Try again</button></div> : data && <>
+      <section aria-label="Membership summary" className="flex flex-col gap-5 rounded-[32px] bg-[#1a3049] px-6 py-5 text-white xl:flex-row xl:items-center xl:justify-between">
+        <div className="min-w-0 text-center xl:text-left"><h2 className="text-xl font-bold [overflow-wrap:anywhere]">{data.player.displayName}</h2><p className="mt-1 text-[13px] text-[#bacbdf]">Player{primaryAssociation ? " · primary association: " + primaryAssociation.name : ""}</p></div>
+        <dl className="grid shrink-0 grid-cols-3 divide-x divide-[#3f72af] text-center">{[["Associations", new Set(associations.map(a => a.associationId)).size], ["Clubs", new Set(clubs.map(c => c.clubId)).size], ["Teams", new Set(data.teams.map(t => t.id)).size]].map(([label, count]) => <div key={label} className="px-2 sm:px-5"><dd className="text-3xl font-bold">{count}</dd><dt className="mt-0.5 text-[10px] font-medium uppercase text-[#bacbdf]">{label}</dt></div>)}</dl>
+      </section>
+      {associations.map(a => {
+        const associatedClubs = clubs.filter(c => c.associationId === a.associationId);
+        return <section key={a.id} className="space-y-3" aria-label={a.name}>
+          <div className="flex flex-col items-start gap-3 px-1 lg:flex-row lg:items-center lg:justify-between"><div className="min-w-0"><h2 className="text-lg font-bold text-white [overflow-wrap:anywhere] md:text-[#1a3049]">{a.name}</h2><p className="text-[13px] text-[#c4d3e5] md:text-[#586f8e]">{membershipDetail(a)}</p></div><Badge primary={a.isPrimary} kind="ASSOCIATION" /></div>
+          {associatedClubs.length ? associatedClubs.map(clubCard) : <p className={card + " text-center text-sm"}>No clubs recorded under this association yet.</p>}
+        </section>;
+      })}
+      {ungroupedClubs.length > 0 && <section className="space-y-3"><h2 className="text-lg font-bold text-white md:text-[#1a3049]">Other club memberships</h2>{ungroupedClubs.map(c => <div key={c.id}><p className="mb-2 text-sm text-white md:text-[#586f8e]">{c.associationName}</p>{clubCard(c)}</div>)}</section>}
+      {!associations.length && !clubs.length && <p className={card}>No association or club memberships recorded yet.</p>}
+    </>}
+  </div>;
 }
