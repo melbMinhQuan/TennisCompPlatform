@@ -46,7 +46,9 @@ frontend/api/standings.ts exports StandingsData and getStandings(signal).
 Set VITE_STANDINGS_API_URL to the agreed endpoint and restart/rebuild Vite.
 Expected response: { data: StandingsData }. Map other backend response shapes in
 this adapter. The contract currently contains playerId, playerName, myTeamIds,
-sections, ladders, standings, cohorts, rankings and finals. finals[] is
+sections, ladders, standings, cohorts, rankings and finals. Each section
+includes seasonStartDate (Season.start_date, YYYY-MM-DD), used to pick the latest
+season when there is no current one, so the order of the sections array does not matter. finals[] is
 { sectionId, premiersTeamId, runnersUpTeamId } per completed section, taken
 from the Grand Final result (PlayerAward SECTION_WINNER / RUNNER_UP in the workbook). See the type/snapshot for
 field names. Return complete arrays for the offered scopes; if the backend uses
@@ -56,3 +58,5 @@ The server must authenticate the viewer and supply their player identity and
 permitted data. Fetch includes credentials and supports cancellation on identity
 changes/unmount. API errors never fall back to Excel data. Authentication headers
 may be adapted here when the backend team finalizes session handling.
+
+**Logged-in players never see sample data.** Sample data (Chloe Cooper) is only a logged-out preview. If a player is logged in and this page's endpoint is not set yet, the page shows "not available yet" instead, so a real player never sees someone else's data as their own.

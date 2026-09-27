@@ -5,6 +5,7 @@ const baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replac
 
 async function request<T>(path: string, signal: AbortSignal, body?: unknown): Promise<T> {
   const response = await fetch(`${baseUrl}${path}`, {
+    credentials: 'include',
     method: body === undefined ? 'GET' : 'POST', signal,
     headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -14,8 +15,10 @@ async function request<T>(path: string, signal: AbortSignal, body?: unknown): Pr
   return json as T
 }
 
-export function login(email: string, password: string, signal: AbortSignal) {
-  return request<{ result: 'login_success' | 'login_failed' }>('/auth/login', signal, { email, password })
+export async function login(email: string, password: string, signal: AbortSignal) {
+  const response = await request<{ result: 'login_success' | 'login_failed' }>('/auth/login', signal, { email, password })
+  if (response.result !== 'login_success' && response.result !== 'login_failed') throw new Error('The login server returned an unexpected response.')
+  return response
 }
 
 export async function getDashboard(email: string, signal: AbortSignal) {

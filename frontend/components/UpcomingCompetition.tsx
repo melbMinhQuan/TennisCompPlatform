@@ -24,18 +24,18 @@ export default function UpcomingCompetition({
   return (
     <section
       className="flex min-w-0 min-h-[360px] flex-col
-        rounded-[32px] bg-white p-4"
+        rounded-2xl bg-white p-4"
     >
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
-        <h2 className="text-xl font-semibold text-black">
-          Upcoming Competition
+        <h2 className="text-xl font-semibold text-[#1a3049]">
+          Upcoming fixtures
         </h2>
 
         {hasCompetitions && (
           <Link
-            to="/dashboard/competitions"
-            className="text-sm font-medium text-cyan-600
+            to="/dashboard/matches?view=upcoming"
+            className="text-sm font-medium text-[#075bc5]
               hover:underline"
           >
             View all
@@ -59,24 +59,24 @@ export default function UpcomingCompetition({
                           border border-neutral-200 bg-white px-2 py-2
                           shadow-[0_1px_3px_rgba(0,0,0,0.06)]"
               >
-                <span className="text-[10px] font-semibold tracking-wide text-orange-500">
+                <span className="text-[10px] font-semibold tracking-wide text-brand">
                   {competition.month}
                 </span>
 
-                <span className="my-0.5 text-[26px] font-bold leading-none text-black">
+                <span className="my-0.5 text-[26px] font-bold leading-none text-[#1a3049]">
                   {competition.day}
                 </span>
 
-                <span className="text-[10px] font-semibold text-black">
+                <span className="text-[10px] font-semibold text-[#1a3049]">
                   {competition.weekday}
                 </span>
               </div>
 
               {/* Details */}
               <div className="min-w-0 flex-1">
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-[13px] font-semibold leading-4 text-black [overflow-wrap:anywhere]">
+                    <p className="text-[13px] font-semibold leading-4 text-[#1a3049] [overflow-wrap:anywhere]">
                       {competition.name}
                     </p>
 
@@ -98,7 +98,7 @@ export default function UpcomingCompetition({
                       </span>
                     )}
 
-                    <p className="mt-auto pt-2 text-[11px] font-semibold text-black">
+                    <p className="mt-auto pt-2 text-[11px] font-semibold text-[#1a3049]">
                       {competition.time}
                     </p>
                   </div>
@@ -115,11 +115,11 @@ export default function UpcomingCompetition({
         >
           <div>
             <p className="text-base font-medium text-slate-500">
-              No upcoming competitions
+              No upcoming fixtures
             </p>
 
-            <p className="mt-2 text-sm text-slate-400">
-              Your upcoming competitions will appear here.
+            <p className="mt-2 text-sm text-slate-500">
+              Your upcoming fixtures will appear here.
             </p>
           </div>
         </div>
@@ -127,10 +127,10 @@ export default function UpcomingCompetition({
 
       {/* Bottom button */}
       <Link
-        to="/dashboard/competitions"
+        to="/dashboard/matches?view=upcoming"
         className="mt-5 flex min-h-[44px] items-center
                   justify-center rounded-xl border border-slate-300
-                  text-sm font-semibold text-black
+                  text-sm font-semibold text-[#1a3049]
                   transition hover:bg-slate-50"
       >
         View full schedule

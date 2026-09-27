@@ -18,20 +18,20 @@ export default function PlayerRatings({
 }: PlayerRatingsProps) {
   return (
     <section
-      className="flex min-w-0 min-h-[360px] flex-col rounded-[32px] bg-white p-6"
+      className="flex min-w-0 min-h-[360px] flex-col rounded-2xl bg-white p-6"
     >
       {/* Title */}
-      <h2 className="text-center text-xl font-semibold text-blue-700">
+      <h2 className="text-center text-xl font-semibold text-brand">
         Player Ratings by UTR Sports
       </h2>
 
       {/* UTR data */}
       <div className="mt-6">
-        <p className="font-semibold text-black">
+        <p className="font-semibold text-[#1a3049]">
           Current UTR: {rating ?? "Not available"}
         </p>
 
-        <p className="mt-6 text-black">
+        <p className="mt-6 text-[#1a3049]">
           Rating supplied by Universal Tennis.
           Waverley Tennis does not calculate UTR.
         </p>
@@ -39,7 +39,7 @@ export default function PlayerRatings({
 
       {/* External links */}
       <div className="mt-auto pt-8">
-        <h3 className="text-lg font-semibold text-black">More information:</h3>
+        <h3 className="text-lg font-semibold text-[#1a3049]">More information:</h3>
 
         <div className="mt-4 flex flex-col items-center gap-3">
           {ratingResources.map((resource) => (
@@ -51,7 +51,7 @@ export default function PlayerRatings({
               className="flex min-h-[48px] w-full max-w-[280px]
                         items-center justify-center rounded-full
                         border border-black px-5 text-center
-                        text-sm font-medium text-purple-800
+                        text-sm font-medium text-[#075bc5]
                         underline underline-offset-2
                         transition hover:bg-slate-50"
               >

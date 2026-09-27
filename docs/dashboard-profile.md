@@ -24,7 +24,7 @@ When a player is logged in and API data is available, the dashboard uses the API
 
 The Profile page is also accessible without logging in.
 
-When no logged-in API data is available, temporary fallback data is displayed so the Profile page can still be viewed during frontend development.
+When no logged-in API data is available, temporary fallback data is displayed so the Profile page can still be viewed during frontend development. The fallback is Chloe Cooper (PLR005) from `competition_data.xlsx` (UTR 5.35; 27 finalised rubbers, 59% won), the same sample player as the other hardcoded pages.
 
 ### Match-related mock data
 These parts currently use the same temporary Excel-based data as the Matches pages:
@@ -98,7 +98,7 @@ Each item can link to:
 so the dashboard and matches pages share the same fixture data.
 
 ## Future API work
-When the Recent Activity and Upcoming Matches APIs are ready, the mock arrays can be replaced with API responses without redesigning the dashboard components.
+Recent Activity and Upcoming Competition already load through `getResults` / `getFixtures` in `frontend/api/matches.ts`. Setting `VITE_RESULTS_API_URL` and `VITE_FIXTURES_API_URL` switches them to the API without changing the dashboard components (see `docs/matches.md`).
 
 ## Logged-out profile access
 The Profile dashboard can be viewed without logging in.

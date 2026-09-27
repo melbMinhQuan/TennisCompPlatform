@@ -1,16 +1,17 @@
 import { Link, useParams } from "react-router";
-import { mockFixtures } from "../data/mock-fixtures";
-import {
-  MatchNotFound,
-  matchCardClass,
-  matchLabelClass,
-  matchLightButtonClass,
-} from "../components/MatchesUI";
+import { getFixtures } from "../api/matches";
+import { useApiData } from "../api/useApiData";
+import { matchCardClass, matchLabelClass, matchLightButtonClass, darkCardClass, pageClass, pageTitleClass } from "../components/MatchesUI";
+import MatchLoadState from "../components/MatchLoadState";
+import MatchNotFound from "../components/MatchNotFound";
+import { formatFixtureDate, formatTime } from "../utils/date-helpers";
 
 export default function MatchFixturePage() {
   const { fixtureId } = useParams();
+  const { data: fixtures, error, retry } = useApiData(getFixtures);
+  if (!fixtures) return <MatchLoadState error={error} retry={retry} />;
 
-  const fixture = mockFixtures.find(
+  const fixture = fixtures.find(
   (fixture) => fixture.id === fixtureId,
 );
 
@@ -24,24 +25,21 @@ export default function MatchFixturePage() {
   }
 
   return (
-    <div className="space-y-6 text-[#1a3049]">
+    <div className={pageClass}>
       <Link
         to="/dashboard/matches?view=upcoming"
         className={`${matchLightButtonClass} w-full min-[768px]:w-auto`}
       >
-        <span aria-hidden="true" className="mr-2">
-          ←
-        </span>
-        Upcoming matches
+        ‹ Upcoming matches
       </Link>
 
       <header>
-        <h1 className="text-[28px] font-bold leading-tight text-white min-[768px]:text-[32px] min-[768px]:text-[#1a3049]">
-          Fixture details
+        <h1 className={pageTitleClass}>
+          Fixture Details
         </h1>
       </header>
 
-      <section className="rounded-2xl bg-[#1a3049] p-5 text-white min-[768px]:p-6">
+      <section className={darkCardClass}>
         <p className="text-sm text-white/80">
           {fixture.competition} · Round {fixture.round}
         </p>
@@ -54,7 +52,7 @@ export default function MatchFixturePage() {
         </h2>
 
         <p className="mt-5 text-sm leading-6">
-          {fixture.dateLabel} · {fixture.timeLabel}
+          {formatFixtureDate(fixture.date)} · {formatTime(fixture.time)}
         </p>
 
         <p className="mt-1 text-sm text-white/75">
@@ -76,11 +74,11 @@ export default function MatchFixturePage() {
             {fixture.club}
           </p>
 
-          <p className="mt-3 text-sm leading-6 text-[#718196]">
+          <p className="mt-3 text-sm leading-6 text-muted">
             {fixture.team} · {fixture.side}
           </p>
 
-          <p className="mt-4 text-sm leading-6 text-[#718196]">
+          <p className="mt-4 text-sm leading-6 text-muted">
             This fixture is listed because you belong to this team.
             Your individual match selection is confirmed separately
             by your team manager.
@@ -98,7 +96,7 @@ export default function MatchFixturePage() {
                 {fixture.venue}
               </p>
 
-              <p className="mt-3 text-sm leading-6 text-[#718196]">
+              <p className="mt-3 text-sm leading-6 text-muted">
                 {fixture.address || "Address not supplied."}
               </p>
             </>
@@ -108,7 +106,7 @@ export default function MatchFixturePage() {
                 Venue details pending
               </p>
 
-              <p className="mt-3 text-sm leading-6 text-[#718196]">
+              <p className="mt-3 text-sm leading-6 text-muted">
                 The venue has not been confirmed yet. Please check
                 with your team manager before travelling.
               </p>
@@ -123,12 +121,12 @@ export default function MatchFixturePage() {
         </h2>
 
         
-        <p className="mt-4 text-sm leading-6 text-[#718196]">
+        <p className="mt-4 text-sm leading-6 text-muted">
             {fixture.association} · {fixture.season} · {fixture.section}
         </p>
 
-        <p className="text-sm leading-6 text-[#718196]">
-            {fixture.format} · Result not yet available
+        <p className="text-sm leading-6 text-muted">
+            {fixture.format} · {fixture.status === "Cancelled" ? "Fixture cancelled" : fixture.status === "Completed" ? "Fixture completed" : "Result not yet available"}
         </p>
 
         <Link

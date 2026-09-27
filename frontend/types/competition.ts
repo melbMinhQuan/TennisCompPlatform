@@ -7,7 +7,7 @@ export type CompetitionEntry = {
   season: string;
   section: string;
 
-  seasonStatus: "ACTIVE" | "COMPLETED";
+  seasonStatus: "ACTIVE" | "COMPLETED" | "ARCHIVED";
 
   player: {
     id: string;
@@ -26,8 +26,8 @@ export type CompetitionEntry = {
     homeTeam: string;
     awayTeam: string;
 
-    date: string;
-    time: string;
+    date: string | null;
+    time: string | null;
     timeZone: string;
 
     side: "Home" | "Away";

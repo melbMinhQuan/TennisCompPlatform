@@ -17,12 +17,15 @@ The matches frontend shows upcoming team fixtures and finalised match history fo
   - Displays a finalised result and scorecard.
   - Shows player/opponent names and set scores.
 
-- `frontend/components/Matches.tsx`
-  - Contains reusable match UI sections such as fixture cards and result rows.
+- `frontend/components/matches/`
+  - `UpcomingFixtureCard.tsx`, `ResultCard.tsx` and `ScorecardTable.tsx`: the cards and table used by the pages above.
 
 - `frontend/components/MatchesUI.tsx`
-  - Stores reusable Tailwind class constants and shared match UI helpers.
-  - This file is currently used and should not be deleted.
+  - Shared Tailwind class constants for every player page (page title, cards, buttons, tabs).
+  - `MatchLoadState.tsx` and `MatchNotFound.tsx` are the shared loading/error and not-found cards.
+
+- `frontend/utils/date-helpers.ts`
+  - Formats raw dates and times for display.
 
 - `frontend/data/mock-fixtures.ts`
   - Stores temporary hardcoded fixture and result data.
@@ -36,13 +39,22 @@ mockFixtures
 mockResults
 ```
 
+## Sample player
+The data is Chloe Cooper (PLR005) from `competition_data.xlsx`, the same sample player as
+My Clubs, Standings and Help. Her current team is Mount Waverley A (TEAM018).
+
 ## Mock fixture fields
-Fixtures currently use display-ready fields such as:
+Fixtures store raw values, the same as the API will send:
 
 ```ts
-dateLabel
-timeLabel
+date: "2026-09-27"   // YYYY-MM-DD, local to the venue; null when postponed with no new date
+time: "13:00"        // HH:mm, local to the venue
+status: "Scheduled" | "Postponed" | "Completed"
 ```
+
+`utils/date-helpers.ts` formats them for display (`formatFixtureDate`, `formatTime`,
+`formatResultDate`, `dateParts`), e.g. "SUN 27 SEP · 1:00 PM". A postponed fixture
+with no date shows "Date to be confirmed".
 
 ## Mock result fields
 Results use fields such as:
@@ -76,5 +88,14 @@ My matches
        Scorecard
 ```
 
-## Future API work
-When match APIs are complete, `mockFixtures` and `mockResults` can be replaced by API responses while keeping the existing page components and routes.
+## API handoff
+Pages load data through `frontend/api/matches.ts` (`getFixtures`, `getResults`) and the
+shared `useApiData` hook, which shows loading and error/retry states. The types
+`MatchFixture` and `MatchResult` in that file are the contract.
+
+- Set `VITE_FIXTURES_API_URL` and `VITE_RESULTS_API_URL` to the endpoints; each returns `{ data: [...] }`.
+- Without them, the pages use `mock-fixtures.ts`. With them, API errors show an error and
+  "Try again"; they never fall back to the hardcoded data.
+- The server works out the logged-in player. Map a different backend shape inside `matches.ts`.
+
+**Logged-in players never see sample data.** Sample data (Chloe Cooper) is only a logged-out preview. If a player is logged in and this page's endpoint is not set yet, the page shows "not available yet" instead, so a real player never sees someone else's data as their own.

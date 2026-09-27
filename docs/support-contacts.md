@@ -1,6 +1,6 @@
 # Help & Support: "Who should I contact?"
 
-Component: frontend/components/SupportContacts.tsx, shown on /dashboard/support.
+Component: frontend/components/support/SupportContacts.tsx, shown on /dashboard/support.
 
 Based on the functional requirement "Club information stored and shown… so teams
 know where to go and who to call" and the roles in competition_data.xlsx
@@ -28,3 +28,5 @@ getSupportContacts(signal). Set VITE_SUPPORT_CONTACTS_API_URL to the endpoint;
 expected response { data: SupportContactsData }. Any of team, club or
 association may be null, and any field may be null; the card then shows
 general advice instead. Errors never fall back to mock contacts.
+
+**Logged-in players never see sample data.** Sample data (Chloe Cooper) is only a logged-out preview. If a player is logged in and this page's endpoint is not set yet, the page shows "not available yet" instead, so a real player never sees someone else's data as their own.

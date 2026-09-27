@@ -1,147 +1,110 @@
-export type MockFixture = {
-  id: string;
-  competitionEntryId: string;
+import type { MatchFixture, MatchResult } from "../api/matches";
 
-  competition: string;
-  season: string;
-  association: string;
-  section: string;
-  format: string;
+// Hardcoded until the backend endpoints exist. Chloe Cooper (PLR005), the same sample
+// player as My Clubs, Standings and Help, copied from Project detail/competition_data.xlsx.
+// Her current team is TEAM018 Mount Waverley A (Weekend Senior, Winter 2026, Section 1).
 
-  round: number;
-
-  homeTeam: string;
-  awayTeam: string;
-
-  club: string;
-  team: string;
-
-  dateLabel: string;
-  timeLabel: string;
-
-  side: "Home" | "Away";
-
-  status: "Scheduled" | "Postponed" | "Completed";
-
-  venue: string | null;
-  address: string | null;
-};
-
-export type MockResult = {
-  id: string;
-  competition: string;
-  round: number;
-  dateLabel: string;
-
-  discipline: "Singles" | "Doubles";
-
-  players: string[];
-  opponents: string[];
-
-  club: string;
-  team: string;
-  section: string;
-
-  result: "W" | "L";
-
-  sets: {
-    playerGames: number;
-    opponentGames: number;
-  }[];
-};
-
-export const mockFixtures: MockFixture[] = [
+export const mockFixtures: MatchFixture[] = [
   {
-    id: "FIX0161",
-    competitionEntryId: "TEAM017",
-
+    // Round 13: moved from Sat 26 Sep to Sun 27 Sep (FixtureScheduleChange FSC002).
+    id: "FIX0162",
+    competitionEntryId: "TEAM018",
     competition: "Weekend Senior",
     season: "Winter 2026",
     association: "Waverley Tennis",
     section: "Section 1",
     format: "Team singles & doubles",
-
     round: 13,
-
-    homeTeam: "Syndal A",
-    awayTeam: "Glen Waverley A",
-
-    club: "Glen Waverley Tennis Club",
-    team: "Glen Waverley A",
-
-    dateLabel: "SUN 27 SEP",
-    timeLabel: "1:00 PM",
-
-    side: "Away",
-
+    homeTeam: "Mount Waverley A",
+    awayTeam: "Pinewood A",
+    club: "Mount Waverley Tennis Club",
+    team: "Mount Waverley A",
+    date: "2026-09-27",
+    time: "13:00",
+    side: "Home",
     status: "Scheduled",
-
-    venue: "Syndal Tennis Centre",
-    address: "68 Church Road, Syndal VIC 3106",
+    venue: "Mount Waverley Tennis Centre",
+    address: "24 Park Road, Mount Waverley VIC 3103",
   },
-
   {
+    // Round 14: moved from Mount Waverley Tennis Centre to the regional centre (FSC005).
     id: "FIX0165",
-    competitionEntryId: "TEAM017",
-
+    competitionEntryId: "TEAM018",
     competition: "Weekend Senior",
     season: "Winter 2026",
     association: "Waverley Tennis",
     section: "Section 1",
     format: "Team singles & doubles",
-
     round: 14,
-
     homeTeam: "Mount Waverley A",
     awayTeam: "Glen Waverley A",
-
-    club: "Glen Waverley Tennis Club",
-    team: "Glen Waverley A",
-
-    dateLabel: "SAT 03 OCT",
-    timeLabel: "1:00 PM",
-
-    side: "Away",
-
+    club: "Mount Waverley Tennis Club",
+    team: "Mount Waverley A",
+    date: "2026-10-03",
+    time: "13:00",
+    side: "Home",
     status: "Scheduled",
-
     venue: "Waverley Tennis Regional Centre",
     address: "500 Springvale Road, Glen Waverley VIC 3150",
   },
 ];
 
-export const mockResults: MockResult[] = [
+// Her four most recent finalised rubbers, newest first. Scores are from her side.
+export const mockResults: MatchResult[] = [
   {
-    id: "mock-result-1",
-
+    id: "RUB0441",
     competition: "Weekend Senior",
-    round: 11,
-    dateLabel: "12 SEP 2026",
-
-    discipline: "Doubles",
-
-    players: ["Raj Mitchell", "Mia Coleman"],
-
-    opponents: [
-      "Elena Roberts",
-      "Daniel Hill",
-    ],
-
-    club: "Glen Waverley Tennis Club",
-    team: "Glen Waverley A",
+    round: 9,
+    date: "2026-08-29",
+    discipline: "Singles",
+    players: ["Chloe Cooper"],
+    opponents: ["Mei Tran"],
+    club: "Mount Waverley Tennis Club",
+    team: "Mount Waverley A",
     section: "Section 1",
-
+    result: "L",
+    sets: [{ playerGames: 6, opponentGames: 7 }, { playerGames: 6, opponentGames: 3 }, { playerGames: 1, opponentGames: 6 }],
+  },
+  {
+    id: "RUB0424",
+    competition: "Weekend Senior",
+    round: 8,
+    date: "2026-08-22",
+    discipline: "Doubles",
+    players: ["Chloe Cooper", "Charlotte Reed"],
+    opponents: ["Samuel Smith", "Emily Wilson"],
+    club: "Mount Waverley Tennis Club",
+    team: "Mount Waverley A",
+    section: "Section 1",
+    result: "L",
+    sets: [{ playerGames: 6, opponentGames: 7 }, { playerGames: 6, opponentGames: 7 }],
+  },
+  {
+    id: "RUB0409",
+    competition: "Weekend Senior",
+    round: 7,
+    date: "2026-08-15",
+    discipline: "Doubles",
+    players: ["Ethan Wright", "Chloe Cooper"],
+    opponents: ["Luna Taylor", "Sana Barnes"],
+    club: "Mount Waverley Tennis Club",
+    team: "Mount Waverley A",
+    section: "Section 1",
+    result: "L",
+    sets: [{ playerGames: 6, opponentGames: 7 }, { playerGames: 6, opponentGames: 0 }, { playerGames: 3, opponentGames: 6 }],
+  },
+  {
+    id: "RUB0384",
+    competition: "Weekend Senior",
+    round: 4,
+    date: "2026-07-25",
+    discipline: "Singles",
+    players: ["Chloe Cooper"],
+    opponents: ["Sana Brown"],
+    club: "Mount Waverley Tennis Club",
+    team: "Mount Waverley A",
+    section: "Section 1",
     result: "W",
-
-    sets: [
-      {
-        playerGames: 6,
-        opponentGames: 3,
-      },
-      {
-        playerGames: 6,
-        opponentGames: 0,
-      },
-    ],
+    sets: [{ playerGames: 6, opponentGames: 2 }, { playerGames: 6, opponentGames: 0 }],
   },
 ];

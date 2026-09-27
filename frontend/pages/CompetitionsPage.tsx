@@ -1,52 +1,68 @@
-import { Link } from "react-router";
-import { competitionMock } from "../data/mock-competitions";
+import { Link, useSearchParams } from "react-router";
+import { getCompetitions } from "../api/matches";
+import { useApiData } from "../api/useApiData";
+import { matchBadgeClass, matchButtonClass, matchCardClass, pageClass, pageIntroClass, pageTitleClass } from "../components/MatchesUI";
+import MatchLoadState from "../components/MatchLoadState";
 
 export default function CompetitionsPage() {
-  const activeCompetitions = competitionMock.filter(
-    (competition) => competition.seasonStatus === "ACTIVE",
+  const [searchParams, setSearchParams] = useSearchParams();
+  const isPast = searchParams.get("view") === "past";
+  const { data: competitions, error, retry } = useApiData(getCompetitions);
+  if (!competitions) return <MatchLoadState error={error} retry={retry} />;
+
+  const visibleCompetitions = competitions.filter(
+    (competition) => isPast ? competition.seasonStatus !== "ACTIVE" : competition.seasonStatus === "ACTIVE",
   );
 
   const clubCount = new Set(
-    activeCompetitions.map((competition) => competition.club),
+    visibleCompetitions.map((competition) => competition.club),
   ).size;
 
   return (
-    <div className="space-y-6 text-[#1a3049]">
+    <div className={pageClass}>
       <header>
-        <h1 className="text-[28px] font-bold leading-tight text-white min-[768px]:text-[32px] min-[768px]:text-[#1a3049]">
-          My competitions
+        <h1 className={pageTitleClass}>
+          My Competitions
         </h1>
 
-        <p className="mt-5 text-sm leading-6 text-white/85 min-[768px]:text-[#526579]">
+        <p className={pageIntroClass}>
           See the club and team you represent in each season.
         </p>
       </header>
 
+      <div role="group" aria-label="Competition seasons" className="flex gap-3">
+        {([false, true] as const).map(past => <button key={String(past)} type="button" aria-pressed={isPast === past}
+          onClick={() => setSearchParams({ view: past ? "past" : "current" })}
+          className={`min-h-11 rounded-lg px-5 py-3 text-sm font-medium ${isPast === past ? "bg-brand text-white" : "bg-[#e8f0fa] text-ink"}`}>
+          {past ? "Past seasons" : "Current seasons"}
+        </button>)}
+      </div>
       <div className="flex flex-wrap items-center gap-3">
-        <span className="rounded-md bg-[#e5f4ec] px-3 py-1.5 text-xs font-semibold text-[#34806a]">
-          CURRENT SEASON · WINTER 2026
+        <span className="rounded-md bg-[#e5f4ec] px-3 py-1.5 text-xs font-semibold text-[#197354]">
+          {isPast ? "PAST SEASONS" : "CURRENT SEASONS"}
         </span>
 
-        <p className="text-sm text-white/85 min-[768px]:text-[#718196]">
-          {activeCompetitions.length} competitions · {clubCount} represented clubs
+        <p className="text-sm text-white/85 min-[768px]:text-muted">
+          {visibleCompetitions.length} competitions · {clubCount} represented clubs
         </p>
       </div>
 
+      {visibleCompetitions.length === 0 && <p className="rounded-2xl bg-white p-6 text-muted">No {isPast ? "past" : "current"} competition entries are recorded for you.</p>}
       <div className="grid gap-6">
-        {activeCompetitions.map((competition) => (
+        {visibleCompetitions.map((competition) => (
           <article
             key={competition.id}
-            className="min-w-0 rounded-2xl border border-[#dce4ee] bg-white p-5 min-[768px]:p-6"
+            className={matchCardClass}
           >
             <h2 className="text-lg font-semibold">
               {competition.name}
             </h2>
 
-            <span className="mt-3 inline-flex rounded-md bg-[#e5f4ec] px-2.5 py-1 text-xs font-semibold text-[#34806a]">
-              ACTIVE ENTRY
+            <span className="mt-3 inline-flex rounded-md bg-[#e5f4ec] px-2.5 py-1 text-xs font-semibold text-[#197354]">
+              {isPast ? "PAST ENTRY" : "ACTIVE ENTRY"}
             </span>
 
-            <p className="mt-4 text-xs font-medium uppercase tracking-wide text-[#718196]">
+            <p className="mt-4 text-xs font-medium uppercase tracking-wide text-muted">
               Representing
             </p>
 
@@ -54,7 +70,7 @@ export default function CompetitionsPage() {
               {competition.club}
             </p>
 
-            <div className="mt-3 space-y-1 text-sm leading-6 text-[#718196]">
+            <div className="mt-3 space-y-1 text-sm leading-6 text-muted">
               <p>
                 {competition.team} · {competition.section}
               </p>
@@ -70,7 +86,7 @@ export default function CompetitionsPage() {
 
             <Link
               to={`/dashboard/competitions/${competition.id}`}
-              className="mt-5 inline-flex min-h-11 items-center justify-center rounded-lg bg-[#3f72af] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-[#315e94] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3f72af]"
+              className={`${matchButtonClass} mt-5`}
             >
               View competition
             </Link>

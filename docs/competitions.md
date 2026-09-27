@@ -49,5 +49,17 @@ CompetitionDetailsPage.tsx
 - The detail page must check whether a next fixture exists before rendering fixture information.
 - The player name and player ID should come from the competition data instead of being hardcoded in the page.
 
-## Future API work
-When the competition API is complete, `mock-competitions.ts` can be replaced by API data while keeping the page layout and route structure mostly unchanged.
+## Sample player
+Chloe Cooper (PLR005) from `competition_data.xlsx`: Mount Waverley A (Weekend Senior,
+Winter 2026, current), Syndal A (Night Tennis, Autumn 2026) and Glen Waverley A
+(Weekend Senior, Winter 2025). Night Tennis uses format MF13, so it shows
+"Team singles & doubles" (2 singles + 1 doubles).
+
+## API handoff
+Both pages load data through `getCompetitions` in `frontend/api/matches.ts` and the shared
+`useApiData` hook (loading and error/retry states). Set `VITE_COMPETITIONS_API_URL` to the
+endpoint, returning `{ data: CompetitionEntry[] }` (type in `frontend/types/competition.ts`).
+`nextFixture.date` is YYYY-MM-DD and `nextFixture.time` is HH:mm. Without the variable the
+pages use `mock-competitions.ts`; API errors never fall back to it.
+
+**Logged-in players never see sample data.** Sample data (Chloe Cooper) is only a logged-out preview. If a player is logged in and this page's endpoint is not set yet, the page shows "not available yet" instead, so a real player never sees someone else's data as their own.

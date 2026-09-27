@@ -66,3 +66,5 @@ Mocks are used only when no teams endpoint is configured and memberships are
 also in mock mode. Live failures never fall back to mock rosters. HTTP 404
 shows not found, other failures allow retry, and an empty roster has its own
 message. Pending requests are aborted on navigation or identity changes.
+
+**Logged-in players never see sample data.** Sample data (Chloe Cooper) is only a logged-out preview. If a player is logged in and this page's endpoint is not set yet, the page shows "not available yet" instead, so a real player never sees someone else's data as their own.
