@@ -98,6 +98,9 @@ export default function PlayerLayout() {
   const isSupportPage = path === "/dashboard/support" || path === "/dashboard/rankings" || (path === "/dashboard/clubs" || path.startsWith("/dashboard/clubs/"));
   const isProfilePage = path === "/dashboard";
 
+  const isCompetitionPage = path === "/dashboard/competitions" || path.startsWith("/dashboard/competitions/");
+  const isMatchesPage = path === "/dashboard/matches" || path.startsWith("/dashboard/matches/");
+
   useEffect(() => {
     if (!isMobileMenuOpen) return;
 
@@ -212,14 +215,17 @@ export default function PlayerLayout() {
 
         {/* Main content */}
         <main
-          className={`min-w-0 flex-1 p-5 min-[768px]:rounded-l-[20px] min-[768px]:bg-[#e7e7e7]
-            ${
-              isSupportPage
-                ? "bg-transparent"
-                : isProfilePage
-                  ? "bg-gradient-to-r from-[#1a3049] to-[#3f72af] pt-8 min-[768px]:bg-none min-[768px]:pt-5"
-                  : "bg-[#e7e7e7]"
-            }`}
+          className={`min-w-0 flex-1 p-5 min-[768px]:rounded-l-[20px] ${
+            (isCompetitionPage || isMatchesPage)
+              ? "bg-gradient-to-r from-[#1a3049] to-[#3f72af] min-[768px]:bg-none min-[768px]:bg-[#eef1f4] min-[768px]:p-8"
+              : `min-[768px]:bg-[#e7e7e7] ${
+                isSupportPage
+                  ? "bg-transparent"
+                  : isProfilePage
+                    ? "bg-gradient-to-r from-[#1a3049] to-[#3f72af] pt-8 min-[768px]:bg-none min-[768px]:pt-5"
+                    : "bg-[#e7e7e7]"
+              }`
+          }`}
         >
           <Outlet />
         </main>

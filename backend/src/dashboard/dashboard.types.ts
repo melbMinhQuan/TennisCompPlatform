@@ -18,7 +18,7 @@ export interface ScheduleItem {
   venue: null
   opponents: (Reference & { kind: 'TEAM' })[]
   participationConfirmed: false
-  status: 'SCHEDULED' | 'COMPLETED' | 'CANCELLED'
+  status: 'SCHEDULED' | 'COMPLETED' | 'CANCELLED'| "POSTPONED"
   rescheduled: null
 }
 export interface ResultItem {

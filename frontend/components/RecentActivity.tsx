@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { DashboardData } from "../api/dashboard";
+import type { MockResult } from "../data/mock-fixtures";
 
 type CareerSummaryData = {
   matchesPlayed?: number | null;
@@ -10,7 +10,7 @@ type CareerSummaryData = {
 
 type RecentActivityProps = {
   careerSummary?: CareerSummaryData;
-  matches?: DashboardData["recentMatches"]["items"];
+  matches?: MockResult[];
   available?: boolean;
 };
 
@@ -63,52 +63,49 @@ export default function RecentActivity({
           ) : (
             <ul className="divide-y divide-[#e2e8f0]">
               {visibleMatches.map((match) => {
-                const date = match.date
-                  ? new Date(`${match.date.slice(0, 10)}T00:00:00Z`)
-                  : null;
-
-                const dateLabel =
-                  date && !Number.isNaN(date.getTime())
-                    ? date.toLocaleDateString("en-AU", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                        timeZone: "UTC",
-                      })
-                    : "Date not supplied";
+                const score = match.sets
+                  .map(
+                    (set) =>
+                      `${set.playerGames}–${set.opponentGames}`,
+                  )
+                  .join(" ");
 
                 return (
                   <li key={match.id} className="min-w-0 py-3 text-left">
                     <p className="mb-1 text-[12px] font-normal leading-4 text-neutral-500">
-                      {dateLabel}
+                      {match.dateLabel}
                     </p>
 
                     <div
                       className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 text-[12px] leading-5 text-black"
                     >
                       <span className="font-semibold [overflow-wrap:anywhere]">
-                        {match.competition.name}
+                        {match.competition}
                       </span>
 
-                      {match.round && (
-                        <span className="shrink-0 font-semibold">{match.round}</span>
-                      )}
+                      <span className="shrink-0 font-semibold">
+                        Round {match.round}
+                      </span>
 
                       <span className="shrink-0 font-normal text-neutral-600">
                         vs
                       </span>
 
                       <span className="min-w-0 font-semibold [overflow-wrap:anywhere]">
-                        {match.opponents
-                          .map((opponent) => opponent.name)
-                          .join(", ") || "Opponent not supplied"}
+                        {match.opponents.join(" & ")}
                       </span>
 
-                      <span
-                        className="ml-auto max-w-full rounded-lg bg-slate-100 px-2 py-0.5 text-[11px] font-medium leading-4 text-slate-700 [overflow-wrap:anywhere]"
-                      >
-                        {match.score || "Score not available"}
-                      </span>
+                      <div className="ml-auto flex items-center gap-2">
+                        <span
+                          className={`ml-auto rounded-lg px-3 py-1 text-[11px] font-semibold leading-4 ${
+                            match.result === "W"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-red-100 text-red-700"
+                          }`}
+                        >
+                          {match.result}, {score}
+                        </span>
+                      </div>
                     </div>
                   </li>
                 );

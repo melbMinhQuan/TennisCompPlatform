@@ -12,6 +12,11 @@ import './style.css'
 import LoginPage from './pages/LoginPage'
 import PlayerLayout from "./components/PlayerLayout";
 import SupportPage from './pages/SupportPage';
+import CompetitionsPage from "./pages/CompetitionsPage";
+import CompetitionDetailsPage from "./pages/CompetitionDetailsPage";
+import MatchesPage from "./pages/MatchesPage";
+import MatchFixturePage from "./pages/MatchFixturePage";
+import MatchScorecardPage from "./pages/MatchScorecardPage";
 
 function Navigation() {
   return <nav className="bg-slate-900 text-white">
@@ -72,12 +77,27 @@ function App() {
 
         <Route
           path="competitions"
-          element={<ComingSoonPage title="Competitions" />}
+          element={<CompetitionsPage />}
+        />
+
+        <Route
+          path="competitions/:entryId"
+          element={<CompetitionDetailsPage />}
         />
 
         <Route
           path="matches"
-          element={<ComingSoonPage title="Matches" />}
+          element={<MatchesPage />}
+        />
+
+        <Route
+          path="matches/scorecards/:resultId"
+          element={<MatchScorecardPage />}
+        />
+
+        <Route
+          path="matches/:fixtureId"
+          element={<MatchFixturePage />}
         />
 
         <Route

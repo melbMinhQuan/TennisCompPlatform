@@ -47,9 +47,10 @@ export default function UpcomingCompetition({
       {hasCompetitions ? (
         <div className="mt-4 space-y-3">
           {competitions.slice(0, 3).map((competition) => (
-            <div
+            <Link
               key={competition.id}
-              className="flex min-w-0 items-center gap-3 rounded-xl border border-[#e2e8f0] bg-white p-3"
+              to={`/dashboard/matches/${competition.id}`}
+              className="flex min-w-0 items-center gap-3 rounded-xl border border-[#e2e8f0] bg-white p-3 transition hover:bg-slate-50"
             >
               {/* Date */}
               <div
@@ -103,7 +104,7 @@ export default function UpcomingCompetition({
                   </div>
                 </div>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       ) : (
