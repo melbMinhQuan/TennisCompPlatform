@@ -50,7 +50,7 @@ export default function CompetitionDetailsPage() {
       </Link>
 
       <header>
-        <h1 className="text-[28px] font-bold leading-tight text-white min-[768px]:text-[32px]min-[768px]:text-[#1a3049]">
+        <h1 className="text-[28px] font-bold leading-tight text-white min-[768px]:text-[32px] min-[768px]:text-[#1a3049]">
           {competition.name}
         </h1>
 
