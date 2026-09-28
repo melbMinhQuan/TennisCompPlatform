@@ -9,3 +9,6 @@ players_login_data.xlsx
 # Excel lock files
 .~*
 ~$*
+
+# Claude Code personal settings
+.claude/settings.local.json
