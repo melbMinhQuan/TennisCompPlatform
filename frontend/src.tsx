@@ -1,54 +1,86 @@
+import PlayerSession from "./context/PlayerSession";
+import MyClubsPage from "./pages/MyClubsPage";
+import StandingsPage from "./pages/StandingsPage";
+import TeamDetailsPage from "./pages/TeamDetailsPage";
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Link, Route, Routes } from 'react-router'
 import Home from './pages/Home'
 import About from './pages/About'
 import DashboardDemo from './pages/DashboardDemo'
+import DashboardPage from './pages/DashboardPage'
 import './style.css'
 import LoginPage from './pages/LoginPage'
-
-function Navigation() {
-  return <nav className="bg-slate-900 text-white">
-    <div className="mx-auto flex max-w-5xl items-center justify-between p-4">
-      <Link className="font-bold" to="/">TennisComp</Link>
-      <details className="relative md:hidden">
-
-        <summary className="cursor-pointer list-none" aria-label="Open menu">
-          <svg className="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </summary>
-        
-        <div className="absolute right-0 top-8 z-10 grid w-32 gap-3 rounded bg-slate-800 p-4">
-          <Link to="/">Home</Link>
-          <Link to="/about">About us</Link>
-          <Link to="/demo">Dashboard demo</Link>
-        </div>
-      </details>
-      <div className="hidden gap-4 md:flex">
-        <Link to="/home">Home</Link>
-        <Link to="/about">About us</Link>
-        <Link to="/demo">Dashboard demo</Link>
-      </div>
-    </div>
-  </nav>
-}
+import PlayerLayout from "./components/PlayerLayout";
+import SupportPage from './pages/SupportPage';
+import CompetitionsPage from "./pages/CompetitionsPage";
+import CompetitionDetailsPage from "./pages/CompetitionDetailsPage";
+import MatchesPage from "./pages/MatchesPage";
+import MatchFixturePage from "./pages/MatchFixturePage";
+import MatchScorecardPage from "./pages/MatchScorecardPage";
+import SiteNavigation from "./components/SiteNavigation";
 
 function App() {
-  return <BrowserRouter>
+  return <PlayerSession><BrowserRouter>
     <Routes>
       <Route path="/" element={<LoginPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route
         path="/home"
-        element={<><Navigation /><Home /></>}
+        element={<><SiteNavigation /><Home /></>}
       />
       <Route
         path="/about"
-        element={<><Navigation /><About /></>}
+        element={<><SiteNavigation /><About /></>}
       />
       <Route path="/demo" element={<DashboardDemo />} />
+      <Route path="/dashboard" element={<PlayerLayout />}>
+        <Route index element={<DashboardPage />} />
+
+        <Route
+          path="competitions"
+          element={<CompetitionsPage />}
+        />
+
+        <Route
+          path="competitions/:entryId"
+          element={<CompetitionDetailsPage />}
+        />
+
+        <Route
+          path="matches"
+          element={<MatchesPage />}
+        />
+
+        <Route
+          path="matches/scorecards/:resultId"
+          element={<MatchScorecardPage />}
+        />
+
+        <Route
+          path="matches/:fixtureId"
+          element={<MatchFixturePage />}
+        />
+
+        <Route
+          path="clubs"
+          element={<MyClubsPage />}
+        />
+        <Route path="clubs/teams/:teamId" element={<TeamDetailsPage />} />
+
+        <Route
+          path="rankings"
+          element={<StandingsPage />}
+        />
+
+        <Route
+          path="support"
+          element={<SupportPage />}
+        />
+        <Route path="*" element={<section className="rounded-2xl bg-white p-6"><h1 className="text-2xl font-semibold">Page not found</h1><Link className="mt-4 inline-block text-brand underline" to="/dashboard">Return to your profile</Link></section>} />
+      </Route>
+      <Route path="*" element={<main className="p-8"><h1 className="text-2xl font-semibold">Page not found</h1><Link className="mt-4 inline-block text-brand underline" to="/login">Return to login</Link></main>} />
     </Routes>
-  </BrowserRouter>
+  </BrowserRouter></PlayerSession>
 }
 
 createRoot(document.getElementById('root')!).render(<App />)
