@@ -1,6 +1,6 @@
-import type { DashboardData, NotificationItem, Page, ResultItem, ScheduleItem } from '../../backend/src/dashboard/dashboard.types'
+import type { BestUtrRank, DashboardData, NotificationItem, Page, ResultItem, ScheduleItem } from '../../backend/src/dashboard/dashboard.types'
 import { request } from './client'
-export type { DashboardData, NotificationItem, Page, ResultItem, ScheduleItem }
+export type { BestUtrRank, DashboardData, NotificationItem, Page, ResultItem, ScheduleItem }
 
 const ALL_NOTIFICATIONS_LIMIT = '100'
 

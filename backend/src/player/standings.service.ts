@@ -31,7 +31,8 @@ export class StandingsService {
         }),
         this.prisma.ladderEntry.findMany({ include: { team: { select: { name: true } } }, orderBy: [{ sectionId: 'asc' }, { position: 'asc' }] }),
         this.prisma.playerStanding.findMany({ include: { player: playerName }, orderBy: [{ sectionId: 'asc' }, { position: 'asc' }] }),
-        this.prisma.rankingCohort.findMany({ orderBy: { name: 'asc' } }),
+        // Singles first: the page opens on the first cohort, and singles is the default discipline everywhere else.
+        this.prisma.rankingCohort.findMany({ orderBy: [{ discipline: 'asc' }, { name: 'asc' }] }),
         this.prisma.rankingEntry.findMany({ include: { player: playerName }, orderBy: [{ cohortId: 'asc' }, { asOf: 'desc' }, { rank: 'asc' }] }),
         this.prisma.playerAward.findMany({
           where: { awardType: { in: ['SECTION_WINNER', 'RUNNER_UP'] }, teamId: { not: null } },

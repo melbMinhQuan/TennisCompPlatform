@@ -39,6 +39,14 @@ export function formatDateChange(details: Record<string, unknown> | null) {
 }
 
 /**
+ * "Top 12%" from a percentile of 88 (better than 88% of the group). Never "Top 0%": the
+ * best player in a group is still in its top 1%.
+ */
+export function formatTopPercent(percentileRank: number) {
+  return `Top ${Math.max(1, Math.round(100 - percentileRank))}%`;
+}
+
+/**
  * "Round 13" for a numbered round, or the finals label ("Grand Final"), which has no number.
  * A numbered round is never renamed: round 5 is not a "Round of 32".
  */

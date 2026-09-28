@@ -79,7 +79,6 @@ layout is fixed.
 
 | What | Where | Data available | What it would take |
 | --- | --- | --- | --- |
-| "UTR Best Rank" always "Not available" | [`CareerSummary.tsx:49`](../frontend/components/profile/CareerSummary.tsx#L49); backend sends `bestUtrRank: null` | `ranking_entry` (rank and percentile per cohort) | The contract in `dashboardapi.md` wants a percentile *and* its cohort ("Top 12% · Waverley Tennis adult singles"). The box shows one number, which would read as a global rank. |
 | "Melbourne time" labels | [`MatchFixturePage.tsx:60`](../frontend/pages/MatchFixturePage.tsx#L60), [`MatchesPage.tsx:63`](../frontend/pages/MatchesPage.tsx#L63) | `venue.time_zone` | Correct today, because all 13 venues are `Australia/Melbourne`. It would be wrong for a venue in another zone. |
 
 ## 3. Display-only changes made while connecting
@@ -110,9 +109,10 @@ readable member number to `Player`.
 It appears in [`PlayerProfile.tsx:44`](../frontend/components/PlayerProfile.tsx#L44) and
 [`CompetitionEntryCard.tsx:21`](../frontend/components/competitions/CompetitionEntryCard.tsx#L21).
 
-**c. "UTR Best Rank".** Needs a layout change (see 2c). The notifications list is now built:
-the card shows the four newest and View All loads the rest. Marking notifications as read is not
-built yet; it waits for real sessions (see f).
+**c. Done: notifications list and "UTR Best Rank".** The notifications card shows the four
+newest and View All loads the rest. UTR Best Rank shows the best singles percentile as
+"Top 72%" with its group name underneath. Still open: marking notifications as read waits for
+real sessions (see f), and there is no doubles best rank on the card.
 
 **d. Past fixtures still listed as upcoming.** Round 13 (Sun 27 Sep) is still `SCHEDULED`
 because no result has been entered, so "Upcoming" keeps listing it after the date has passed.

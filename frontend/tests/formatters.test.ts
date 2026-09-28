@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { formatDateChange, formatRound, timeAgo } from "../utils/formatters";
+import { formatDateChange, formatRound, formatTopPercent, timeAgo } from "../utils/formatters";
 import { dateParts, formatFixtureDate, formatResultDate, formatTime } from "../utils/date-helpers";
 
 const NOW = Date.parse("2026-09-28T12:00:00Z");
@@ -49,5 +49,14 @@ describe("FE-004: fixture and result dates", () => {
     expect(formatTime("00:05")).toBe("12:05 AM");
     expect(formatTime(null)).toBe("Time to be confirmed");
     expect(formatFixtureDate(null)).toBe("Date to be confirmed");
+  });
+});
+
+describe("FE-007: UTR best rank as a top percentage", () => {
+  test("percentile 88 is the top 12%, and the best player is never the top 0%", () => {
+    expect(formatTopPercent(88)).toBe("Top 12%");
+    expect(formatTopPercent(28)).toBe("Top 72%");
+    expect(formatTopPercent(87.6)).toBe("Top 12%");
+    expect(formatTopPercent(100)).toBe("Top 1%");
   });
 });

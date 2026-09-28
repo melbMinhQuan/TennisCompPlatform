@@ -22,6 +22,15 @@ export interface ScheduleItem {
   rescheduled: null
 }
 /** One in-app notification. `details` depends on `type`; see docs/dashboardapi.md. */
+/** The player's best recorded standing within one ranking group. Not a global rank. */
+export interface BestUtrRank {
+  /** 0-100 within the cohort; 88 means better than 88% of it, shown as "Top 12%". */
+  percentileRank: number
+  rank: number
+  cohort: Reference
+  discipline: 'SINGLES' | 'DOUBLES' | null
+  recordedAt: string
+}
 export interface NotificationItem {
   id: string
   type: string
@@ -84,7 +93,7 @@ export interface DashboardData {
     unknownOutcomes: number
     winPercentage: number | null
     titlesWon: number | null
-    bestUtrRank: null
+    bestUtrRank: BestUtrRank | null
   }
   messages: { available: false; unreadCount: null }
 }

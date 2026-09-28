@@ -12,3 +12,7 @@ players_login_data.xlsx
 
 # Claude Code personal settings
 .claude/settings.local.json
+
+# Playwright output
+test-results/
+playwright-report/

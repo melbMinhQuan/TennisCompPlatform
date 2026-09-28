@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { getDashboard, getMatches, login, type DashboardData, type Page, type ResultItem, type ScheduleItem } from '../api/dashboard'
+import { formatTopPercent } from '../utils/formatters'
 
 function Card({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
   return <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -139,7 +140,8 @@ export default function DashboardDemo() {
             <Card title="Recent results" action={<button className={link} onClick={() => openList('results')}>View all</button>}><MatchList items={data.recentMatches.items} /></Card>
             <div className="md:col-span-2"><Card title="Career summary"><div className="grid grid-cols-2 gap-4 sm:grid-cols-4">{[
               ['Matches played', data.careerSummary.matchesPlayed], ['Win %', data.careerSummary.winPercentage],
-              ['Titles', data.careerSummary.titlesWon], ['Best UTR rank', data.careerSummary.bestUtrRank],
+              ['Titles', data.careerSummary.titlesWon],
+              ['Best UTR rank', data.careerSummary.bestUtrRank && `${formatTopPercent(data.careerSummary.bestUtrRank.percentileRank)} · ${data.careerSummary.bestUtrRank.cohort.name}`],
             ].map(([label, value]) => <div key={label}><p className="text-sm text-slate-500">{label}</p><p className="mt-1 text-xl font-semibold">{value ?? '—'}</p></div>)}</div><p className="mt-4 text-xs text-slate-500">Totals use finalised personal results. Unknown outcomes and unavailable metrics are not estimated.</p></Card></div>
           </div>
         </div>

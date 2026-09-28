@@ -301,8 +301,8 @@ Unread count is `null` when notifications are unavailable, not a false zero.
   matchesPlayed × 100, rounded to one decimal; return `null` if zero played or any
   unknown outcome remains. Exclude DRAFT/PENDING_CONFIRMATION/UNDER_CORRECTION.
 - `titlesWon` is `null` until awards exist; zero only when confirmed no awards.
-- When available, `bestUtrRank` is `{percentileRank:88, cohort:{id,name},
-  discipline:"SINGLES", recordedAt:"..."}`. Display “Top 12%” and its cohort.
+- Implemented: `bestUtrRank` is `{percentileRank:88, rank:12, cohort:{id,name},
+  discipline:"SINGLES", recordedAt:"..."}` (best singles percentile across snapshots). Display “Top 12%” and its cohort.
   This is the best recorded percentile within the selected cohort/discipline,
   not a global ranking claim. No history → `null`.
 
