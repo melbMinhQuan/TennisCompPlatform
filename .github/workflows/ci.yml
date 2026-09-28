@@ -1,0 +1,41 @@
+# Runs on every push and every pull request into main: installs the project the
+# same way a new teammate would, then tests and builds both applications.
+# A red cross on a pull request means one of these steps failed; open the run
+# to see which test ID broke (they match "TennisComp testing plan.xlsx").
+name: CI
+
+on:
+  push:
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies (exactly as locked)
+        run: npm ci
+
+      # The backend imports types generated from schema.prisma; no database is needed for this.
+      - name: Generate the Prisma client
+        run: npm run prisma:generate --workspace=backend
+
+      - name: Backend tests
+        run: npm test --workspace=backend
+
+      - name: Frontend tests
+        run: npm test --workspace=frontend
+
+      - name: Frontend build (type-check and bundle)
+        run: npm run build --workspace=frontend

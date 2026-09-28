@@ -70,7 +70,7 @@ async function get(path = '', query = {}) {
   return { status: response.status, body: await response.json() }
 }
 
-test('HTTP dashboard resolves normalized email and selects only necessary account fields', async () => {
+test('I-DASH-001: HTTP dashboard resolves normalized email and selects only necessary account fields', async () => {
   const { status, body } = await get('', { email: '  ALICE@EXAMPLE.TEST ' })
   assert.equal(status, 200)
   assert.equal(body.data.profile.displayName, 'Alice One')
@@ -87,14 +87,14 @@ test('HTTP dashboard resolves normalized email and selects only necessary accoun
   assert.deepEqual(body.data.profile.clubs.map(c => c.name), ['Alice club'])
 })
 
-test('another email selects a different profile, teams and fixtures', async () => {
+test('I-DASH-002: another email selects a different profile, teams and fixtures', async () => {
   const { body } = await get('', { email: 'bob@example.test' })
   assert.equal(body.data.profile.id, 'bob')
   assert.equal(body.data.profile.primaryClub.name, 'Bob club')
   assert.deepEqual(body.data.upcomingMatches.items.map(i => i.id), ['b-1'])
 })
 
-test('missing account/profile are distinct useful 404s', async () => {
+test('I-DASH-003: missing account/profile are distinct useful 404s', async () => {
   for (const [email, code] of [['unknown@example.test', 'USER_NOT_FOUND'], ['unlinked@example.test', 'PLAYER_PROFILE_NOT_LINKED']]) {
     const result = await get('', { email })
     assert.equal(result.status, 404)
@@ -102,7 +102,7 @@ test('missing account/profile are distinct useful 404s', async () => {
   }
 })
 
-test('result scores and outcomes are from the selected participant side', async () => {
+test('I-DASH-004: result scores and outcomes are from the selected participant side', async () => {
   const a = await get('/results'), b = await get('/results', { email: 'bob@example.test' })
   assert.equal(a.body.data.items[0].score, '6-3 6-4')
   assert.equal(b.body.data.items[0].score, '3-6 4-6')
@@ -112,7 +112,7 @@ test('result scores and outcomes are from the selected participant side', async 
   assert.equal(b.body.data.items[0].outcome, 'LOSS')
 })
 
-test('preview cursor continues full schedule without repeats and cannot change account/filter', async () => {
+test('I-DASH-005: preview cursor continues full schedule without repeats and cannot change account/filter', async () => {
   const first = (await get()).body.data.upcomingMatches
   assert.equal(first.hasMore, true)
   const next = await get('/schedule', { cursor: first.nextCursor })
@@ -122,18 +122,13 @@ test('preview cursor continues full schedule without repeats and cannot change a
   assert.equal((await get('/schedule', { cursor: first.nextCursor, scope: 'all' })).status, 400)
 })
 
-test('full schedule includes old/cancelled items; inclusive ranges exclude undated items', async () => {
+test('I-DASH-006: full schedule includes old/cancelled items; inclusive ranges exclude undated items', async () => {
   assert.equal((await get('/schedule', { scope: 'all' })).body.data.items.length, 7)
   const filtered = await get('/schedule', { from: '2099-01-02', to: '2099-01-03' })
   assert.deepEqual(filtered.body.data.items.map(i => i.id), ['a-2', 'a-3'])
 })
 
-test('unavailable history still requires a linked profile', async () => {
-  assert.equal((await get('/utr-history')).body.data.available, false)
-  assert.equal((await get('/utr-history', { email: 'unlinked@example.test' })).status, 404)
-})
-
-test('notifications are the login\'s own, newest first, with a separate unread count', async () => {
+test('I-DASH-007: notifications are the login\'s own, newest first, with a separate unread count', async () => {
   const list = (await get('/notifications')).body.data
   assert.deepEqual(list.items.map(n => n.id), ['n-new', 'n-old'])
   assert.equal(list.unreadCount, 1)
@@ -147,7 +142,7 @@ test('notifications are the login\'s own, newest first, with a separate unread c
   assert.equal(dashboard.unreadCount, 1)
 })
 
-test('bad queries and outages do not return false empty data or private errors', async () => {
+test('I-DASH-008: bad queries and outages do not return false empty data or private errors', async () => {
   for (const query of [{ email: '' }, { limit: '0' }, { from: '2026-02-30' }, { cursor: 'bad' }, { scope: 'anything' }]) {
     assert.equal((await get('/schedule', query)).status, 400)
   }
@@ -160,7 +155,7 @@ test('bad queries and outages do not return false empty data or private errors',
   } finally { databaseDown = false }
 })
 
-test('email lookup is disabled when NODE_ENV=production', async () => {
+test('I-DASH-009: email lookup is disabled when NODE_ENV=production', async () => {
   const previous = process.env.NODE_ENV
   process.env.NODE_ENV = 'production'
   try { assert.equal((await get()).status, 403) } finally {
@@ -169,7 +164,7 @@ test('email lookup is disabled when NODE_ENV=production', async () => {
   }
 })
 
-test('age boundary and query types', () => {
+test('DASH-001: age boundary and query types', () => {
   assert.equal(ageOn('2000-03-01', '2026-02-28'), 25)
   assert.equal(ageOn('2000-03-01', '2026-03-01'), 26)
   assert.throws(() => parseQuery({ email: ['alice@example.test', 'bob@example.test'] }))

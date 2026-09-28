@@ -3,7 +3,7 @@ const assert = require('node:assert/strict')
 const { MockUtrProvider, EngageUtrProvider, mapRatings } = require('../dist/utr/utr.provider')
 const { UtrService } = require('../dist/utr/utr.service')
 
-test('mock uses the shared contract and returns independent fixtures', async () => {
+test('UTR-001: mock uses the shared contract and returns independent fixtures', async () => {
   const provider = new MockUtrProvider()
   const first = await provider.getRatings()
   assert.equal(first.source, 'mock')
@@ -12,7 +12,7 @@ test('mock uses the shared contract and returns independent fixtures', async () 
   assert.equal((await provider.getRatings()).singles, 6.25)
 })
 
-test('mapping preserves missing ratings and estimated ranges, rejects invalid responses', () => {
+test('UTR-002: mapping preserves missing ratings and estimated ranges, rejects invalid responses', () => {
   const body = { UTR: { Singles: null, Doubles: null, UnverifiedSingles: null, UnverifiedDoubles: null, Estimated: '4.00-6.00' } }
   assert.equal(mapRatings(body, 'utr').estimated, '4.00-6.00')
   assert.equal(mapRatings(body, 'utr').singles, null)
@@ -20,7 +20,7 @@ test('mapping preserves missing ratings and estimated ranges, rejects invalid re
   assert.throws(() => mapRatings({ UTR: { ...body.UTR, Singles: '6.25' } }, 'utr'))
 })
 
-test('live adapter sends the player token and sanitizes failures without mock fallback', async (t) => {
+test('UTR-003: live adapter sends the player token and sanitizes failures without mock fallback', async (t) => {
   const provider = new EngageUtrProvider('https://example.com/api/v1')
   await assert.rejects(provider.getRatings(), /not connected/)
   const fetchMock = t.mock.method(global, 'fetch', async (url, options) => {
@@ -36,7 +36,7 @@ test('live adapter sends the player token and sanitizes failures without mock fa
   await assert.rejects(provider.getRatings('player-token'), /Could not retrieve UTR ratings/)
 })
 
-test('configuration fails closed and refuses production mocks', async () => {
+test('UTR-004: configuration fails closed and refuses production mocks', async () => {
   const originalMode = process.env.UTR_PROVIDER
   const originalEnv = process.env.NODE_ENV
   try {
