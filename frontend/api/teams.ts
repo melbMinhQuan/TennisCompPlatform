@@ -1,6 +1,7 @@
-import { membershipsAreMock, type MembershipTeam } from "./memberships";
+import type { MembershipTeam } from "./memberships";
 import { mockMemberships } from "../data/mock-memberships";
 import { getMockTeamMembers } from "../data/mock-team-members";
+import { ApiError, getPlayerData } from "./client";
 
 export type TeamDetails = MembershipTeam & {
   clubName: string;
@@ -14,17 +15,14 @@ export type TeamDetails = MembershipTeam & {
   }[];
 };
 
-// Configure the agreed teams collection URL; team ID is appended by this adapter.
-// Backend authorizes the viewer and returns only permitted roster information.
+// Logged out: the sample roster. Logged in: GET /api/v1/player/teams/:teamId, which only
+// answers for a team the player is on; any other team is 404, shown as "not found".
 export async function getTeamDetails(
   teamId: string,
   signal: AbortSignal,
   identity?: string,
 ): Promise<TeamDetails | null> {
-  const baseUrl = import.meta.env.VITE_TEAMS_API_URL as string | undefined;
-  if (!baseUrl && identity)
-    throw new Error("Team details are not available yet.");
-  if (!baseUrl && membershipsAreMock) {
+  if (!identity) {
     const team = mockMemberships.teams.find((t) => t.id === teamId);
     if (!team) return null;
     const club = mockMemberships.clubs.find((c) => c.clubId === team.clubId)!;
@@ -35,14 +33,16 @@ export async function getTeamDetails(
       members: getMockTeamMembers(teamId, mockMemberships.player.id),
     });
   }
-  if (!baseUrl) throw new Error("Team details are not available yet.");
-  const response = await fetch(
-    `${baseUrl.replace(/\/$/, "")}/${encodeURIComponent(teamId)}`,
-    { signal, credentials: "include" },
-  );
-  if (response.status === 404) return null;
-  if (!response.ok)
-    throw new Error("We couldn’t load this team. Please try again.");
-  const body = (await response.json()) as { data: TeamDetails };
-  return body.data;
+  try {
+    return await getPlayerData<TeamDetails>(
+      `teams/${encodeURIComponent(teamId)}`,
+      identity,
+      signal,
+      "We couldn’t load this team. Please try again.",
+    );
+  } catch (error) {
+    // 404 (someone else's team) and 400 (not a team ID at all) both mean "not found" here.
+    if (error instanceof ApiError && (error.status === 404 || error.status === 400)) return null;
+    throw error;
+  }
 }

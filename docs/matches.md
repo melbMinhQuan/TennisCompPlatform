@@ -93,9 +93,14 @@ Pages load data through `frontend/api/matches.ts` (`getFixtures`, `getResults`) 
 shared `useApiData` hook, which shows loading and error/retry states. The types
 `MatchFixture` and `MatchResult` in that file are the contract.
 
-- Set `VITE_FIXTURES_API_URL` and `VITE_RESULTS_API_URL` to the endpoints; each returns `{ data: [...] }`.
-- Without them, the pages use `mock-fixtures.ts`. With them, API errors show an error and
-  "Try again"; they never fall back to the hardcoded data.
-- The server works out the logged-in player. Map a different backend shape inside `matches.ts`.
+- Logged in: `GET /api/v1/player/fixtures?email=` and `GET /api/v1/player/results?email=`, each
+  returning `{ data: [...] }`. Fixtures cover every team the player is actively registered in, all
+  statuses. Results are the player's FINALISED rubbers, newest first.
+- A result's `W`/`L` is the rubber's recorded `winner_side` (retirements, walkovers, forfeits),
+  otherwise whoever won more sets, then more games.
+- Finals have `round: null` and a `roundLabel` ("Semi Final", "Grand Final"); the pages print it
+  through `formatRound` in `utils/formatters.ts`.
+- Logged out, the pages use `mock-fixtures.ts`. API errors show an error and "Try again"; they
+  never fall back to the hardcoded data.
 
-**Logged-in players never see sample data.** Sample data (Chloe Cooper) is only a logged-out preview. If a player is logged in and this page's endpoint is not set yet, the page shows "not available yet" instead, so a real player never sees someone else's data as their own.
+**Logged-in players never see sample data.** Sample data (Chloe Cooper) is only a logged-out preview. A logged-in player always gets their own data from the backend; if that request fails the page shows an error and "Try again", never the sample.

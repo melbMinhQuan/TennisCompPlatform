@@ -26,12 +26,10 @@ The Profile page is also accessible without logging in.
 
 When no logged-in API data is available, temporary fallback data is displayed so the Profile page can still be viewed during frontend development. The fallback is Chloe Cooper (PLR005) from `competition_data.xlsx` (UTR 5.35; 27 finalised rubbers, 59% won), the same sample player as the other hardcoded pages.
 
-### Match-related mock data
-These parts currently use the same temporary Excel-based data as the Matches pages:
-- Recent Activity → `mockResults`
-- Upcoming Competition → `mockFixtures`
-
-This keeps the Dashboard and Matches pages consistent while the backend match APIs are still incomplete.
+### Match data
+These parts use the same adapters as the Matches pages, so both always agree:
+- Recent Activity → `getResults` (`GET /api/v1/player/results`; `mockResults` when logged out)
+- Upcoming Competition → `getFixtures` (`GET /api/v1/player/fixtures`; `mockFixtures` when logged out)
 
 ## Data flow
 
@@ -98,7 +96,7 @@ Each item can link to:
 so the dashboard and matches pages share the same fixture data.
 
 ## Future API work
-Recent Activity and Upcoming Competition already load through `getResults` / `getFixtures` in `frontend/api/matches.ts`. Setting `VITE_RESULTS_API_URL` and `VITE_FIXTURES_API_URL` switches them to the API without changing the dashboard components (see `docs/matches.md`).
+Recent Activity and Upcoming Competition load through `getResults` / `getFixtures` in `frontend/api/matches.ts`: from the backend when logged in, from `mockResults` / `mockFixtures` when logged out (see `docs/matches.md`). The career summary's Win % and Titles are now filled by the dashboard endpoint; "UTR Best Rank" is still null (see `docs/hardcoded-values.md`).
 
 ## Logged-out profile access
 The Profile dashboard can be viewed without logging in.

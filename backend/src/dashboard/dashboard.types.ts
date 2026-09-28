@@ -21,6 +21,17 @@ export interface ScheduleItem {
   status: 'SCHEDULED' | 'COMPLETED' | 'CANCELLED'| "POSTPONED"
   rescheduled: null
 }
+/** One in-app notification. `details` depends on `type`; see docs/dashboardapi.md. */
+export interface NotificationItem {
+  id: string
+  type: string
+  title: string
+  message: string
+  createdAt: string
+  readAt: string | null
+  details: Record<string, unknown> | null
+  target: { type: string; id: string } | null
+}
 export interface ResultItem {
   id: string
   kind: 'RUBBER'
@@ -31,7 +42,7 @@ export interface ResultItem {
   event: 'Singles' | 'Doubles'
   round: string | null
   opponents: (Reference & { kind: 'PLAYER' })[]
-  outcome: null
+  outcome: 'WIN' | 'LOSS' | null
   score: string | null
   sets: { number: number | null; playerGames: number | null; opponentGames: number | null }[]
 }
@@ -47,6 +58,8 @@ export interface DashboardData {
     email: string
     phone: string | null
     primaryClub: Reference | null
+    /** Every active club membership, primary first. */
+    clubs: Reference[]
     primaryAssociation: Reference | null
     teams: Reference[]
   }
@@ -61,7 +74,7 @@ export interface DashboardData {
     historyAvailable: false
     lastSyncedAt: string | null
   }
-  notifications: Page<never> & { unreadCount: null }
+  notifications: Page<NotificationItem> & { unreadCount: number | null }
   upcomingMatches: Page<ScheduleItem>
   recentMatches: Page<ResultItem>
   careerSummary: {
@@ -69,8 +82,8 @@ export interface DashboardData {
     matchesWon: number | null
     matchesLost: number | null
     unknownOutcomes: number
-    winPercentage: null
-    titlesWon: null
+    winPercentage: number | null
+    titlesWon: number | null
     bestUtrRank: null
   }
   messages: { available: false; unreadCount: null }

@@ -24,9 +24,11 @@ only the club's or association's official contacts.
 frontend/data/mock-support-contacts.ts holds Chloe Cooper's (PLR005) contacts
 from the workbook (TEAM018/UR012, CLB01/UR003, ASSOC01/UR002).
 frontend/api/support-contacts.ts exports SupportContactsData and
-getSupportContacts(signal). Set VITE_SUPPORT_CONTACTS_API_URL to the endpoint;
-expected response { data: SupportContactsData }. Any of team, club or
+getSupportContacts(signal). Logged in, it calls
+GET /api/v1/player/support-contacts?email=, which returns { data: SupportContactsData }. The team is
+the player's team in an ACTIVE season; names come from the unrevoked TEAM_MANAGER, CLUB_ADMIN and
+RECORDS_SECRETARY roles. Any of team, club or
 association may be null, and any field may be null; the card then shows
 general advice instead. Errors never fall back to mock contacts.
 
-**Logged-in players never see sample data.** Sample data (Chloe Cooper) is only a logged-out preview. If a player is logged in and this page's endpoint is not set yet, the page shows "not available yet" instead, so a real player never sees someone else's data as their own.
+**Logged-in players never see sample data.** Sample data (Chloe Cooper) is only a logged-out preview. A logged-in player always gets their own data from the backend; if that request fails the page shows an error and "Try again", never the sample.

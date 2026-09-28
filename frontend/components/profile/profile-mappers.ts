@@ -3,6 +3,7 @@ import type { MatchFixture } from "../../api/matches";
 import type { PlayerProfileData } from "../PlayerProfile";
 import type { UpcomingCompetitionItem } from "../UpcomingCompetition";
 import { dateParts, formatTime } from "../../utils/date-helpers";
+import { formatRound } from "../../utils/formatters";
 
 /** Converts the dashboard API profile into what the profile card shows. */
 export function toPlayerProfile(profile: DashboardData["profile"]): PlayerProfileData {
@@ -14,7 +15,7 @@ export function toPlayerProfile(profile: DashboardData["profile"]): PlayerProfil
     gender: profile.gender,
     email: profile.email,
     phone: profile.phone,
-    clubs: profile.primaryClub ? [profile.primaryClub.name] : [],
+    clubs: profile.clubs.map((club) => club.name),
     teams: profile.teams.map((team) => team.name),
     association: profile.primaryAssociation?.name ?? null,
     playerId: profile.id,
@@ -34,7 +35,7 @@ export function toUpcomingCompetitions(fixtures: MatchFixture[]): UpcomingCompet
         day,
         weekday,
         name: fixture.competition,
-        event: `${fixture.homeTeam} vs ${fixture.awayTeam} · Round ${fixture.round}`,
+        event: `${fixture.homeTeam} vs ${fixture.awayTeam} · ${formatRound(fixture)}`,
         location: fixture.venue ?? "Venue to be confirmed",
         time: formatTime(fixture.time),
         status: fixture.status === "Postponed" ? "Postponed" : undefined,

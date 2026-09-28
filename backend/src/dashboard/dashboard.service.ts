@@ -1,8 +1,9 @@
 import { HttpException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
 import { PrismaService } from '../prisma/prisma.service'
+import { rubberWinner } from '../common/rubber-winner'
 import { ageOn, calendarDate, compareDates, DashboardQuery, inDateRange, melbourneToday, paginate } from './dashboard.query'
-import type { DashboardData, ResultItem, ScheduleItem } from './dashboard.types'
+import type { DashboardData, NotificationItem, Page, ResultItem, ScheduleItem } from './dashboard.types'
 
 const playerInclude = Prisma.validator<Prisma.PlayerInclude>()({
   clubMemberships: { where: { status: 'ACTIVE' }, include: { club: true }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] },
@@ -46,7 +47,11 @@ export class DashboardService {
 
   async dashboard(query: DashboardQuery): Promise<DashboardData> {
     const { player, loginEmail } = await this.resolvePlayer(query.email)
-    const [fixtures, results] = await Promise.all([this.fixtures(player), this.results(player.id)])
+    const [fixtures, results, titlesWon, notifications] = await Promise.all([
+      this.fixtures(player), this.results(player.id), this.titles(player.id),
+      // The card previews the four newest; View All pages through the rest.
+      this.notificationPage(player.userId, { ...query, limit: 4, cursor: undefined }),
+    ])
     const club = player.clubMemberships.find(m => m.isPrimary)?.club
     const association = player.associationMemberships.find(m => m.isPrimary)?.association
     const link = player.utrLink?.status === 'ACTIVE' ? player.utrLink : null
@@ -59,6 +64,7 @@ export class DashboardService {
         status: player.status, dateOfBirth: birth, age: ageOn(birth, melbourneToday()), gender: player.gender,
         email: player.email ?? loginEmail, phone: player.phone,
         primaryClub: reference(club), primaryAssociation: reference(association),
+        clubs: [...player.clubMemberships].sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary)).map(m => reference(m.club)!),
         teams: player.teamPlayers.map(m => reference(m.team)!).sort((a, b) => a.name.localeCompare(b.name)),
       },
       utr: {
@@ -66,14 +72,10 @@ export class DashboardService {
         discipline: null, category: null, percentileRank: null, cohort: null, rankedAt: null,
         recentScores: [], historyAvailable: false, lastSyncedAt: link?.lastSyncedAt?.toISOString() ?? null,
       },
-      notifications: { available: false, items: [], nextCursor: null, hasMore: false, unreadCount: null },
+      notifications,
       upcomingMatches: this.schedulePage(player.id, fixtures, preview),
       recentMatches: this.resultPage(player.id, results, preview),
-      careerSummary: {
-        matchesPlayed: results.length, matchesWon: results.length ? null : 0,
-        matchesLost: results.length ? null : 0, unknownOutcomes: results.length,
-        winPercentage: null, titlesWon: null, bestUtrRank: null,
-      },
+      careerSummary: this.careerSummary(results, titlesWon),
       messages: { available: false, unreadCount: null },
     }
   }
@@ -119,6 +121,7 @@ export class DashboardService {
         opponentGames: side === null ? null : side === 'HOME' ? s.awayGames : s.homeGames,
       }))
       const completeScore = sets.length && sets.every(s => s.playerGames !== null && s.opponentGames !== null)
+      const winner = side === null ? null : rubberWinner(r.winnerSide, r.rubberSets)
       return {
         id: r.id, kind: 'RUBBER', fixtureId: fixture.id, date: calendarDate(fixture.scheduleDate), playedAt: null,
         competition: reference(fixture.section.season.competition)!,
@@ -126,10 +129,29 @@ export class DashboardService {
         opponents: side === null ? [] : r.rubberPlayers.filter(p => p.side !== side).map(p => ({
           id: p.player.id, kind: 'PLAYER', name: `${p.player.firstName} ${p.player.lastName}`.trim(),
         })),
-        // The schema has no individual winner and free-text rules are not reliably interpretable.
-        outcome: null, score: completeScore ? sets.map(s => `${s.playerGames}-${s.opponentGames}`).join(' ') : null, sets,
+        outcome: winner === null ? null : winner === side ? 'WIN' : 'LOSS', score: completeScore ? sets.map(s => `${s.playerGames}-${s.opponentGames}`).join(' ') : null, sets,
       }
     }).sort((a, b) => compareDates(a.date, b.date, true) || a.id.localeCompare(b.id))
+  }
+
+  /**
+   * Career numbers over the player's finalised rubbers. Win % stays null while
+   * any outcome is unknown, so an undecided rubber is never counted as a loss.
+   */
+  careerSummary(results: ResultItem[], titlesWon: number): DashboardData['careerSummary'] {
+    const matchesWon = results.filter(result => result.outcome === 'WIN').length
+    const matchesLost = results.filter(result => result.outcome === 'LOSS').length
+    const unknownOutcomes = results.length - matchesWon - matchesLost
+    return {
+      matchesPlayed: results.length, matchesWon, matchesLost, unknownOutcomes,
+      winPercentage: results.length && !unknownOutcomes ? Math.round((matchesWon / results.length) * 1000) / 10 : null,
+      titlesWon, bestUtrRank: null,
+    }
+  }
+
+  /** Premierships the player won: section or competition wins. A runners-up award is not a title. */
+  async titles(playerId: string): Promise<number> {
+    return this.prisma.playerAward.count({ where: { playerId, awardType: { in: ['SECTION_WINNER', 'COMPETITION_WINNER'] } } })
   }
 
   schedulePage(playerId: string, items: ScheduleItem[], query: DashboardQuery) {
@@ -153,6 +175,32 @@ export class DashboardService {
   async resultList(query: DashboardQuery) {
     const { player } = await this.resolvePlayer(query.email)
     return this.resultPage(player.id, await this.results(player.id), query)
+  }
+
+  /** The player's in-app notifications, newest first, with the total unread count. */
+  async notifications(query: DashboardQuery) {
+    const { player } = await this.resolvePlayer(query.email)
+    return this.notificationPage(player.userId, query)
+  }
+
+  /**
+   * One page of a login's IN_APP notifications. EMAIL rows are the same events
+   * delivered by mail, so they are never listed or counted as unread.
+   */
+  async notificationPage(userId: string | null, query: DashboardQuery): Promise<Page<NotificationItem> & { unreadCount: number }> {
+    if (!userId) return { available: true, items: [], nextCursor: null, hasMore: false, unreadCount: 0 }
+    const where = { userId, channel: 'IN_APP' as const }
+    const [rows, unreadCount] = await Promise.all([
+      this.prisma.notification.findMany({ where, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }] }),
+      this.prisma.notification.count({ where: { ...where, readAt: null } }),
+    ])
+    const items = rows.map<NotificationItem>(row => ({
+      id: row.id, type: row.type, title: row.title, message: row.message,
+      createdAt: row.createdAt.toISOString(), readAt: row.readAt?.toISOString() ?? null,
+      details: row.details !== null && typeof row.details === 'object' && !Array.isArray(row.details) ? row.details as Record<string, unknown> : null,
+      target: row.targetType && row.targetId ? { type: row.targetType, id: row.targetId } : null,
+    }))
+    return { ...paginate(items, query.limit, [userId, 'notifications'], query.cursor), unreadCount }
   }
 
   async unavailable(query: DashboardQuery) {

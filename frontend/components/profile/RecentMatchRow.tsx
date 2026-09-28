@@ -1,5 +1,6 @@
 import type { MatchResult } from "../../api/matches";
 import { formatResultDate } from "../../utils/date-helpers";
+import { formatRound } from "../../utils/formatters";
 
 /** One line in Recent Activity: date, competition, round, opponents, and "W, 6–3 6–0". */
 export default function RecentMatchRow({ match }: { match: MatchResult }) {
@@ -17,7 +18,7 @@ export default function RecentMatchRow({ match }: { match: MatchResult }) {
 
       <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 text-[12px] leading-5 text-[#1a3049]">
         <span className="font-semibold [overflow-wrap:anywhere]">{match.competition}</span>
-        <span className="shrink-0 font-semibold">Round {match.round}</span>
+        <span className="shrink-0 font-semibold">{formatRound(match)}</span>
         <span className="shrink-0 font-normal text-neutral-600">vs</span>
         <span className="min-w-0 font-semibold [overflow-wrap:anywhere]">{match.opponents.join(" & ")}</span>
 

@@ -1,20 +1,10 @@
-import { CanActivate, Controller, ForbiddenException, Get, Injectable, Query, UseGuards } from '@nestjs/common'
+import { Controller, Get, Query, UseGuards } from '@nestjs/common'
+import { DemoEmailGuard } from '../common/guards/demo-email.guard'
 import { parseQuery } from './dashboard.query'
 import { DashboardService } from './dashboard.service'
 
-/** Email lookup is a local showcase, not authenticated ownership. */
-@Injectable()
-export class DashboardDemoGuard implements CanActivate {
-  canActivate() {
-    if (process.env.NODE_ENV === 'production') {
-      throw new ForbiddenException({ statusCode: 403, code: 'DEMO_DISABLED', message: 'Email-based dashboard access is disabled in production' })
-    }
-    return true
-  }
-}
-
 @Controller('api/v1/player-dashboard')
-@UseGuards(DashboardDemoGuard)
+@UseGuards(DemoEmailGuard)
 export class DashboardController {
   constructor(private readonly dashboard: DashboardService) {}
 
@@ -35,7 +25,7 @@ export class DashboardController {
 
   @Get('notifications')
   notifications(@Query() query: Record<string, unknown>) {
-    return this.dashboard.read(async () => ({ data: { ...await this.dashboard.unavailable(parseQuery(query)), unreadCount: null } }))
+    return this.dashboard.read(async () => ({ data: await this.dashboard.notifications(parseQuery(query)) }))
   }
 
   @Get('utr-history')

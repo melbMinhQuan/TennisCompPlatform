@@ -18,13 +18,9 @@ AssociationMembership in the workbook has no start_date, so its sample date is n
 ## API handoff
 frontend/api/memberships.ts owns the PlayerMemberships contract and getPlayerMemberships(signal). The React page consumes only this contract.
 
-When the backend is ready:
-1. Implement the authenticated current-player endpoint. Authentication/session handling belongs to the backend; the existing email-based dashboard demo does not establish a secure session.
-2. Return { data: PlayerMemberships }, or adapt the response in getPlayerMemberships.
-3. Set VITE_MEMBERSHIPS_API_URL to that endpoint and restart/rebuild Vite. Requests include credentials and an abort signal. Adjust headers here if the agreed authentication uses bearer tokens.
-4. Check switching accounts, authorization, CORS where applicable, errors, and empty responses together.
+Logged in, it calls GET /api/v1/player/memberships?email=, which returns { data: PlayerMemberships }: every association and club membership (all statuses) and the teams the player is ACTIVE on. The email is the local demo identity used by the dashboard, not an authenticated session; replace it when real sessions exist.
 
-Without the environment variable, the service returns a cloned sample response. With it, API failures show an error and Retry; they never silently fall back to sample data.
+Logged out, the service returns a cloned sample response. API failures show an error and Retry; they never silently fall back to sample data.
 
 Expected data:
 - player: { id, displayName }
@@ -54,17 +50,16 @@ frontend/data/mock-team-members.ts contains the six Player/TeamPlayer joins for
 each of TEAM001, TEAM018 and TEAM035 from competition_data.xlsx. No contact
 details, birthdays, or invented captain roles are included.
 
-frontend/api/teams.ts is the API adapter. Configure VITE_TEAMS_API_URL to the
-teams collection URL; the encoded team ID is appended. The expected envelope
-is { data: TeamDetails }; TeamDetails extends MembershipTeam with clubName,
+frontend/api/teams.ts is the API adapter. Logged in, it calls
+GET /api/v1/player/teams/:teamId?email=, which answers only for a team the
+player is on (any other team is 404). The envelope is { data: TeamDetails }; TeamDetails extends MembershipTeam with clubName,
 associationName, and members: { id (player ID), name, status
 (ACTIVE/EMERGENCY/INACTIVE), isCurrentPlayer (true only for the logged-in
 player, which the server knows from the session) }[].
 The server must authorize roster access. Map a different backend response here.
 
-Mocks are used only when no teams endpoint is configured and memberships are
-also in mock mode. Live failures never fall back to mock rosters. HTTP 404
+Mock rosters are used only when nobody is logged in. Live failures never fall back to mock rosters. HTTP 404
 shows not found, other failures allow retry, and an empty roster has its own
 message. Pending requests are aborted on navigation or identity changes.
 
-**Logged-in players never see sample data.** Sample data (Chloe Cooper) is only a logged-out preview. If a player is logged in and this page's endpoint is not set yet, the page shows "not available yet" instead, so a real player never sees someone else's data as their own.
+**Logged-in players never see sample data.** Sample data (Chloe Cooper) is only a logged-out preview. A logged-in player always gets their own data from the backend; if that request fails the page shows an error and "Try again", never the sample.

@@ -12,7 +12,7 @@ const alice = { id: 'alice', firstName: 'Alice', lastName: 'One' }
 const bob = { id: 'bob', firstName: 'Bob', lastName: 'Two' }
 function player(person, teamId) {
   return {
-    ...person, status: 'ACTIVE', dateOfBirth: new Date('2000-03-01'), gender: 'OTHER', email: null, phone: null,
+    ...person, userId: `${person.id}-login`, status: 'ACTIVE', dateOfBirth: new Date('2000-03-01'), gender: 'OTHER', email: null, phone: null,
     clubMemberships: [{ isPrimary: true, club: { id: `${teamId}-club`, name: `${person.firstName} club` } }],
     associationMemberships: [], teamPlayers: [{ teamId, team: { id: teamId, name: `${person.firstName} team` } }],
     utrLink: { status: 'ACTIVE', utrRating: '7.85', lastSyncedAt: null },
@@ -38,11 +38,21 @@ const match = {
   rubberPlayers: [{ playerId: 'alice', side: 'HOME', player: alice }, { playerId: 'bob', side: 'AWAY', player: bob }],
   rubberSets: [{ setNumber: 1, homeGames: 6, awayGames: 3 }, { setNumber: 2, homeGames: 6, awayGames: 4 }],
 }
+// Already sorted newest first, as the service's orderBy returns them.
+const notifications = [
+  { id: 'n-new', userId: 'alice-login', type: 'MATCH_DATE_CHANGED', title: 'Match Date Changed', message: 'Moved', createdAt: new Date('2099-01-01T02:00:00Z'), readAt: null, details: { newDate: '2099-01-02' }, targetType: 'FIXTURE', targetId: 'a-1' },
+  { id: 'n-old', userId: 'alice-login', type: 'MATCH_REMINDER', title: 'Match Reminder', message: 'Soon', createdAt: new Date('2099-01-01T01:00:00Z'), readAt: new Date('2099-01-01T03:00:00Z'), details: null, targetType: null, targetId: null },
+]
 let app, url, databaseDown = false
 const calls = []
 const prisma = {
   user: { findUnique: async args => { calls.push(args); if (databaseDown) throw new Error('private connection details'); return users[args.where.email] ?? null } },
   fixture: { findMany: async args => fixtures.filter(f => args.where.OR[0].homeTeamId.in.includes(f.homeTeamId) || args.where.OR[1].awayTeamId.in.includes(f.awayTeamId)) },
+  playerAward: { count: async args => args.where.playerId === 'alice' ? 1 : 0 },
+  notification: {
+    findMany: async args => { assert.equal(args.where.channel, 'IN_APP'); return notifications.filter(n => n.userId === args.where.userId) },
+    count: async args => notifications.filter(n => n.userId === args.where.userId && n.readAt === null).length,
+  },
   rubber: { findMany: async args => {
     assert.equal(args.where.matchResult.status, 'FINALISED')
     return match.rubberPlayers.some(p => p.playerId === args.where.rubberPlayers.some.playerId) ? [match] : []
@@ -71,7 +81,10 @@ test('HTTP dashboard resolves normalized email and selects only necessary accoun
   assert.deepEqual(Object.keys(calls.at(-1).select).sort(), ['email', 'player'])
   assert.equal(body.data.upcomingMatches.items.length, 3)
   assert.equal(body.data.careerSummary.matchesPlayed, 1)
-  assert.equal(body.data.careerSummary.matchesWon, null)
+  assert.equal(body.data.careerSummary.matchesWon, 1)
+  assert.equal(body.data.careerSummary.winPercentage, 100)
+  assert.equal(body.data.careerSummary.titlesWon, 1)
+  assert.deepEqual(body.data.profile.clubs.map(c => c.name), ['Alice club'])
 })
 
 test('another email selects a different profile, teams and fixtures', async () => {
@@ -89,12 +102,14 @@ test('missing account/profile are distinct useful 404s', async () => {
   }
 })
 
-test('result scores are from the selected participant side; no winner is fabricated', async () => {
+test('result scores and outcomes are from the selected participant side', async () => {
   const a = await get('/results'), b = await get('/results', { email: 'bob@example.test' })
   assert.equal(a.body.data.items[0].score, '6-3 6-4')
   assert.equal(b.body.data.items[0].score, '3-6 4-6')
   assert.equal(b.body.data.items[0].opponents[0].name, 'Alice One')
-  assert.equal(b.body.data.items[0].outcome, null)
+  // No winnerSide is recorded for a completed rubber, so its sets decide it.
+  assert.equal(a.body.data.items[0].outcome, 'WIN')
+  assert.equal(b.body.data.items[0].outcome, 'LOSS')
 })
 
 test('preview cursor continues full schedule without repeats and cannot change account/filter', async () => {
@@ -113,10 +128,23 @@ test('full schedule includes old/cancelled items; inclusive ranges exclude undat
   assert.deepEqual(filtered.body.data.items.map(i => i.id), ['a-2', 'a-3'])
 })
 
-test('unavailable history and notifications still require a linked profile', async () => {
+test('unavailable history still requires a linked profile', async () => {
   assert.equal((await get('/utr-history')).body.data.available, false)
-  assert.equal((await get('/notifications')).body.data.unreadCount, null)
+  assert.equal((await get('/utr-history', { email: 'unlinked@example.test' })).status, 404)
+})
+
+test('notifications are the login\'s own, newest first, with a separate unread count', async () => {
+  const list = (await get('/notifications')).body.data
+  assert.deepEqual(list.items.map(n => n.id), ['n-new', 'n-old'])
+  assert.equal(list.unreadCount, 1)
+  assert.deepEqual(list.items[0].details, { newDate: '2099-01-02' })
+  assert.deepEqual(list.items[0].target, { type: 'FIXTURE', id: 'a-1' })
+  assert.equal(list.items[1].target, null)
+  assert.equal((await get('/notifications', { email: 'bob@example.test' })).body.data.items.length, 0)
   assert.equal((await get('/notifications', { email: 'unlinked@example.test' })).status, 404)
+  const dashboard = (await get()).body.data.notifications
+  assert.equal(dashboard.available, true)
+  assert.equal(dashboard.unreadCount, 1)
 })
 
 test('bad queries and outages do not return false empty data or private errors', async () => {
