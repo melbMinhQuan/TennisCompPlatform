@@ -11,9 +11,13 @@ export function timeAgo(isoTimestamp: string, now = Date.now()) {
   if (elapsed < HOUR_MS) return `${Math.floor(elapsed / MINUTE_MS)}m ago`;
   if (elapsed < DAY_MS) return `${Math.floor(elapsed / HOUR_MS)}h ago`;
   if (elapsed < MAX_RELATIVE_DAYS * DAY_MS) return `${Math.floor(elapsed / DAY_MS)}d ago`;
-  return new Date(isoTimestamp).toLocaleDateString("en-AU", {
-    day: "numeric", month: "short", year: "numeric", timeZone: "Australia/Melbourne",
-  });
+  // Only the day/month/year numbers come from Intl: its month names differ between
+  // locales and ICU versions ("Sept", "July"), so the name comes from SHORT_MONTHS.
+  const parts = new Intl.DateTimeFormat("en", {
+    timeZone: "Australia/Melbourne", year: "numeric", month: "numeric", day: "numeric",
+  }).formatToParts(new Date(isoTimestamp));
+  const part = (type: string) => Number(parts.find((value) => value.type === type)?.value);
+  return `${part("day")} ${SHORT_MONTHS[part("month") - 1]} ${part("year")}`;
 }
 
 /** "Sep 26" from YYYY-MM-DD, without shifting the calendar day through a time zone. */

@@ -1,8 +1,12 @@
 {
   "private": true,
-  "workspaces": ["frontend", "backend"],
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
   "scripts": {
     "dev:frontend": "npm run dev --workspace=frontend",
-    "dev:backend": "npm run start:dev --workspace=backend"
+    "dev:backend": "npm run start:dev --workspace=backend",
+    "test": "npm test --workspace=backend && npm test --workspace=frontend"
   }
 }
