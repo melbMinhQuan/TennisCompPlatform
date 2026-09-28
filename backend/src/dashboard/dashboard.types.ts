@@ -18,7 +18,9 @@ export interface ScheduleItem {
   venue: null
   opponents: (Reference & { kind: 'TEAM' })[]
   participationConfirmed: false
-  status: 'SCHEDULED' | 'COMPLETED' | 'CANCELLED'
+  // Mirrors FixtureStatus in schema.prisma; POSTPONED means called off with
+  // no replacement date agreed yet.
+  status: 'SCHEDULED' | 'COMPLETED' | 'CANCELLED' | 'POSTPONED'
   rescheduled: null
 }
 export interface ResultItem {

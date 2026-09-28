@@ -581,6 +581,12 @@ model RubberSet {
   homeTiebreakPoints Int? @map("home_tiebreak_points")
   awayTiebreakPoints Int? @map("away_tiebreak_points")
 
+  // A rubber has one set per number. Without this a reseed that renumbers the
+  // spreadsheet codes can quietly leave a rubber holding two "set 2" rows.
+  // The migration declares it DEFERRABLE INITIALLY DEFERRED, which Prisma has
+  // no syntax for: `seed:competition --sync` rearranges whole runs of sets in
+  // one transaction and needs the check at commit rather than per statement.
+  @@unique([rubberId, setNumber])
   @@map("rubber_set")
 }
 
