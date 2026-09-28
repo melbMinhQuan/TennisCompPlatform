@@ -57,12 +57,31 @@ that is what it is for.
 cd backend
 npm run seed:competition              # load it into your local database
 npm run seed:competition -- --dry-run # report what it would insert, write nothing
+npm run seed:competition -- --sync    # make the database match the workbook
 ```
 
 Safe to run more than once. Row ids are derived from the spreadsheet codes, so a second run
 inserts nothing rather than duplicating. The script only ever inserts — it never updates or
 deletes — so a row you edited by hand survives a re-run. Everything happens in one transaction,
 so a failure leaves the database exactly as it was.
+
+#### After regenerating the workbook
+
+That insert-only guarantee assumes the workbook only ever grows. `npm run data:generate`
+renumbers the sequential codes, so a row added in the middle pushes every later code onto
+different data. A plain re-run cannot follow that: it skips every shifted row as already
+present and leaves the superseded ones behind, reporting `0` inserted as though nothing needed
+doing. Use `--sync` instead, which rewrites drifted rows and deletes rows the workbook no
+longer defines:
+
+```bash
+npm run seed:competition -- --sync --dry-run   # see what would change first
+npm run seed:competition -- --sync
+```
+
+`--sync` deletes, so unlike a seed it does not spare rows you added or edited by hand. The one
+exception is `user`: the login seed puts accounts there that this workbook knows nothing about,
+so a sync never deletes logins it does not recognise and reports them under `keptBecauseShared`.
 
 ### Logging in
 
