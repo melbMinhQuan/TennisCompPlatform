@@ -5,6 +5,7 @@ import { matchBadgeClass, matchCardClass, matchLightButtonClass, pageClass, page
 import MatchLoadState from "../components/MatchLoadState";
 import MatchNotFound from "../components/MatchNotFound";
 import { formatResultDate } from "../utils/date-helpers";
+import { formatRound } from "../utils/formatters";
 import ScorecardTable from "../components/matches/ScorecardTable";
 
 export default function MatchScorecardPage() {
@@ -29,7 +30,7 @@ export default function MatchScorecardPage() {
       <header>
         <h1 className={pageTitleClass}>Your Scorecard</h1>
         <p className={pageIntroClass}>
-          {formatResultDate(result.date)} · {result.competition} · Round {result.round}
+          {formatResultDate(result.date)} · {result.competition} · {formatRound(result)}
         </p>
       </header>
 

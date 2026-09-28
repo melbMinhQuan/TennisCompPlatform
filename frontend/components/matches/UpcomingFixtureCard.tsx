@@ -2,6 +2,7 @@ import { Link } from "react-router";
 import type { MatchFixture } from "../../api/matches";
 import { matchButtonClass, matchCardClass, matchLabelClass } from "../MatchesUI";
 import { formatFixtureDate, formatTime } from "../../utils/date-helpers";
+import { formatRound } from "../../utils/formatters";
 
 /** One upcoming team fixture on the Matches page. */
 export default function UpcomingFixtureCard({ fixture }: { fixture: MatchFixture }) {
@@ -16,7 +17,7 @@ export default function UpcomingFixtureCard({ fixture }: { fixture: MatchFixture
       </h2>
 
       <p className="mt-3 text-sm leading-6 text-muted">
-        {fixture.competition} · Round {fixture.round} · {fixture.status}
+        {fixture.competition} · {formatRound(fixture)} · {fixture.status}
       </p>
 
       <p className={`${matchLabelClass} mt-5`}>Representing</p>

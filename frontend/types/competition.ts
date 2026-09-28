@@ -21,7 +21,8 @@ export type CompetitionEntry = {
 
   nextFixture: {
     id: string;
-    round: number;
+    round: number | null; // null for finals, which carry roundLabel instead
+    roundLabel?: string | null;
 
     homeTeam: string;
     awayTeam: string;

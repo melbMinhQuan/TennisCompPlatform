@@ -43,8 +43,9 @@ the future backend. The current page is a dated snapshot, not a live feed.
 
 ## API handoff
 frontend/api/standings.ts exports StandingsData and getStandings(signal).
-Set VITE_STANDINGS_API_URL to the agreed endpoint and restart/rebuild Vite.
-Expected response: { data: StandingsData }. Map other backend response shapes in
+Logged in, it calls GET /api/v1/player/standings?email=, which returns
+{ data: StandingsData } built from the stored LadderEntry, PlayerStanding,
+RankingCohort, RankingEntry and PlayerAward rows (nothing is recalculated). Map other backend response shapes in
 this adapter. The contract currently contains playerId, playerName, myTeamIds,
 sections, ladders, standings, cohorts, rankings and finals. Each section
 includes seasonStartDate (Season.start_date, YYYY-MM-DD), used to pick the latest
@@ -59,4 +60,4 @@ permitted data. Fetch includes credentials and supports cancellation on identity
 changes/unmount. API errors never fall back to Excel data. Authentication headers
 may be adapted here when the backend team finalizes session handling.
 
-**Logged-in players never see sample data.** Sample data (Chloe Cooper) is only a logged-out preview. If a player is logged in and this page's endpoint is not set yet, the page shows "not available yet" instead, so a real player never sees someone else's data as their own.
+**Logged-in players never see sample data.** Sample data (Chloe Cooper) is only a logged-out preview. A logged-in player always gets their own data from the backend; if that request fails the page shows an error and "Try again", never the sample.

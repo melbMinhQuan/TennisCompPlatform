@@ -1,4 +1,5 @@
 import { mockSupportContacts } from "../data/mock-support-contacts";
+import { getPlayerData } from "./client";
 
 // Who the logged-in player should contact. Any part can be null when it isn't known.
 export type SupportContactsData = {
@@ -29,24 +30,17 @@ export type SupportContactsData = {
   } | null;
 };
 
-// Optional future endpoint; the server resolves the authenticated player.
-// Map a different backend response here.
-const apiUrl = import.meta.env.VITE_SUPPORT_CONTACTS_API_URL as
-  string | undefined;
-export const supportContactsAreMock = !apiUrl;
-
+// Logged out: the sample contacts. Logged in: GET /api/v1/player/support-contacts,
+// which returns { data: SupportContactsData }. Errors never fall back to the sample.
 export async function getSupportContacts(
   signal: AbortSignal,
   identity?: string,
 ): Promise<SupportContactsData> {
-  if (identity && supportContactsAreMock)
-    throw new Error(
-      "Your information is not available yet. Please try again later.",
-    );
-  if (!apiUrl) return structuredClone(mockSupportContacts);
-  const response = await fetch(apiUrl, { signal, credentials: "include" });
-  if (!response.ok) throw new Error("Could not load your contacts.");
-  // Expected { data: SupportContactsData }. Never fall back to mock contacts on errors.
-  const body = (await response.json()) as { data: SupportContactsData };
-  return body.data;
+  if (!identity) return structuredClone(mockSupportContacts);
+  return getPlayerData<SupportContactsData>(
+    "support-contacts",
+    identity,
+    signal,
+    "Could not load your contacts.",
+  );
 }

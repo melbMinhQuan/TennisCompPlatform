@@ -1,6 +1,7 @@
 import { competitionMock } from "../data/mock-competitions";
 import { mockFixtures, mockResults } from "../data/mock-fixtures";
 import type { CompetitionEntry } from "../types/competition";
+import { getPlayerData } from "./client";
 
 // Upcoming team fixture for the logged-in player's teams.
 export type MatchFixture = {
@@ -11,7 +12,8 @@ export type MatchFixture = {
   association: string;
   section: string;
   format: string;
-  round: number;
+  round: number | null; // null for finals, which carry roundLabel instead
+  roundLabel?: string | null; // "Semi Final", "Grand Final"; null for numbered rounds
   homeTeam: string;
   awayTeam: string;
   club: string;
@@ -28,7 +30,8 @@ export type MatchFixture = {
 export type MatchResult = {
   id: string; // Rubber ID
   competition: string;
-  round: number;
+  round: number | null;
+  roundLabel?: string | null;
   date: string; // YYYY-MM-DD
   discipline: "Singles" | "Doubles";
   players: string[];
@@ -40,23 +43,20 @@ export type MatchResult = {
   sets: { playerGames: number; opponentGames: number }[];
 };
 
-// Each adapter returns hardcoded workbook data until its env variable is set.
-// Expected API response: { data: [...] }. Map a different backend shape here.
-// API errors are shown to the player; they never fall back to the hardcoded data.
-async function load<T>(
-  url: string | undefined,
+// Logged out: the sample preview (Chloe Cooper, from the workbook). Logged in: always
+// the backend (GET /api/v1/player/{resource}), whose response is { data: [...] }.
+// API errors are shown to the player; they never fall back to the sample data.
+async function load<T extends unknown[]>(
+  resource: string,
   mock: T,
   signal: AbortSignal,
   message: string,
   identity?: string,
 ): Promise<T> {
-  if (!url && identity) throw new Error(message);
-  if (!url) return structuredClone(mock);
-  const response = await fetch(url, { signal, credentials: "include" });
-  if (!response.ok) throw new Error(message);
-  const body = (await response.json()) as { data: T };
-  if (!Array.isArray(body.data)) throw new Error(message);
-  return body.data;
+  if (!identity) return structuredClone(mock);
+  const data = await getPlayerData<T>(resource, identity, signal, message);
+  if (!Array.isArray(data)) throw new Error(message);
+  return data;
 }
 
 export const getCompetitions = (
@@ -64,7 +64,7 @@ export const getCompetitions = (
   identity?: string,
 ): Promise<CompetitionEntry[]> =>
   load(
-    import.meta.env.VITE_COMPETITIONS_API_URL as string | undefined,
+    "competitions",
     competitionMock,
     signal,
     "We couldn’t load your competitions. Please try again.",
@@ -76,7 +76,7 @@ export const getFixtures = (
   identity?: string,
 ): Promise<MatchFixture[]> =>
   load(
-    import.meta.env.VITE_FIXTURES_API_URL as string | undefined,
+    "fixtures",
     mockFixtures,
     signal,
     "We couldn’t load your fixtures. Please try again.",
@@ -88,7 +88,7 @@ export const getResults = (
   identity?: string,
 ): Promise<MatchResult[]> =>
   load(
-    import.meta.env.VITE_RESULTS_API_URL as string | undefined,
+    "results",
     mockResults,
     signal,
     "We couldn’t load your results. Please try again.",

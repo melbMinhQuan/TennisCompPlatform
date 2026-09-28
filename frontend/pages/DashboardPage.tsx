@@ -3,6 +3,7 @@ import { PlayerSessionContext } from "../context/PlayerSession";
 import { getFixtures, getResults } from "../api/matches";
 import { useApiData } from "../api/useApiData";
 import { MOCK_CAREER_SUMMARY, MOCK_PLAYER, MOCK_UTR_RATING } from "../data/mock-profile";
+import { MOCK_NOTIFICATIONS } from "../data/mock-notifications";
 import PlayerProfile from "../components/PlayerProfile";
 import NotificationPanel from "../components/NotificationPanel";
 import UpcomingCompetition from "../components/UpcomingCompetition";
@@ -60,7 +61,10 @@ export default function DashboardPage() {
         <div className="grid min-w-0 grid-cols-1 gap-5 min-[1400px]:grid-cols-2">
           <PlayerRatings rating={apiData ? apiData.utr.rating : MOCK_UTR_RATING} />
 
-          <NotificationPanel />
+          <NotificationPanel
+            notifications={apiData ? apiData.notifications.items : MOCK_NOTIFICATIONS}
+            hasMore={apiData?.notifications.hasMore ?? false}
+          />
 
           {results.loading || results.error ? (
             <MatchLoadState error={results.error} retry={results.retry} />

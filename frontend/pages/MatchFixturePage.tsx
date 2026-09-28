@@ -5,6 +5,7 @@ import { matchCardClass, matchLabelClass, matchLightButtonClass, darkCardClass, 
 import MatchLoadState from "../components/MatchLoadState";
 import MatchNotFound from "../components/MatchNotFound";
 import { formatFixtureDate, formatTime } from "../utils/date-helpers";
+import { formatRound } from "../utils/formatters";
 
 export default function MatchFixturePage() {
   const { fixtureId } = useParams();
@@ -41,7 +42,7 @@ export default function MatchFixturePage() {
 
       <section className={darkCardClass}>
         <p className="text-sm text-white/80">
-          {fixture.competition} · Round {fixture.round}
+          {fixture.competition} · {formatRound(fixture)}
         </p>
 
         <h2 className="mt-5 break-words text-2xl font-semibold leading-snug min-[768px]:text-[30px]">

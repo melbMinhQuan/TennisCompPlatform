@@ -57,9 +57,11 @@ Winter 2026, current), Syndal A (Night Tennis, Autumn 2026) and Glen Waverley A
 
 ## API handoff
 Both pages load data through `getCompetitions` in `frontend/api/matches.ts` and the shared
-`useApiData` hook (loading and error/retry states). Set `VITE_COMPETITIONS_API_URL` to the
-endpoint, returning `{ data: CompetitionEntry[] }` (type in `frontend/types/competition.ts`).
-`nextFixture.date` is YYYY-MM-DD and `nextFixture.time` is HH:mm. Without the variable the
-pages use `mock-competitions.ts`; API errors never fall back to it.
+`useApiData` hook (loading and error/retry states). When a player is logged in they call
+`GET /api/v1/player/competitions?email=`, which returns `{ data: CompetitionEntry[] }` (type in
+`frontend/types/competition.ts`): one entry per team the player is actively registered in.
+`nextFixture` is the team's next SCHEDULED or POSTPONED fixture dated today or later, or null;
+`nextFixture.date` is YYYY-MM-DD and `nextFixture.time` is HH:mm. Finals have `round: null` and a
+`roundLabel` such as "Grand Final". Logged out, the pages use `mock-competitions.ts`.
 
-**Logged-in players never see sample data.** Sample data (Chloe Cooper) is only a logged-out preview. If a player is logged in and this page's endpoint is not set yet, the page shows "not available yet" instead, so a real player never sees someone else's data as their own.
+**Logged-in players never see sample data.** Sample data (Chloe Cooper) is only a logged-out preview. A logged-in player always gets their own data from the backend; if that request fails the page shows an error and "Try again", never the sample.

@@ -1,4 +1,5 @@
 import { mockMemberships } from "../data/mock-memberships";
+import { getPlayerData } from "./client";
 
 export type Membership = {
   id: string;
@@ -28,24 +29,17 @@ export type PlayerMemberships = {
   teams: MembershipTeam[];
 };
 
-// Optional future endpoint; the server must resolve the authenticated player.
-// Map the eventual backend DTO here if it differs from PlayerMemberships.
-const apiUrl = import.meta.env.VITE_MEMBERSHIPS_API_URL as string | undefined;
-export const membershipsAreMock = !apiUrl;
-export const mockMembershipPlayer = mockMemberships.player;
-
+// Logged out: the sample preview. Logged in: GET /api/v1/player/memberships,
+// which returns { data: PlayerMemberships }. Errors never fall back to the sample.
 export async function getPlayerMemberships(
   signal: AbortSignal,
   identity?: string,
 ): Promise<PlayerMemberships> {
-  if (identity && membershipsAreMock)
-    throw new Error(
-      "Your information is not available yet. Please try again later.",
-    );
-  if (!apiUrl) return structuredClone(mockMemberships);
-  const response = await fetch(apiUrl, { signal, credentials: "include" });
-  if (!response.ok) throw new Error("Could not load your memberships.");
-  // Integration contract: { data: PlayerMemberships }. Never fall back to mocks on errors.
-  const body = (await response.json()) as { data: PlayerMemberships };
-  return body.data;
+  if (!identity) return structuredClone(mockMemberships);
+  return getPlayerData<PlayerMemberships>(
+    "memberships",
+    identity,
+    signal,
+    "Could not load your memberships.",
+  );
 }

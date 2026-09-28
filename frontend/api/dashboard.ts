@@ -1,18 +1,13 @@
-import type { DashboardData, Page, ResultItem, ScheduleItem } from '../../backend/src/dashboard/dashboard.types'
-export type { DashboardData, Page, ResultItem, ScheduleItem }
+import type { DashboardData, NotificationItem, Page, ResultItem, ScheduleItem } from '../../backend/src/dashboard/dashboard.types'
+import { request } from './client'
+export type { DashboardData, NotificationItem, Page, ResultItem, ScheduleItem }
 
-const baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/$/, '')
+const ALL_NOTIFICATIONS_LIMIT = '100'
 
-async function request<T>(path: string, signal: AbortSignal, body?: unknown): Promise<T> {
-  const response = await fetch(`${baseUrl}${path}`, {
-    credentials: 'include',
-    method: body === undefined ? 'GET' : 'POST', signal,
-    headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  })
-  const json = await response.json()
-  if (!response.ok) throw new Error(typeof json.message === 'string' ? json.message : `Request failed (${response.status})`)
-  return json as T
+/** Every in-app notification for the player (newest first), for the card's View All. */
+export async function getNotifications(email: string, signal: AbortSignal) {
+  const query = new URLSearchParams({ email, limit: ALL_NOTIFICATIONS_LIMIT })
+  return (await request<{ data: Page<NotificationItem> & { unreadCount: number | null } }>(`/api/v1/player-dashboard/notifications?${query}`, signal)).data
 }
 
 export async function login(email: string, password: string, signal: AbortSignal) {
