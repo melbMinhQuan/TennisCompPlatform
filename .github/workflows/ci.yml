@@ -1,7 +1,7 @@
 # Runs on every push and every pull request into main: installs the project the
 # same way a new teammate would, then tests and builds both applications.
 # A red cross on a pull request means one of these steps failed; open the run
-# to see which test ID broke (they match "TennisComp testing plan.xlsx").
+# to see which test ID broke (they match "TestingPlan.xlsx").
 name: CI
 
 on:
@@ -39,3 +39,59 @@ jobs:
 
       - name: Frontend build (type-check and bundle)
         run: npm run build --workspace=frontend
+
+  # The whole app in a browser against a real, freshly seeded database: the E2E rows
+  # of TestingPlan.xlsx. Also proves a brand-new database migrates and seeds cleanly.
+  end-to-end:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: tenniscomp
+          POSTGRES_PASSWORD: tenniscomp
+          POSTGRES_DB: tenniscomp
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U tenniscomp" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      # A throwaway database that exists only for this run.
+      DATABASE_URL: postgresql://tenniscomp:tenniscomp@localhost:5432/tenniscomp?schema=public
+
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies (exactly as locked)
+        run: npm ci
+
+      - name: Generate the Prisma client
+        run: npm run prisma:generate --workspace=backend
+
+      - name: Create the tables
+        working-directory: backend
+        run: npx prisma migrate deploy
+
+      - name: Load the test data (competition_data.xlsx)
+        run: npm run seed:competition --workspace=backend
+
+      - name: Install the test browser
+        run: npx playwright install --with-deps chromium
+
+      # Playwright starts the backend and frontend itself (see playwright.config.ts).
+      - name: End-to-end tests
+        run: npm run test:e2e
+
+      - name: Keep the report when something fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

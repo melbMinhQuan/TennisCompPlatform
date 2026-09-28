@@ -49,6 +49,14 @@ const prisma = {
   user: { findUnique: async args => { calls.push(args); if (databaseDown) throw new Error('private connection details'); return users[args.where.email] ?? null } },
   fixture: { findMany: async args => fixtures.filter(f => args.where.OR[0].homeTeamId.in.includes(f.homeTeamId) || args.where.OR[1].awayTeamId.in.includes(f.awayTeamId)) },
   playerAward: { count: async args => args.where.playerId === 'alice' ? 1 : 0 },
+  rankingEntry: {
+    findFirst: async args => {
+      assert.equal(args.where.cohort.discipline, 'SINGLES')
+      return args.where.playerId === 'alice'
+        ? { rank: 12, percentileRank: '88.00', asOf: new Date('2099-01-01T00:00:00Z'), cohort: { id: 'coh-1', name: 'Adult singles', discipline: 'SINGLES' } }
+        : null
+    },
+  },
   notification: {
     findMany: async args => { assert.equal(args.where.channel, 'IN_APP'); return notifications.filter(n => n.userId === args.where.userId) },
     count: async args => notifications.filter(n => n.userId === args.where.userId && n.readAt === null).length,
@@ -84,6 +92,9 @@ test('I-DASH-001: HTTP dashboard resolves normalized email and selects only nece
   assert.equal(body.data.careerSummary.matchesWon, 1)
   assert.equal(body.data.careerSummary.winPercentage, 100)
   assert.equal(body.data.careerSummary.titlesWon, 1)
+  assert.deepEqual(body.data.careerSummary.bestUtrRank, {
+    percentileRank: 88, rank: 12, cohort: { id: 'coh-1', name: 'Adult singles' }, discipline: 'SINGLES', recordedAt: '2099-01-01T00:00:00.000Z',
+  })
   assert.deepEqual(body.data.profile.clubs.map(c => c.name), ['Alice club'])
 })
 
@@ -92,6 +103,7 @@ test('I-DASH-002: another email selects a different profile, teams and fixtures'
   assert.equal(body.data.profile.id, 'bob')
   assert.equal(body.data.profile.primaryClub.name, 'Bob club')
   assert.deepEqual(body.data.upcomingMatches.items.map(i => i.id), ['b-1'])
+  assert.equal(body.data.careerSummary.bestUtrRank, null) // never ranked
 })
 
 test('I-DASH-003: missing account/profile are distinct useful 404s', async () => {

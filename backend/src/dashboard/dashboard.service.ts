@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client'
 import { PrismaService } from '../prisma/prisma.service'
 import { rubberWinner } from '../common/rubber-winner'
 import { ageOn, calendarDate, compareDates, DashboardQuery, inDateRange, melbourneToday, paginate } from './dashboard.query'
-import type { DashboardData, NotificationItem, Page, ResultItem, ScheduleItem } from './dashboard.types'
+import type { BestUtrRank, DashboardData, NotificationItem, Page, ResultItem, ScheduleItem } from './dashboard.types'
 
 const playerInclude = Prisma.validator<Prisma.PlayerInclude>()({
   clubMemberships: { where: { status: 'ACTIVE' }, include: { club: true }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] },
@@ -47,8 +47,8 @@ export class DashboardService {
 
   async dashboard(query: DashboardQuery): Promise<DashboardData> {
     const { player, loginEmail } = await this.resolvePlayer(query.email)
-    const [fixtures, results, titlesWon, notifications] = await Promise.all([
-      this.fixtures(player), this.results(player.id), this.titles(player.id),
+    const [fixtures, results, titlesWon, bestUtrRank, notifications] = await Promise.all([
+      this.fixtures(player), this.results(player.id), this.titles(player.id), this.bestUtrRank(player.id),
       // The card previews the four newest; View All pages through the rest.
       this.notificationPage(player.userId, { ...query, limit: 4, cursor: undefined }),
     ])
@@ -75,7 +75,7 @@ export class DashboardService {
       notifications,
       upcomingMatches: this.schedulePage(player.id, fixtures, preview),
       recentMatches: this.resultPage(player.id, results, preview),
-      careerSummary: this.careerSummary(results, titlesWon),
+      careerSummary: this.careerSummary(results, titlesWon, bestUtrRank),
       messages: { available: false, unreadCount: null },
     }
   }
@@ -138,14 +138,35 @@ export class DashboardService {
    * Career numbers over the player's finalised rubbers. Win % stays null while
    * any outcome is unknown, so an undecided rubber is never counted as a loss.
    */
-  careerSummary(results: ResultItem[], titlesWon: number): DashboardData['careerSummary'] {
+  careerSummary(results: ResultItem[], titlesWon: number, bestUtrRank: BestUtrRank | null = null): DashboardData['careerSummary'] {
     const matchesWon = results.filter(result => result.outcome === 'WIN').length
     const matchesLost = results.filter(result => result.outcome === 'LOSS').length
     const unknownOutcomes = results.length - matchesWon - matchesLost
     return {
       matchesPlayed: results.length, matchesWon, matchesLost, unknownOutcomes,
       winPercentage: results.length && !unknownOutcomes ? Math.round((matchesWon / results.length) * 1000) / 10 : null,
-      titlesWon, bestUtrRank: null,
+      titlesWon, bestUtrRank,
+    }
+  }
+
+  /**
+   * The highest percentile the player has reached in a singles ranking group
+   * (singles is the dashboard's default discipline). Percentiles are only
+   * comparable inside one group, so the group comes back with the number.
+   * Null when the player has never been ranked.
+   */
+  async bestUtrRank(playerId: string): Promise<BestUtrRank | null> {
+    const best = await this.prisma.rankingEntry.findFirst({
+      where: { playerId, percentileRank: { not: null }, cohort: { discipline: 'SINGLES' } },
+      include: { cohort: { select: { id: true, name: true, discipline: true } } },
+      // On a tie the newest snapshot wins, so the date shown is the latest time it was reached.
+      orderBy: [{ percentileRank: 'desc' }, { asOf: 'desc' }, { id: 'asc' }],
+    })
+    if (!best || best.percentileRank === null) return null
+    return {
+      percentileRank: Number(best.percentileRank), rank: best.rank,
+      cohort: { id: best.cohort.id, name: best.cohort.name }, discipline: best.cohort.discipline,
+      recordedAt: best.asOf.toISOString(),
     }
   }
 

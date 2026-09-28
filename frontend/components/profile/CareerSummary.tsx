@@ -1,8 +1,11 @@
+import type { BestUtrRank } from "../../api/dashboard";
+import { formatTopPercent } from "../../utils/formatters";
+
 export type CareerSummaryData = {
   matchesPlayed?: number | null;
   winPercentage?: number | null;
   titlesWon?: number | null;
-  bestUtrRank?: number | null;
+  bestUtrRank?: BestUtrRank | null;
 };
 
 const LABEL_CLASS = "min-h-8 text-[12px] font-normal leading-4 text-neutral-500";
@@ -10,7 +13,8 @@ const VALUE_CLASS = "mt-2 text-[16px] font-semibold leading-5 text-[#1a3049]";
 
 /** Four career numbers under Recent Activity. A missing value shows "—", not 0. */
 export default function CareerSummary({ summary }: { summary?: CareerSummaryData }) {
-  const hasBestRank = typeof summary?.bestUtrRank === "number";
+  const bestRank = summary?.bestUtrRank ?? null;
+  const hasBestRank = bestRank !== null;
   return (
     <div className="border-t border-neutral-600 pt-5">
       <h3 className="text-xl font-semibold text-[#1a3049]">Career Summary</h3>
@@ -46,8 +50,14 @@ export default function CareerSummary({ summary }: { summary?: CareerSummaryData
           <p
             className={`mt-2 leading-5 ${hasBestRank ? "text-[16px] font-semibold text-[#1a3049]" : "text-[12px] font-normal text-neutral-500"}`}
           >
-            {summary?.bestUtrRank ?? "Not available"}
+            {bestRank ? formatTopPercent(bestRank.percentileRank) : "Not available"}
           </p>
+          {/* A percentile only means something next to the group it was measured in. */}
+          {bestRank && (
+            <p className="mt-1 text-[11px] leading-4 text-neutral-500 [overflow-wrap:anywhere]">
+              {bestRank.cohort.name}
+            </p>
+          )}
         </div>
       </div>
     </div>

@@ -73,25 +73,34 @@ is connected.
 ### Other commands
 
 ```bash
-npm test                                  # all tests, backend then frontend (no database needed)
+npm test                                  # unit + integration tests (no database needed)
+npm run test:e2e                          # end-to-end tests in Chrome (database must be running and seeded)
 npm run prisma:studio --workspace=backend # browse the database in your browser
 ```
 
 ## Testing
 
-`TennisComp testing plan.xlsx` lists every test: its ID, what it checks, and how to run it.
+`TestingPlan.xlsx` lists every test: its ID, what it checks, and how to run it.
 Each automated test's name starts with its ID (e.g. `AUTH-002`), so a failure points straight to
 its row.
 
-| Type | What it covers | Where |
-| --- | --- | --- |
-| Unit | One function or service, with a fake database | `backend/test/*.test.cjs`, `frontend/tests/*.test.ts` |
-| Integration | A real HTTP route, or a rendered React component | same folders; `I-` IDs |
-| End to end | The whole app in a browser, done by hand | steps in the spreadsheet |
+| Type | What it covers | Where | Run with |
+| --- | --- | --- | --- |
+| Unit | One function or service, with a fake database | `backend/test/`, `frontend/tests/` | `npm test` |
+| Integration | A real HTTP route, or a rendered React component | same folders; `I-` IDs | `npm test` |
+| End to end | The whole app in Chrome against the real seeded database | `e2e/` | `npm run test:e2e` |
 
-**CI:** GitHub Actions (`.github/workflows/ci.yml`) runs the tests and the frontend build on every
-push and pull request. A red ❌ on a pull request means something broke; open the run to see which
-test ID failed.
+`npm run test:e2e` reuses the backend and frontend if they're already running; otherwise it starts
+them. It uses your installed Google Chrome. When a test fails, a screenshot and a step-by-step
+trace are saved in `test-results/`.
+
+**CI:** GitHub Actions (`.github/workflows/ci.yml`) runs on every push and pull request, in two jobs:
+- **test-and-build:** unit and integration tests, then the frontend build.
+- **end-to-end:** creates an empty database, migrates and seeds it, starts the app and runs the
+  end-to-end tests. This also proves a brand-new setup works.
+
+A red ❌ on a pull request means something broke; open the run to see which test ID failed. For an
+end-to-end failure, download the `playwright-report` file attached to the run.
 
 ## Test data
 

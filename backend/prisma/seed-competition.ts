@@ -85,6 +85,12 @@ type Table = {
    * the login seed writes accounts this workbook knows nothing about.
    */
   shared?: boolean
+  /**
+   * True when the table has a DEFERRABLE unique constraint. Postgres refuses
+   * ON CONFLICT (what skipDuplicates sends) against one, so a plain seed has to
+   * look up which ids already exist and insert only the rest.
+   */
+  deferredUnique?: boolean
   of: (tx: Prisma.TransactionClient) => {
     createMany(a: unknown): Promise<{ count: number }>
     deleteMany(a: unknown): Promise<{ count: number }>
@@ -246,7 +252,7 @@ const TABLES: Table[] = [
       playedAt: ts(r.played_at), incompleteReason: str(r.incomplete_reason),
     })) },
 
-  { name: 'rubberSet', of: tx => tx.rubberSet as never, rows: S => S.RubberSet.map(r => ({
+  { name: 'rubberSet', deferredUnique: true, of: tx => tx.rubberSet as never, rows: S => S.RubberSet.map(r => ({
       id: uuidFor(String(r.id)), rubberId: ref(r.rubber_id)!, setNumber: int(r.set_number),
       homeGames: int(r.home_games), awayGames: int(r.away_games), isTiebreak: bool(r.is_tiebreak),
       homeTiebreakPoints: int(r.home_tiebreak_points), awayTiebreakPoints: int(r.away_tiebreak_points),
@@ -389,7 +395,15 @@ export async function seedCompetition(tx: Prisma.TransactionClient, S: Record<st
   const inserted: Record<string, number> = {}
   for (const t of TABLES) {
     const data = t.rows(S, U)
-    inserted[t.name] = dryRun ? data.length : (await t.of(tx).createMany({ data, skipDuplicates: true })).count
+    if (dryRun) {
+      inserted[t.name] = data.length
+    } else if (t.deferredUnique) {
+      const present = new Set((await t.of(tx).findMany({ where: { id: { in: data.map(r => r.id) } }, select: { id: true } })).map(r => String(r.id)))
+      const missing = data.filter(r => !present.has(r.id))
+      inserted[t.name] = missing.length ? (await t.of(tx).createMany({ data: missing })).count : 0
+    } else {
+      inserted[t.name] = (await t.of(tx).createMany({ data, skipDuplicates: true })).count
+    }
   }
 
   return { dryRun, accounts: S.User.length, [dryRun ? 'rowsInWorkbook' : 'inserted']: inserted }
