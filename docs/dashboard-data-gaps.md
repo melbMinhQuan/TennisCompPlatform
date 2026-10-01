@@ -1,6 +1,6 @@
 # Dashboard: current data and missing data
 
-Based on `backend/prisma/schema.prisma` and `backend/prisma/seed.ts`.
+Based on `backend/prisma/schema.prisma`.
 This is a schema review, not confirmation that the database contains these records.
 The frontend contract is in [dashboardapi.md](dashboardapi.md).
 

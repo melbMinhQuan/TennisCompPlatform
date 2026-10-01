@@ -142,8 +142,6 @@ npm run prisma:migrate --workspace=backend -- --name describe_your_change
 Teammates then run `npx prisma migrate deploy` and `npx prisma generate` in `backend/`.
 
 Passwords are stored only as bcrypt hashes, which is why the workbook is safe to commit.
-`prisma/seed.ts` and `prisma/seed-dashboard.ts` are old seeds that need a git-ignored
-plain-text password file. Don't use them.
 
 ## API
 
@@ -208,3 +206,6 @@ TennisComp/
 ├── docs/                 # API contracts and design notes
 └── docker-compose.yml    # Database container (git-ignored, shared in the chat)
 ```
+
+## Password for all 100 players (Ease of testings)
+WaverleyDev#2026
