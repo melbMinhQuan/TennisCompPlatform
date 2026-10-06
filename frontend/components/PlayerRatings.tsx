@@ -22,8 +22,9 @@ export default function PlayerRatings({
     >
       {/* Title */}
       <h2 className="text-center text-xl font-semibold text-brand">
-        Player Ratings by UTR Sports
+        UTR Rating
       </h2>
+      <p className="mt-1 text-center text-sm text-muted">Source: Universal Tennis</p>
 
       {/* UTR data */}
       <div className="mt-6">

@@ -11,7 +11,7 @@ export type CareerSummaryData = {
 const LABEL_CLASS = "min-h-8 text-[12px] font-normal leading-4 text-neutral-500";
 const VALUE_CLASS = "mt-2 text-[16px] font-semibold leading-5 text-[#1a3049]";
 
-/** Four career numbers under Recent Activity. A missing value shows "—", not 0. */
+/** Four career numbers under Recent Activity, with a note on where each comes from. A missing value shows "—", not 0. */
 export default function CareerSummary({ summary }: { summary?: CareerSummaryData }) {
   const bestRank = summary?.bestUtrRank ?? null;
   const hasBestRank = bestRank !== null;
@@ -60,6 +60,10 @@ export default function CareerSummary({ summary }: { summary?: CareerSummaryData
           )}
         </div>
       </div>
+      {/* Keeps the UTR figure from being read as a Waverley Tennis result. */}
+      <p className="mt-4 text-[12px] leading-4 text-neutral-500">
+        Matches, Win % and Titles come from Waverley Tennis match results. UTR Best Rank source: Universal Tennis.
+      </p>
     </div>
   );
 }
