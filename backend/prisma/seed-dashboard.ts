@@ -55,9 +55,6 @@ export async function seedDashboard(tx: Prisma.TransactionClient, entries: SeedE
   if (users.length !== entries.length) {
     throw new Error(`${entries.length - users.length} spreadsheet accounts are missing. Run the original user seed first; no dashboard data was written.`)
   }
-  const orphans = await tx.player.count({ where: { userId: null, email: { in: entries.map(e => e.email) } } })
-  if (orphans) throw new Error(`${orphans} unlinked profiles already use spreadsheet emails. Link them to their Users first to avoid duplicates.`)
-
   const marker = await tx.auditLog.findUnique({ where: { id: MARKER_ID } })
   const today = new Date().toISOString().slice(0, 10)
   const anchor: string = marker ? JSON.parse(marker.changeSummary!).anchorDate : today
@@ -97,7 +94,7 @@ export async function seedDashboard(tx: Prisma.TransactionClient, entries: SeedE
     const teamIndex = Math.floor(index / 10), team = teams[teamIndex]
     players.push({
       id: playerId, userId: user.id, firstName: name[0], lastName: name.slice(1).join(' '),
-      email: user.email, phone: `DEMO-${String(index + 1).padStart(4, '0')}`,
+      phone: `DEMO-${String(index + 1).padStart(4, '0')}`,
       // Synthetic adult dates/genders, never inferred from a person's name.
       dateOfBirth: new Date(Date.UTC(1982 + index % 22, index % 12, 1 + index % 28)),
       gender: (['MALE', 'FEMALE', 'OTHER'] as const)[index % 3], isJunior: false, status: 'ACTIVE',

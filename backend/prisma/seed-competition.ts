@@ -162,7 +162,7 @@ const TABLES: Table[] = [
       userId: U.get(String(r._lookup_user_email)) ?? null,
       firstName: String(r.first_name), lastName: String(r.last_name),
       dateOfBirth: date(r.date_of_birth)!, gender: String(r.gender) as never,
-      email: str(r.email), phone: str(r.phone), avatarUrl: str(r.avatar_url),
+      phone: str(r.phone), avatarUrl: str(r.avatar_url),
       isJunior: bool(r.is_junior), status: String(r.status) as never,
     })) },
 

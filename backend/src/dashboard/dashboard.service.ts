@@ -62,7 +62,7 @@ export class DashboardService {
       profile: {
         id: player.id, avatarUrl: null, displayName: `${player.firstName} ${player.lastName}`.trim(),
         status: player.status, dateOfBirth: birth, age: ageOn(birth, melbourneToday()), gender: player.gender,
-        email: player.email ?? loginEmail, phone: player.phone,
+        email: loginEmail, phone: player.phone,
         primaryClub: reference(club), primaryAssociation: reference(association),
         clubs: [...player.clubMemberships].sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary)).map(m => reference(m.club)!),
         teams: player.teamPlayers.map(m => reference(m.team)!).sort((a, b) => a.name.localeCompare(b.name)),

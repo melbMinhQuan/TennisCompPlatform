@@ -31,8 +31,6 @@ count('players with a non-.example address',
   S.Player.filter(p => !/\.example$/.test(String(p._lookup_user_email))).length)
 count('User rows with a non-.example address',
   S.User.filter(u => !/\.example$/.test(String(u.email))).length)
-count('contact addresses outside .example',
-  S.Player.filter(p => p.email !== '' && !/\.example$/.test(String(p.email))).length)
 
 // ── Legal tennis set scores: 6-0..6-4, 7-5, or 7-6 on a tiebreak
 const illegal = S.RubberSet.filter(s => {

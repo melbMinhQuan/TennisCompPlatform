@@ -49,7 +49,8 @@ model Player {
 
   gender Gender
 
-  email String?
+  // A player's email is the address on their login account, read through the
+  // `user` relation. The table keeps no copy of its own.
   phone String?
 
   // Dashboard profile photograph. Null means the frontend renders initials.

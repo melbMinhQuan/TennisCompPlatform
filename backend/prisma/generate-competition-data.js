@@ -170,9 +170,6 @@ const players = NAMES.map((fullName, i) => {
     // and never inferred from anyone's name.
     date_of_birth: `${1979 + (i % 26)}-${pad((i % 12) + 1, 2)}-${pad((i % 28) + 1, 2)}`,
     gender: ['MALE', 'FEMALE', 'OTHER'][i % 3],
-    // player.email is the contact address, resolved by the API as
-    // `player.email ?? loginEmail`; filled only where it genuinely differs.
-    email: i % 7 === 3 ? `${slug(first)}.${slug(last)}@contact.example` : '',
     phone: `04${pad(int(10, 99), 2)} ${pad(int(0, 999), 3)} ${pad(int(0, 999), 3)}`,
     avatar_url: '', is_junior: false, status: 'ACTIVE',
   }
@@ -968,7 +965,7 @@ const README = [
   ['Emergency players', 'Emergencies are not pre-registered on a roster. They appear only in the rubber they were called into, with is_emergency = TRUE, matching the last-minute substitution the client described.'],
   ['Result workflow', 'Results run enter -> opponent confirmation -> finalised. A few stay PENDING_CONFIRMATION and some are DISPUTED with a CorrectionRequest raised; AuditLog records who did what and when.'],
   ['Multiple clubs and associations', 'A quarter of the players hold a secondary club membership, and two associations exist with one ProfileMergeRequest between them.'],
-  ['Duplicate names are intentional', '"Hiro Mitchell" and "Amelia Lee" each appear twice as different people, so duplicate detection on name + date of birth + email can be tested. Do not merge them.'],
+  ['Duplicate names are intentional', '"Hiro Mitchell" and "Amelia Lee" each appear twice as different people, so duplicate detection on name + date of birth can be tested. Do not merge them.'],
   ['SYNTHETIC: dates of birth and gender', 'Derived from the row index, never inferred from anyone\'s name. All players are adults.'],
   ['SYNTHETIC: UTR ratings', 'Generated, not supplied by Universal Tennis. UtrLink.utr_rating always equals the newest snapshot for that player.'],
   ['SYNTHETIC: clubs and venues', 'Suburb names are real; addresses, phone numbers and emails are placeholders on .example domains.'],
