@@ -4,7 +4,6 @@ import type { View } from "./standings-helpers";
 const TABS: [View, string][] = [
   ["teams", "Team standings"],
   ["players", "Player standings"],
-  ["rankings", "UTR rankings"],
 ];
 
 export default function StandingsTabs({ view, onChange }: { view: View; onChange: (view: View) => void }) {
