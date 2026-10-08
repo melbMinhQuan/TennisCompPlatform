@@ -4,6 +4,7 @@ import StandingsFilters from "./StandingsFilters";
 import StandingsOverview from "./StandingsOverview";
 import StandingsResults from "./StandingsResults";
 import StandingsTabs from "./StandingsTabs";
+import UtrGuides from "./UtrGuides";
 import { dateLabel, pickSection, type TableRow, type View } from "./standings-helpers";
 
 /** Holds the selected view, filters and search, and works out what each part of the page shows. */
@@ -31,6 +32,8 @@ export default function StandingsContent({ data }: { data: StandingsData }) {
 
   const myTeam = ladder.find((r) => data.myTeamIds.includes(r.teamId));
   const myStanding = players.find((r) => r.playerId === data.playerId);
+  const myRanking = rankings.find((r) => r.playerId === data.playerId);
+
   // The ladder covers home-and-away rounds only; the Grand Final decides the premiers.
   const finals = data.finals.find((f) => f.sectionId === section?.id);
   const teamName = (id?: string) => ladder.find((r) => r.teamId === id)?.name ?? "Not recorded";
@@ -99,6 +102,7 @@ export default function StandingsContent({ data }: { data: StandingsData }) {
         playerName={data.playerName}
         teamPosition={myTeam ? "#" + myTeam.position + " · " + myTeam.name : "Not ranked in this section"}
         playerPosition={myStanding ? "#" + myStanding.position + " in this section" : "Not ranked in this section"}
+        utrRank={myRanking ? "#" + myRanking.rank + " · " + cohort?.name : "Not ranked in this group"}
       />
       <StandingsTabs
         view={view}
@@ -140,6 +144,7 @@ export default function StandingsContent({ data }: { data: StandingsData }) {
         total={allRows[view].length}
         asOf={asOf}
       />
+      {view === "rankings" && <UtrGuides />}
     </>
   );
 }
