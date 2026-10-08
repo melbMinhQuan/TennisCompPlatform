@@ -9,7 +9,8 @@ test("E2E-001: log in and see my profile", async ({ page }) => {
   const main = page.locator("#main-content");
   await expect(main.getByRole("heading", { name: "Chloe Cooper" })).toBeVisible();
   await expect(main).toContainText("Glen Waverley Tennis Club, Mount Waverley Tennis Club, Syndal Tennis Club, Forest Hill Tennis Club");
-  await expect(main).toContainText("Current UTR: 5.35");
+  await expect(main).toContainText("Current UTR rating");
+  await expect(main).toContainText("5.35");
   const career = card(page, "Recent Activity");
   await expect(career).toContainText("59.3%");
   await expect(career).toContainText("Top 72%");
@@ -78,13 +79,12 @@ test("E2E-006: see my clubs and a team roster", async ({ page }) => {
   await expect(main.getByText("You", { exact: true })).toBeVisible();
 });
 
-test("E2E-007: check standings and UTR rankings", async ({ page }) => {
+test("E2E-007: check standings and my UTR summary", async ({ page }) => {
   await logIn(page);
-  await openFromMenu(page, "Standings & Rankings");
+  await openFromMenu(page, "Standings");
   const main = page.locator("#main-content");
   await expect(main).toContainText("Mount Waverley A");
-  await page.getByRole("button", { name: /UTR rankings/i }).click();
-  await expect(main).toContainText("Better than");
+  await expect(page.getByRole("button", { name: /UTR rankings/i })).toHaveCount(0);
   await expect(main).toContainText("#72 · Waverley Tennis adult singles");
 });
 

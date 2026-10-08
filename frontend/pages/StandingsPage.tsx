@@ -12,9 +12,9 @@ export default function StandingsPage() {
   return (
     <div className={`${pageClass} leading-[1.45]`}>
       <header>
-        <h1 className={pageTitleClass}>Standings &amp; Rankings</h1>
+        <h1 className={pageTitleClass}>Standings</h1>
         <p className={pageIntroClass}>
-          Check your team's ladder position, player standings and your UTR ranking, this season and past ones.
+          Check your team's ladder position and player standings, this season and past ones.
         </p>
       </header>
       {!data ? <MatchLoadState error={error} retry={retry} /> : <StandingsContent key={email} data={data} />}

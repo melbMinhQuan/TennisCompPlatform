@@ -2,9 +2,8 @@ import type { ReactNode } from "react";
 import type { StandingsData } from "../../api/standings";
 import { matchCardClass } from "../MatchesUI";
 
-export type View = "teams" | "players" | "rankings";
+export type View = "teams" | "players";
 export type Section = StandingsData["sections"][number];
-export type Cohort = StandingsData["cohorts"][number];
 export type TableRow = { id: string; mine: boolean; values: ReactNode[]; tag?: string | null };
 
 export const STANDINGS_CARD_CLASS = `${matchCardClass} text-[#1a3049]`;
@@ -14,19 +13,16 @@ export const STANDINGS_CONTROL_CLASS =
 export const TABLE_HEADERS: Record<View, string[]> = {
   teams: ["Pos", "Team", "Played", "Won", "Lost", "Drawn", "Rubbers F/A", "Sets F/A", "Games F/A", "Points"],
   players: ["Pos", "Player", "Rubbers played", "Won", "Lost", "Sets W/L", "Games W/L", "Win %"],
-  rankings: ["Rank", "Player", "UTR", "Compared with group"],
 };
 
 export const TABLE_CAPTIONS: Record<View, string> = {
   teams: "Team standings",
   players: "Individual rubber standings",
-  rankings: "Rating rankings",
 };
 
 export const TABLE_NOTES: Record<View, string> = {
   teams: "F/A = for / against (won / lost). Teams are ranked by points.",
   players: "Player standings count individual rubbers, not team fixtures. W/L = won / lost.",
-  rankings: "“Better than 60%” = your UTR is higher than 60% of players in this group.",
 };
 
 /** "22 Sept 2026" in Melbourne time, or "Not available". */

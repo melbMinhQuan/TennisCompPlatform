@@ -20,16 +20,17 @@ Dates use Melbourne time. Past-season labels use Season.status, not today's date
 ## Behaviour
 - Team standings and player standings: dependent association, competition,
   season and section selectors. Default: a current section containing Chloe's team.
-- Rating rankings: cohort/discipline selector and ranking snapshot date.
 - Search and personal-only filters retain the source positions.
 - Horizontal table scrolling on narrow screens; highlighted personal rows.
 - Empty, loading and retry states.
 - Team standings show supplied points, wins/losses/draws, rubbers, sets and games.
 - Player standings use individual rubbers, not team fixtures.
-- Rating ranks/percentiles are scoped to the chosen cohort and date; never
-  represented as global or independently verified official rankings. The tab is
-  labelled "UTR rankings" and states that UTR is supplied by Universal Tennis and
-  not calculated by Waverley Tennis. Percentiles are shown as "Better than N%".
+- The UTR rankings tab was removed (client feedback: keep Waverley Tennis
+  standings separate from UTR). The page is called "Standings". The summary card
+  still shows "Your UTR" (source: Universal Tennis) with the player's rank in the
+  first ranking group's latest snapshot. UTR is external: the dashboard UTR card
+  says it is supplied by Universal Tennis and links to the Waverley Tennis and
+  TROLS UTR guides.
 - Completed seasons show "Final ladder" and, when finals results exist, the
   premiers and runners-up (tagged in the table), because the ladder covers only
   the home-and-away rounds and the Grand Final decides the premiers.

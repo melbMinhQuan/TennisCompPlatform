@@ -1,13 +1,7 @@
-const ratingResources = [
-  {
-    href: "https://www.waverleytennis.asn.au/utr.html",
-    label: "Waverley Tennis UTR FAQ",
-  },
-  {
-    href: "https://trols.org.au/trols_utr_faq.html",
-    label: "TROLS/UTR FAQs",
-  },
-];
+import { UTR_RESOURCES } from "../data/support-content";
+
+// Same external guides as the Help & Support UTR answers.
+const ratingResources = UTR_RESOURCES.map((resource) => ({ href: resource.url, label: resource.label }));
 
 type PlayerRatingsProps = {
   rating?: number | null;
@@ -28,11 +22,12 @@ export default function PlayerRatings({
 
       {/* UTR data */}
       <div className="mt-6">
-        <p className="font-semibold text-[#1a3049]">
-          Current UTR: {rating ?? "Not available"}
+        <p className="text-sm text-muted">Current UTR rating</p>
+        <p className={typeof rating === "number" ? "mt-1 text-4xl font-semibold text-[#1a3049]" : "mt-1 font-semibold text-[#1a3049]"}>
+          {typeof rating === "number" ? rating.toFixed(2) : "Not available"}
         </p>
 
-        <p className="mt-6 text-[#1a3049]">
+        <p className="mt-4 text-[#1a3049]">
           Rating supplied by Universal Tennis.
           Waverley Tennis does not calculate UTR.
         </p>

@@ -993,7 +993,7 @@ const book = XLSX.utils.book_new()
 const sheets = [
   ['README', README], ['User', users], ['Association', ASSOCS], ['Club', clubs], ['Venue', venues],
   ['Competition', competitions], ['MatchFormat', matchFormats], ['EligibilityRule', eligibilityRules],
-  ['Season', SEASONS.map(({ format, playDay, startTime, sections: _s, complete, ...r }) => (void format, void playDay, void startTime, void _s, void complete, r))],
+  ['Season', SEASONS.map(({ format, setsToWin, playDay, startTime, sections: _s, complete, ...r }) => (void format, void setsToWin, void playDay, void startTime, void _s, void complete, r))],
   ['SectionGrade', sections], ['Team', strip(teams)], ['Player', players],
   ['ClubMembership', clubMemberships], ['AssociationMembership', associationMemberships],
   ['TeamPlayer', teamPlayers], ['UtrLink', utrLinks], ['UtrRatingSnapshot', utrSnapshots],

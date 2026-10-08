@@ -5,7 +5,7 @@ const MENU_ITEMS = [
   { label: "Competitions", to: "/dashboard/competitions" },
   { label: "Matches", to: "/dashboard/matches" },
   { label: "My Clubs & Associations & Teams", to: "/dashboard/clubs" },
-  { label: "Standings & Rankings", to: "/dashboard/rankings" },
+  { label: "Standings", to: "/dashboard/rankings" },
 ];
 
 const menuClass = ({ isActive }: { isActive: boolean }) =>

@@ -4,7 +4,7 @@ export const HELP_TOPICS = [
   { id: "competitions", title: "Competitions & Eligibility", description: "Seasons, sections and grades, registration, and emergency players." },
   { id: "fixtures", title: "Fixtures & Scheduling", description: "Upcoming fixtures, home and away teams, rounds, venues, and cancellations." },
   { id: "results", title: "Scores & Results", description: "Individual scores, finalised results, missing results, and corrections." },
-  { id: "ratings", title: "Ratings & Statistics", description: "UTR, ladders and standings, personal match totals, and unavailable statistics." },
+  { id: "ratings", title: "Ratings & Statistics", description: "UTR (external), ladders and standings, personal match totals, and unavailable statistics." },
 ];
 
 export const UTR_RESOURCES = [
@@ -106,23 +106,16 @@ export const HELP_FAQS = [
   {
     "id": "utr",
     "topic": "ratings",
-    "title": "Why is my UTR rating or history unavailable?",
-    "content": "On this website, a rating may not yet be recorded for your profile, and rating history is not currently available in this version. For Waverley results on UTR Sports, new results can take time to appear because they are transferred in batches. Red, orange, and green-dot ball matches are not submitted for UTR ratings; eligible yellow-ball competition results are uploaded. See the FAQs below for more information.",
+    "title": "Why is my UTR different or missing here?",
+    "content": "The UTR on this website is sample data and is not yet connected to Universal Tennis, so it may be missing or differ from your official rating. Check your official UTR and rating history on the Universal Tennis website.",
     "links": UTR_RESOURCES
   },
   {
     "id": "utr-overview",
     "topic": "ratings",
-    "title": "What is UTR and how does Waverley Tennis use it?",
-    "content": "UTR is a results-based tennis rating that considers opponents, games won, and recent match results. Waverley Tennis sends eligible competition results to UTR Sports through TROLS so they can contribute to player ratings. For more information about ratings, accounts, and claiming your results, visit these guides.",
+    "title": "What is UTR?",
+    "content": "UTR (Universal Tennis Rating) is a tennis rating owned and calculated by Universal Tennis, not Waverley Tennis. For how it works and how competition results reach UTR, see these guides.",
     "links": UTR_RESOURCES
-  },
-  {
-    "id": "utr-updates",
-    "topic": "ratings",
-    "title": "Why is my rating in TROLS different from UTR Sports?",
-    "content": "TROLS says it downloads ratings weekly, while UTR Sports recalculates ratings daily as results change. The two sites can therefore show different values. Result uploads may also be delayed by holidays or processing schedules. This describes TROLS, not a guaranteed update schedule for this website.",
-    "links": [UTR_RESOURCES[1]]
   },
   {
     "id": "statistics",
@@ -134,13 +127,7 @@ export const HELP_FAQS = [
     "id": "ladder-premiers",
     "topic": "ratings",
     "title": "Why isn't the team at the top of the ladder the premiers?",
-    "content": "The ladder shows the home-and-away rounds only. After those rounds, the top teams play finals, and the team that wins the Grand Final are the premiers. For past seasons, Standings & Rankings shows the premiers and runners-up above the ladder."
-  },
-  {
-    "id": "better-than",
-    "topic": "ratings",
-    "title": "What does \"Better than 60%\" mean in UTR rankings?",
-    "content": "It means your UTR is higher than 60% of players in that ranking group, such as Waverley Tennis adult singles. It compares you only with that group on the selected date, not with every player in the world. UTR ratings are supplied by Universal Tennis; Waverley Tennis does not calculate them."
+    "content": "The ladder shows the home-and-away rounds only. After those rounds, the top teams play finals, and the team that wins the Grand Final are the premiers. For past seasons, Standings shows the premiers and runners-up above the ladder."
   },
   {
     "id": "few-matches",

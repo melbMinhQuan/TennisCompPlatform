@@ -23,7 +23,7 @@ with the logged-in player's email. The adapter in `frontend/api/` picks the path
 | My Competitions, Competition details | [`matches.ts`](../frontend/api/matches.ts) `getCompetitions` | `GET /api/v1/player/competitions` |
 | My Clubs & Associations & Teams | [`memberships.ts`](../frontend/api/memberships.ts) | `GET /api/v1/player/memberships` |
 | Team Details | [`teams.ts`](../frontend/api/teams.ts) | `GET /api/v1/player/teams/:teamId` |
-| Standings & Rankings | [`standings.ts`](../frontend/api/standings.ts) | `GET /api/v1/player/standings` |
+| Standings | [`standings.ts`](../frontend/api/standings.ts) | `GET /api/v1/player/standings` |
 | Help & Support → "Who should I contact?" | [`support-contacts.ts`](../frontend/api/support-contacts.ts) | `GET /api/v1/player/support-contacts` |
 
 Values that were `null` before and are now filled in:
