@@ -297,7 +297,7 @@ const TABLES: Table[] = [
       sentAt: ts(r.sent_at), readAt: ts(r.read_at), createdAt: ts(r.created_at)!,
     })) },
 
-  { name: 'userRole', of: tx => tx.userRole as never, rows: (S, U) => S.UserRole.map(r => ({
+  { name: 'userRole', deferredUnique: true, of: tx => tx.userRole as never, rows: (S, U) => S.UserRole.map(r => ({
       id: uuidFor(String(r.id)), userId: U.get(String(r._lookup_user_email))!,
       roleType: String(r.role_type) as never, contextType: String(r.context_type) as never,
       associationId: ref(r.association_id), clubId: ref(r.club_id),
