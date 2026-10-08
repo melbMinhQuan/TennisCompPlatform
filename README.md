@@ -9,8 +9,6 @@ Team management system for the Waverley Tennis Association.
 | Database | PostgreSQL 16 in Docker, accessed through Prisma | `localhost:5432` |
 | Database browser | Prisma Studio | http://localhost:5555 |
 
-Coding conventions are in `coding_standards.docx`.
-
 ---
 
 ## Quick start

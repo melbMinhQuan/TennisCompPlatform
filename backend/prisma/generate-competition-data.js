@@ -170,9 +170,8 @@ const players = NAMES.map((fullName, i) => {
     // and never inferred from anyone's name.
     date_of_birth: `${1979 + (i % 26)}-${pad((i % 12) + 1, 2)}-${pad((i % 28) + 1, 2)}`,
     gender: ['MALE', 'FEMALE', 'OTHER'][i % 3],
-    // player.email is the contact address, resolved by the API as
-    // `player.email ?? loginEmail`; filled only where it genuinely differs.
-    email: i % 7 === 3 ? `${slug(first)}.${slug(last)}@contact.example` : '',
+    // player.email is always the login address; there is no separate contact email.
+    email: login,
     phone: `04${pad(int(10, 99), 2)} ${pad(int(0, 999), 3)} ${pad(int(0, 999), 3)}`,
     avatar_url: '', is_junior: false, status: 'ACTIVE',
   }
@@ -927,23 +926,32 @@ for (const f of fixtures.filter(x => x.status === 'SCHEDULED' && !x.is_finals).s
 
 // ────────────────────────────────────────────────────────────── user roles
 // A club administrator is always a member of the club they administer.
+// Each user holds exactly one role, so a role goes to the first candidate who
+// does not have one yet; everyone left over is a plain PLAYER.
 const userRoles = []
-const add = (p, role, ctx, extra) => userRoles.push({
-  id: `UR${pad(userRoles.length + 1, 3)}`, _lookup_user_email: p._lookup_user_email,
-  role_type: role, context_type: ctx,
-  association_id: '', club_id: '', team_id: '', competition_id: '', ...extra,
-  granted_at: utc('2026-02-01', '09:00'),
-})
+const hasRole = new Set()
+const free = p => p && !hasRole.has(p._lookup_user_email)
+const add = (p, role, ctx, extra) => {
+  hasRole.add(p._lookup_user_email)
+  userRoles.push({
+    id: `UR${pad(userRoles.length + 1, 3)}`, _lookup_user_email: p._lookup_user_email,
+    role_type: role, context_type: ctx,
+    association_id: '', club_id: '', team_id: '', competition_id: '', ...extra,
+    granted_at: utc('2026-02-01', '09:00'),
+  })
+}
 add(players[0], 'ADMINISTRATOR', 'ASSOCIATION', { association_id: 'ASSOC01' })
 add(players[1], 'RECORDS_SECRETARY', 'ASSOCIATION', { association_id: 'ASSOC01' })
 for (const club of clubs) {
-  const member = clubMemberships.find(m => m.club_id === club.id && m.is_primary)
-  if (member) add(players.find(p => p.id === member.player_id), 'CLUB_ADMIN', 'CLUB', { club_id: club.id })
+  const admin = clubMemberships.filter(m => m.club_id === club.id && m.is_primary)
+    .map(m => players.find(p => p.id === m.player_id)).find(free)
+  if (admin) add(admin, 'CLUB_ADMIN', 'CLUB', { club_id: club.id })
 }
 for (const team of teams.filter(t => t._season === 'SEA03')) {
-  add(rosterOf.get(team.id)[0], 'TEAM_MANAGER', 'TEAM', { team_id: team.id })
+  const manager = rosterOf.get(team.id).find(free)
+  if (manager) add(manager, 'TEAM_MANAGER', 'TEAM', { team_id: team.id })
 }
-for (const p of players) add(p, 'PLAYER', 'GLOBAL', {})
+for (const p of players.filter(free)) add(p, 'PLAYER', 'GLOBAL', {})
 
 // ──────────────────────────────────────────────────────────────── README
 const README = [

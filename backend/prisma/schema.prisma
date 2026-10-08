@@ -27,7 +27,8 @@ model User {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   player        Player?
-  userRoles     UserRole[]
+  // A user holds exactly one role (e.g. PLAYER, TEAM_MANAGER or CLUB_ADMIN).
+  userRole      UserRole?
   notifications Notification[]
 
   @@map("user")
@@ -174,11 +175,12 @@ enum MembershipStatus {
   INACTIVE
 }
 
-// UserRole — role-based access control
+// UserRole — role-based access control. One row per user: a user is a player,
+// a team manager or a club admin (or an association role), never several.
 model UserRole {
   id String @id @default(uuid())
 
-  userId String @map("user_id")
+  userId String @unique @map("user_id")
   user   User   @relation(fields: [userId], references: [id])
 
   roleType    RoleType    @map("role_type")

@@ -31,8 +31,8 @@ count('players with a non-.example address',
   S.Player.filter(p => !/\.example$/.test(String(p._lookup_user_email))).length)
 count('User rows with a non-.example address',
   S.User.filter(u => !/\.example$/.test(String(u.email))).length)
-count('contact addresses outside .example',
-  S.Player.filter(p => p.email !== '' && !/\.example$/.test(String(p.email))).length)
+count('players whose email differs from their login email',
+  S.Player.filter(p => p.email !== p._lookup_user_email).length)
 
 // ── Legal tennis set scores: 6-0..6-4, 7-5, or 7-6 on a tiebreak
 const illegal = S.RubberSet.filter(s => {
@@ -108,6 +108,11 @@ const playerByLogin = new Map(S.Player.map(p => [p._lookup_user_email, p]))
 count('club admins who are not members of their club',
   S.UserRole.filter(r => r.role_type === 'CLUB_ADMIN')
     .filter(r => !memberOf.has(`${playerByLogin.get(r._lookup_user_email)?.id}|${r.club_id}`)).length)
+
+// ── A user holds exactly one role
+const rolesPerUser = new Map()
+for (const r of S.UserRole) rolesPerUser.set(r._lookup_user_email, (rolesPerUser.get(r._lookup_user_email) ?? 0) + 1)
+count('users holding more than one role', [...rolesPerUser.values()].filter(n => n > 1).length)
 
 // ── A notification names the recipient's own team
 let wrongTeam = 0
@@ -456,7 +461,7 @@ const next = S.Fixture
   .sort((a, b) => String(a.schedule_date).localeCompare(String(b.schedule_date)))[0]
 const widgets = {
   'Name / Status': `${sample.first_name} ${sample.last_name} / ${sample.status}`,
-  'Email (API falls back)': sample.email || `${sample._lookup_user_email} (fallback)`,
+  'Email': sample.email,
   'Club / Team': team ? `${team.name}` : 'MISSING',
   'UTR tiles': snaps.slice(-3).map(s => s.rating).reverse().join(', ') || 'MISSING',
   'Percentile': rank ? `Top ${(100 - Number(rank.percentile_rank)).toFixed(0)}%` : 'MISSING',
