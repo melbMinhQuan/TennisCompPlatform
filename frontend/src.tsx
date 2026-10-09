@@ -19,6 +19,9 @@ import MatchFixturePage from "./pages/MatchFixturePage";
 import MatchScorecardPage from "./pages/MatchScorecardPage";
 import SiteNavigation from "./components/SiteNavigation";
 
+import ClubAdminLayout from "./components/ClubAdminLayout";
+import ClubAdminPlaceholderPage from "./pages/ClubAdminPlaceholderPage";
+
 function App() {
   return <PlayerSession><BrowserRouter>
     <Routes>
@@ -78,6 +81,44 @@ function App() {
         />
         <Route path="*" element={<section className="rounded-2xl bg-white p-6"><h1 className="text-2xl font-semibold">Page not found</h1><Link className="mt-4 inline-block text-brand underline" to="/dashboard">Return to your profile</Link></section>} />
       </Route>
+
+      <Route path="/club-admin" element={<ClubAdminLayout />}>
+        <Route
+          index
+          element={<ClubAdminPlaceholderPage title="Dashboard" />}
+        />
+
+        <Route
+          path="players"
+          element={<ClubAdminPlaceholderPage title="Players" />}
+        />
+
+        <Route
+          path="teams"
+          element={<ClubAdminPlaceholderPage title="Teams" />}
+        />
+
+        <Route
+          path="fixtures"
+          element={<ClubAdminPlaceholderPage title="Fixtures & Results" />}
+        />
+
+        <Route
+          path="notifications"
+          element={<ClubAdminPlaceholderPage title="Notifications" />}
+        />
+
+        <Route
+          path="support"
+          element={<ClubAdminPlaceholderPage title="Help & Support" />}
+        />
+
+        <Route
+          path="*"
+          element={<ClubAdminPlaceholderPage title="Page not found" />}
+        />
+      </Route>
+
       <Route path="*" element={<main className="p-8"><h1 className="text-2xl font-semibold">Page not found</h1><Link className="mt-4 inline-block text-brand underline" to="/login">Return to login</Link></main>} />
     </Routes>
   </BrowserRouter></PlayerSession>

@@ -2,7 +2,8 @@
 
 /* Mobile Help frame: 72px header, 20px page inset and white cards on blue. */
 @media (max-width: 767px) {
-  .player-shell {
+  .player-shell, 
+  .club-admin-shell {
     background-image: linear-gradient(252.296deg, #3f72af 1.21%, #1a3049 100%);
     background-attachment: fixed;
   }
