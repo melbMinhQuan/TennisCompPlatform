@@ -21,6 +21,7 @@ import SiteNavigation from "./components/SiteNavigation";
 
 import ClubAdminLayout from "./components/ClubAdminLayout";
 import ClubAdminPlaceholderPage from "./pages/ClubAdminPlaceholderPage";
+import ClubAdminSupportPage from "./pages/ClubAdminSupportPage";
 
 function App() {
   return <PlayerSession><BrowserRouter>
@@ -110,7 +111,7 @@ function App() {
 
         <Route
           path="support"
-          element={<ClubAdminPlaceholderPage title="Help & Support" />}
+          element={<ClubAdminSupportPage />}
         />
 
         <Route

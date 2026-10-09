@@ -1,9 +1,8 @@
 import type { RefObject } from "react";
-import type { HELP_FAQS } from "../../data/support-content";
-import FaqItem from "./FaqItem";
+import FaqItem, { type HelpFaq } from "./FaqItem";
 
 type FaqResultsProps = {
-  results: (typeof HELP_FAQS)[number][];
+  results: HelpFaq[];
   /** Title of the selected topic, or undefined for all topics. */
   topicTitle?: string;
   headingRef: RefObject<HTMLHeadingElement | null>;

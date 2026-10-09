@@ -9,12 +9,15 @@ type HelpTopicsProps = {
   searchButton: ReactNode;
   /** The search box, shown under the heading when open. */
   searchBox: ReactNode;
+  /** Topics to show; defaults to the player topics. The club admin page passes its own. */
+  topics?: typeof HELP_TOPICS;
+  /** FAQs used for each topic's answer count; defaults to the player FAQs. */
+  faqs?: { topic: string }[];
 };
 
-const faqCount = (topicId: string) => HELP_FAQS.filter((faq) => faq.topic === topicId).length;
-
 /** "Browse help topics" card: topic buttons plus the search controls. */
-export default function HelpTopics({ selectedTopic, onSelectTopic, headingRef, searchButton, searchBox }: HelpTopicsProps) {
+export default function HelpTopics({ selectedTopic, onSelectTopic, headingRef, searchButton, searchBox, topics = HELP_TOPICS, faqs = HELP_FAQS }: HelpTopicsProps) {
+  const faqCount = (topicId: string) => faqs.filter((faq) => faq.topic === topicId).length;
   return (
     <section className="rounded-2xl bg-white p-6" aria-labelledby="help-topics-heading">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -41,7 +44,7 @@ export default function HelpTopics({ selectedTopic, onSelectTopic, headingRef, s
       {searchBox}
       <p className="mt-1 text-[13px] text-muted md:hidden">Choose a topic to jump to its answers.</p>
       <div className="help-topic-grid mt-4 grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-3">
-        {HELP_TOPICS.map((topic) => (
+        {topics.map((topic) => (
           <button
             key={topic.id}
             type="button"

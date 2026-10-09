@@ -3,9 +3,12 @@ import { Link, Outlet, useLocation } from "react-router";
 import ClubAdminNavigation from "./layout/ClubAdminNavigation";
 import logo from "../resources/Logo.png";
 
+// Hardcoded until login returns the role and club (US-18). Glen Waverley's club administrator in
+// competition_data.xlsx: UserRole UR003 (CLUB_ADMIN, CLB01) → Player PLR006 Ethan Wright
+// (ethan.wright006@players.example).
 const MOCK_ADMIN = {
-  displayName: "Dana Whitfield",
-  initials: "DW",
+  displayName: "Ethan Wright",
+  initials: "EW",
   role: "Club Administrator",
   clubName: "Glen Waverley TC",
   unreadCount: 0,
