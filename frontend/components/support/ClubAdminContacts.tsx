@@ -31,7 +31,7 @@ export default function ClubAdminContacts() {
       <div className="mt-5 space-y-4">
         <ContactCard
           title={association ? `Association · ${association.name}` : "Your association"}
-          description="Your administrator access, possible duplicate players, primary-club changes, competition rules, confirmed score corrections, disputes and problems with this website."
+          description="Your administrator access, possible duplicate players, primary club changes, competition rules, confirmed score corrections, disputes and problems with this website."
           fallback="Use your association’s official contact channel."
         >
           {association && (
@@ -47,7 +47,7 @@ export default function ClubAdminContacts() {
         </ContactCard>
         <ContactCard
           title="Team managers"
-          description="Fixture selection, availability, match-day arrangements and entering or confirming results for their team."
+          description="Fixture selection, availability, match day arrangements and entering or confirming results for their team."
           fallback="Each team’s manager is shown on its Team details page."
         />
         <ContactCard

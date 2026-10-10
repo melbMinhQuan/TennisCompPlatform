@@ -43,7 +43,8 @@ export default function ClubAdminSupportPage() {
   const searchWords = search.trim().toLowerCase().split(/\s+/).filter(Boolean);
   const searchResults = CLUB_ADMIN_HELP_FAQS.filter((item) => {
     const steps = "steps" in item ? (item.steps?.join(" ") ?? "") : "";
-    const text = `${getTopicTitle(item.topic) ?? ""} ${item.title} ${item.content} ${steps}`.toLowerCase();
+    const points = "points" in item ? (item.points?.join(" ") ?? "") : "";
+    const text = `${getTopicTitle(item.topic) ?? ""} ${item.title} ${item.content} ${steps} ${points}`.toLowerCase();
     return (
       (selectedTopic === "all" || item.topic === selectedTopic) && searchWords.every((word) => text.includes(word))
     );

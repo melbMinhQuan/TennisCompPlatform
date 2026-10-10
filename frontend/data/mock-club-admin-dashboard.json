@@ -1,0 +1,115 @@
+{
+  "asOf": "2026-10-10",
+  "club": {
+    "id": "CLB01",
+    "name": "Glen Waverley Tennis Club",
+    "associationName": "Waverley Tennis",
+    "phone": "03 9336 5357",
+    "email": "admin@glenwaverleytc.example",
+    "address": "20 Reserve Road, Glen Waverley VIC 3100"
+  },
+  "adminName": "Ethan",
+  "activeMembers": 26,
+  "seasons": [
+    {
+      "id": "SEA01",
+      "label": "Winter 2025",
+      "competition": "Weekend Senior",
+      "status": "COMPLETED"
+    },
+    {
+      "id": "SEA02",
+      "label": "Summer 2025",
+      "competition": "Weekend Senior",
+      "status": "COMPLETED"
+    },
+    {
+      "id": "SEA03",
+      "label": "Winter 2026",
+      "competition": "Weekend Senior",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "SEA04",
+      "label": "Autumn 2026",
+      "competition": "Night Tennis",
+      "status": "COMPLETED"
+    }
+  ],
+  "teams": [
+    {
+      "id": "TEAM001",
+      "name": "Glen Waverley A",
+      "seasonId": "SEA01",
+      "competition": "Weekend Senior",
+      "section": "Section 1",
+      "squadCount": 6,
+      "managerName": null
+    },
+    {
+      "id": "TEAM009",
+      "name": "Glen Waverley A",
+      "seasonId": "SEA02",
+      "competition": "Weekend Senior",
+      "section": "Section 1",
+      "squadCount": 6,
+      "managerName": null
+    },
+    {
+      "id": "TEAM017",
+      "name": "Glen Waverley A",
+      "seasonId": "SEA03",
+      "competition": "Weekend Senior",
+      "section": "Section 1",
+      "squadCount": 6,
+      "managerName": "Diego Brooks"
+    },
+    {
+      "id": "TEAM029",
+      "name": "Glen Waverley B",
+      "seasonId": "SEA03",
+      "competition": "Weekend Senior",
+      "section": "Section 2",
+      "squadCount": 6,
+      "managerName": "Ethan Campbell"
+    },
+    {
+      "id": "TEAM033",
+      "name": "Glen Waverley A",
+      "seasonId": "SEA04",
+      "competition": "Night Tennis",
+      "section": "Section 1",
+      "squadCount": 6,
+      "managerName": null
+    }
+  ],
+  "notices": [
+    {
+      "id": "NOT0101",
+      "title": "Start Venue Changed",
+      "message": "Your Mount Waverley A match has moved to a different venue.",
+      "readAt": null
+    }
+  ],
+  "fixtures": [],
+  "activity": [
+    {
+      "id": "AUD364",
+      "summary": "Result confirmed by the away team: 2-1 in rubbers.",
+      "match": "Round 12 · Forest Hill B vs Glen Waverley B",
+      "date": "2026-09-20T00:00:00Z"
+    },
+    {
+      "id": "AUD361",
+      "summary": "Away team disputed the second singles rubber score.",
+      "match": "Round 11 · Glen Waverley B vs Chadstone B",
+      "date": "2026-09-13T23:15:00Z"
+    },
+    {
+      "id": "AUD287",
+      "summary": "Result confirmed by the away team: 2-1 in rubbers.",
+      "match": "Round 11 · Wheelers Hill A vs Glen Waverley A",
+      "date": "2026-09-13T00:00:00Z"
+    }
+  ]
+}

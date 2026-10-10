@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, Outlet, useLocation } from "react-router";
 import ClubAdminNavigation from "./layout/ClubAdminNavigation";
 import logo from "../resources/Logo.png";
+import { clubAdminUnreadCount } from "../data/club-admin-dashboard";
 
 // Hardcoded until login returns the role and club (US-18). Glen Waverley's club administrator in
 // competition_data.xlsx: UserRole UR003 (CLUB_ADMIN, CLB01) → Player PLR006 Ethan Wright
@@ -11,7 +12,7 @@ const MOCK_ADMIN = {
   initials: "EW",
   role: "Club Administrator",
   clubName: "Glen Waverley TC",
-  unreadCount: 0,
+  unreadCount: clubAdminUnreadCount,
 };
 
 export default function ClubAdminLayout() {
@@ -100,9 +101,17 @@ export default function ClubAdminLayout() {
           />
         </Link>
 
-        <span className="ml-auto shrink-0 whitespace-nowrap text-xs font-semibold text-white min-[375px]:text-sm min-[768px]:hidden">
-            Club Admin
-        </span>
+        {/* Mobile: the admin's initials with "Club Admin" underneath, beside the centred logo. */}
+        <div
+          role="img"
+          aria-label={`${MOCK_ADMIN.displayName}, ${MOCK_ADMIN.role}`}
+          className="relative z-10 ml-auto flex shrink-0 flex-col items-center gap-0.5 min-[768px]:hidden"
+        >
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-xs font-semibold text-[#1a3049]">
+            {MOCK_ADMIN.initials}
+          </span>
+          <span className="whitespace-nowrap text-[11px] font-semibold text-white">Club Admin</span>
+        </div>
 
         <div className="hidden items-center gap-3 min-[768px]:flex">
           <span

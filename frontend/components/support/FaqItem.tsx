@@ -1,9 +1,9 @@
 import type { HELP_FAQS } from "../../data/support-content";
 
-/** A help answer. `steps` (optional) shows as a numbered list under the answer. */
-export type HelpFaq = (typeof HELP_FAQS)[number] & { steps?: string[] };
+/** A help answer. Optional `steps` show as a numbered list and `points` as bullet points under the answer. */
+export type HelpFaq = (typeof HELP_FAQS)[number] & { steps?: string[]; points?: string[] };
 
-/** One question that opens to show its answer, any numbered steps and any "More information" links. */
+/** One question that opens to show its answer, any steps or bullet points, and any "More information" links. */
 export default function FaqItem({ item }: { item: HelpFaq }) {
   const links = "links" in item ? item.links : undefined;
   return (
@@ -18,6 +18,13 @@ export default function FaqItem({ item }: { item: HelpFaq }) {
             <li key={step}>{step}</li>
           ))}
         </ol>
+      )}
+      {item.points && (
+        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-slate-600">
+          {item.points.map((point) => (
+            <li key={point}>{point}</li>
+          ))}
+        </ul>
       )}
       {links && (
         <div className="mt-3 text-sm">
