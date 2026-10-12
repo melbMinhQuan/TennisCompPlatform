@@ -203,8 +203,8 @@ const SEASONS = [
   // independent. MF13 is the format whose shape this actually is: two singles
   // rubbers and one doubles, each decided on a single set.
   { id: 'SEA04', competition_id: 'COMP05', year: 2026, season_type: 'Autumn', start_date: '2026-02-02', end_date: '2026-05-25', status: 'COMPLETED', format: 'MF13', setsToWin: 1, playDay: 1, startTime: '19:30', sections: 1, complete: true },
-  // The next Weekend Senior season, open for entries: the Winter 2026 sections
-  // are full, so its two sections start empty for new teams to be entered into.
+  // The next Weekend Senior season, not started yet. The Winter 2026 sections
+  // are full, so its two sections start empty, ready for new teams.
   { id: 'SEA05', competition_id: 'COMP01', year: 2026, season_type: 'Summer', start_date: '2026-10-31', end_date: '2027-03-27', status: 'UPCOMING', format: 'MF01', setsToWin: 2, playDay: 6, startTime: '13:00', sections: 2, teamsPerSection: 0, complete: false },
 ]
 
@@ -431,7 +431,7 @@ function setScore() {
 function buildFixtures(season) {
   for (const section of sectionsOf(season.id)) {
     const list = teamsOf(section.id)
-    // A section still open for entries has no teams, so nothing to draw yet.
+    // A section with no teams yet has nothing to draw.
     if (!list.length) continue
     const base = roundRobin(list.map(t => t.id))
     // First Saturday (or Monday for night tennis) on or after the start date.
