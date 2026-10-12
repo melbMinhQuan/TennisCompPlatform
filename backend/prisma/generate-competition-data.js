@@ -131,7 +131,7 @@ const eligibilityRules = [
 // generator must not depend on players_login_data.xlsx, which holds plaintext
 // passwords and is git-ignored, so teammates could not regenerate without it.
 // Two names repeat deliberately, as different people, so duplicate-profile
-// detection on name + date of birth + email has something to find.
+// detection on name + date of birth has something to find.
 const NAMES = [
   "Raj Mitchell", "Mia Coleman", "Yuki Smith", "Charlotte Reed", "Chloe Cooper", "Ethan Wright",
   "Ava Clark", "Yuki Green", "Elsa Hill", "Hiro Parker", "Jun Murphy", "Lucas Brooks",
@@ -170,8 +170,6 @@ const players = NAMES.map((fullName, i) => {
     // and never inferred from anyone's name.
     date_of_birth: `${1979 + (i % 26)}-${pad((i % 12) + 1, 2)}-${pad((i % 28) + 1, 2)}`,
     gender: ['MALE', 'FEMALE', 'OTHER'][i % 3],
-    // player.email is always the login address; there is no separate contact email.
-    email: login,
     phone: `04${pad(int(10, 99), 2)} ${pad(int(0, 999), 3)} ${pad(int(0, 999), 3)}`,
     avatar_url: '', is_junior: false, status: 'ACTIVE',
   }
@@ -943,7 +941,6 @@ const adminPlayers = ADMIN_NAMES.map((fullName, i) => {
     // Adults only: born 1962-1984, so every admin is well over 18.
     date_of_birth: `${1962 + i * 2}-${pad((i % 12) + 1, 2)}-${pad(((i * 5) % 28) + 1, 2)}`,
     gender: ['FEMALE', 'MALE'][i % 2],
-    email: `${slug(first)}.${slug(last)}@admin.example`,
     phone: `0412 ${pad(100 + i, 3)} ${pad(500 + i, 3)}`,
     avatar_url: '', is_junior: false, status: 'ACTIVE',
   }
@@ -1018,7 +1015,7 @@ const README = [
   ['Emergency players', 'Emergencies are not pre-registered on a roster. They appear only in the rubber they were called into, with is_emergency = TRUE, matching the last-minute substitution the client described.'],
   ['Result workflow', 'Results run enter -> opponent confirmation -> finalised. A few stay PENDING_CONFIRMATION and some are DISPUTED with a CorrectionRequest raised; AuditLog records who did what and when.'],
   ['Multiple clubs and associations', 'A quarter of the players hold a secondary club membership, and two associations exist with one ProfileMergeRequest between them.'],
-  ['Duplicate names are intentional', '"Hiro Mitchell" and "Amelia Lee" each appear twice as different people, so duplicate detection on name + date of birth + email can be tested. Do not merge them.'],
+  ['Duplicate names are intentional', '"Hiro Mitchell" and "Amelia Lee" each appear twice as different people, so duplicate detection on name + date of birth can be tested. Do not merge them.'],
   ['SYNTHETIC: dates of birth and gender', 'Derived from the row index, never inferred from anyone\'s name. All players are adults.'],
   ['SYNTHETIC: UTR ratings', 'Generated, not supplied by Universal Tennis. UtrLink.utr_rating always equals the newest snapshot for that player.'],
   ['SYNTHETIC: clubs and venues', 'Suburb names are real; addresses, phone numbers and emails are placeholders on .example domains.'],

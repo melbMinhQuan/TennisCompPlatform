@@ -31,8 +31,6 @@ count('players with a non-.example address',
   S.Player.filter(p => !/\.example$/.test(String(p._lookup_user_email))).length)
 count('User rows with a non-.example address',
   S.User.filter(u => !/\.example$/.test(String(u.email))).length)
-count('players whose email differs from their login email',
-  S.Player.filter(p => p.email !== p._lookup_user_email).length)
 
 // ── Legal tennis set scores: 6-0..6-4, 7-5, or 7-6 on a tiebreak
 const illegal = S.RubberSet.filter(s => {
@@ -466,7 +464,7 @@ const next = S.Fixture
   .sort((a, b) => String(a.schedule_date).localeCompare(String(b.schedule_date)))[0]
 const widgets = {
   'Name / Status': `${sample.first_name} ${sample.last_name} / ${sample.status}`,
-  'Email': sample.email,
+  'Email': sample._lookup_user_email,
   'Club / Team': team ? `${team.name}` : 'MISSING',
   'UTR tiles': snaps.slice(-3).map(s => s.rating).reverse().join(', ') || 'MISSING',
   'Percentile': rank ? `Top ${(100 - Number(rank.percentile_rank)).toFixed(0)}%` : 'MISSING',
