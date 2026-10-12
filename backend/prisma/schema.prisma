@@ -384,6 +384,8 @@ model SectionGrade {
   ladderEntries   LadderEntry[]
   playerStandings PlayerStanding[]
 
+  // Target of Team's (sectionId, seasonId) relation.
+  @@unique([id, seasonId])
   @@map("section_grade")
 }
 
@@ -394,8 +396,12 @@ model Team {
   clubId String @map("club_id")
   club   Club   @relation(fields: [clubId], references: [id])
 
+  // seasonId copies the section's season so team names can be unique per
+  // season. The composite relation keeps it in step: it must match the
+  // section's own season, and follows it if the section moves.
   sectionId String       @map("section_id")
-  section   SectionGrade @relation(fields: [sectionId], references: [id])
+  seasonId  String       @map("season_id")
+  section   SectionGrade @relation(fields: [sectionId, seasonId], references: [id, seasonId], onUpdate: Cascade)
 
   contactUserId String? @map("contact_user_id")
 
@@ -415,6 +421,11 @@ model Team {
   ladderEntries LadderEntry[]
   awards        PlayerAward[]
 
+  // No two teams in one season share a name, ignoring case and surrounding
+  // spaces. The migration creates it as the unique index
+  // team_season_id_name_key on (season_id, lower(btrim(name))); Prisma has no
+  // syntax for an expression index, so do not add @@unique([seasonId, name])
+  // here - it would try to create a second index under the same name.
   @@map("team")
 }
 

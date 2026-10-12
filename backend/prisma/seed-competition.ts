@@ -91,6 +91,14 @@ type Table = {
    * look up which ids already exist and insert only the rest.
    */
   deferredUnique?: boolean
+  /**
+   * A column under an immediately checked unique index. When a sync finds a row
+   * whose value here changed, it deletes that row before writing anything and
+   * then inserts it afresh: updating in place could briefly give two rows the
+   * same value and fail the index. `userRole.userId` is one; its role codes were
+   * once a running count, so a database seeded then has rows on the wrong user.
+   */
+  uniqueOwner?: string
   of: (tx: Prisma.TransactionClient) => {
     createMany(a: unknown): Promise<{ count: number }>
     deleteMany(a: unknown): Promise<{ count: number }>
@@ -152,10 +160,15 @@ const TABLES: Table[] = [
       minAge: int(r.min_age), maxAge: int(r.max_age), teamCount: int(r.team_count),
     })) },
 
-  { name: 'team', of: tx => tx.team as never, rows: S => S.Team.map(r => ({
+  // The workbook has no season column on Team: the season is the section's.
+  { name: 'team', of: tx => tx.team as never, rows: S => {
+    const seasonOf = new Map(S.SectionGrade.map(s => [String(s.id), String(s.season_id)]))
+    return S.Team.map(r => ({
       id: uuidFor(String(r.id)), clubId: ref(r.club_id)!, sectionId: ref(r.section_id)!,
+      seasonId: ref(seasonOf.get(String(r.section_id)))!,
       homeVenueId: ref(r.home_venue_id), name: String(r.name),
-    })) },
+    }))
+  } },
 
   { name: 'player', of: tx => tx.player as never, rows: (S, U) => S.Player.map(r => ({
       id: uuidFor(String(r.id)),
@@ -297,7 +310,7 @@ const TABLES: Table[] = [
       sentAt: ts(r.sent_at), readAt: ts(r.read_at), createdAt: ts(r.created_at)!,
     })) },
 
-  { name: 'userRole', deferredUnique: true, of: tx => tx.userRole as never, rows: (S, U) => S.UserRole.map(r => ({
+  { name: 'userRole', uniqueOwner: 'userId', of: tx => tx.userRole as never, rows: (S, U) => S.UserRole.map(r => ({
       id: uuidFor(String(r.id)), userId: U.get(String(r._lookup_user_email))!,
       roleType: String(r.role_type) as never, contextType: String(r.context_type) as never,
       associationId: ref(r.association_id), clubId: ref(r.club_id),
@@ -448,6 +461,9 @@ export async function syncCompetition(tx: Prisma.TransactionClient, S: Record<st
     created[t.name] = missing.length
     updated[t.name] = drifted.length
     if (!dryRun) {
+      const owner = t.uniqueOwner
+      const moved = owner ? drifted.filter(r => !same(r[owner], existing.get(r.id)![owner])) : []
+      if (moved.length) await t.of(tx).deleteMany({ where: { id: { in: moved.map(r => r.id) } } })
       for (const r of [...missing, ...drifted]) {
         await t.of(tx).upsert({ where: { id: r.id }, create: r, update: r })
       }

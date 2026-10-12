@@ -924,17 +924,63 @@ for (const f of fixtures.filter(x => x.status === 'SCHEDULED' && !x.is_finals).s
   }
 }
 
+// ──────────────────────────────────────────────────────────── club admins
+// Each club is run by its own @admin.example account, never by one of the
+// players. Admins have a Player profile (so their name can be shown) and a
+// primary membership of their club, but sit on no team. Built from the index
+// alone, without rnd(), so adding them leaves every other generated row as it was.
+const ADMIN_NAMES = [
+  'Margaret Hayes', 'Peter Lawson', 'Susan Fraser', 'Graham Doyle', 'Karen Whitfield', 'Andrew Sinclair',
+  'Helen Marsh', 'Robert Keane', 'Julie Prentice', 'Stephen Hale', 'Linda Ashford', 'Michael Dunstan',
+]
+const adminPlayers = ADMIN_NAMES.map((fullName, i) => {
+  const [first, last] = fullName.split(' ')
+  const n = players.length + i + 1
+  return {
+    id: `PLR${pad(n, 3)}`,
+    _lookup_user_email: `${slug(first)}.${slug(last)}@admin.example`,
+    first_name: first, last_name: last,
+    // Adults only: born 1962-1984, so every admin is well over 18.
+    date_of_birth: `${1962 + i * 2}-${pad((i % 12) + 1, 2)}-${pad(((i * 5) % 28) + 1, 2)}`,
+    gender: ['FEMALE', 'MALE'][i % 2],
+    email: `${slug(first)}.${slug(last)}@admin.example`,
+    phone: `0412 ${pad(100 + i, 3)} ${pad(500 + i, 3)}`,
+    avatar_url: '', is_junior: false, status: 'ACTIVE',
+  }
+})
+const adminUsers = adminPlayers.map((p, i) => ({
+  id: `USR${pad(players.length + i + 1, 3)}`,
+  email: p._lookup_user_email,
+  password_hash: passwordHash,
+  status: 'ACTIVE',
+  last_login_at: '',
+}))
+const adminOf = new Map(clubs.map((club, i) => [club.id, adminPlayers[i]]))
+for (const [clubId, p] of adminOf) {
+  clubMemberships.push({
+    id: `CM${pad(clubMemberships.length + 1, 3)}`, player_id: p.id, club_id: clubId,
+    is_primary: true, start_date: '2024-07-01', end_date: '', status: 'ACTIVE',
+  })
+  associationMemberships.push({
+    id: `AM${pad(associationMemberships.length + 1, 3)}`, player_id: p.id,
+    association_id: associationOfClub.get(clubId), is_primary: true, status: 'ACTIVE',
+  })
+}
+
 // ────────────────────────────────────────────────────────────── user roles
 // A club administrator is always a member of the club they administer.
 // Each user holds exactly one role, so a role goes to the first candidate who
 // does not have one yet; everyone left over is a plain PLAYER.
+// The role's code is the user's own number (USR005 -> UR005), not a running
+// count, so regenerating never moves a role row from one user to another and
+// the plain unique index on user_role.user_id holds at every step of a sync.
 const userRoles = []
 const hasRole = new Set()
 const free = p => p && !hasRole.has(p._lookup_user_email)
 const add = (p, role, ctx, extra) => {
   hasRole.add(p._lookup_user_email)
   userRoles.push({
-    id: `UR${pad(userRoles.length + 1, 3)}`, _lookup_user_email: p._lookup_user_email,
+    id: `UR${p.id.slice(3)}`, _lookup_user_email: p._lookup_user_email,
     role_type: role, context_type: ctx,
     association_id: '', club_id: '', team_id: '', competition_id: '', ...extra,
     granted_at: utc('2026-02-01', '09:00'),
@@ -942,11 +988,7 @@ const add = (p, role, ctx, extra) => {
 }
 add(players[0], 'ADMINISTRATOR', 'ASSOCIATION', { association_id: 'ASSOC01' })
 add(players[1], 'RECORDS_SECRETARY', 'ASSOCIATION', { association_id: 'ASSOC01' })
-for (const club of clubs) {
-  const admin = clubMemberships.filter(m => m.club_id === club.id && m.is_primary)
-    .map(m => players.find(p => p.id === m.player_id)).find(free)
-  if (admin) add(admin, 'CLUB_ADMIN', 'CLUB', { club_id: club.id })
-}
+for (const [clubId, admin] of adminOf) add(admin, 'CLUB_ADMIN', 'CLUB', { club_id: clubId })
 for (const team of teams.filter(t => t._season === 'SEA03')) {
   const manager = rosterOf.get(team.id).find(free)
   if (manager) add(manager, 'TEAM_MANAGER', 'TEAM', { team_id: team.id })
@@ -991,10 +1033,10 @@ const strip = rows => rows.map(r => {
 
 const book = XLSX.utils.book_new()
 const sheets = [
-  ['README', README], ['User', users], ['Association', ASSOCS], ['Club', clubs], ['Venue', venues],
+  ['README', README], ['User', [...users, ...adminUsers]], ['Association', ASSOCS], ['Club', clubs], ['Venue', venues],
   ['Competition', competitions], ['MatchFormat', matchFormats], ['EligibilityRule', eligibilityRules],
   ['Season', SEASONS.map(({ format, setsToWin, playDay, startTime, sections: _s, complete, ...r }) => (void format, void setsToWin, void playDay, void startTime, void _s, void complete, r))],
-  ['SectionGrade', sections], ['Team', strip(teams)], ['Player', players],
+  ['SectionGrade', sections], ['Team', strip(teams)], ['Player', [...players, ...adminPlayers]],
   ['ClubMembership', clubMemberships], ['AssociationMembership', associationMemberships],
   ['TeamPlayer', teamPlayers], ['UtrLink', utrLinks], ['UtrRatingSnapshot', utrSnapshots],
   ['RankingCohort', cohorts], ['RankingEntry', rankingEntries],

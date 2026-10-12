@@ -109,6 +109,11 @@ count('club admins who are not members of their club',
   S.UserRole.filter(r => r.role_type === 'CLUB_ADMIN')
     .filter(r => !memberOf.has(`${playerByLogin.get(r._lookup_user_email)?.id}|${r.club_id}`)).length)
 
+// ── Team names are unique within a season, ignoring case and surrounding spaces
+const teamSeason = new Map(S.SectionGrade.map(s => [s.id, s.season_id]))
+const teamKeys = S.Team.map(t => `${teamSeason.get(t.section_id)}|${String(t.name).trim().toLowerCase()}`)
+count('teams sharing a name with another team in the same season', teamKeys.length - new Set(teamKeys).size)
+
 // ── A user holds exactly one role
 const rolesPerUser = new Map()
 for (const r of S.UserRole) rolesPerUser.set(r._lookup_user_email, (rolesPerUser.get(r._lookup_user_email) ?? 0) + 1)
