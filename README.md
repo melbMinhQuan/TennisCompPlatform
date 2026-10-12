@@ -20,27 +20,9 @@ step says otherwise.
 
 1. Install **Node.js 20.12 or newer**. Check with `node -v`.
 2. Install **Docker Desktop** and open it. It must be running every time you use the app.
-3. Make sure **`docker-compose.yml`** is in the project root. It is git-ignored, so a fresh clone
-   does not have it. If it is missing, create it with this content:
-
-   ```yaml
-   services:
-     postgres:
-       image: postgres:16
-       container_name: tenniscomp-postgres
-       restart: unless-stopped
-       environment:
-         POSTGRES_USER: tenniscomp
-         POSTGRES_PASSWORD: tenniscomp
-         POSTGRES_DB: tenniscomp
-       ports:
-         - '5432:5432'
-       volumes:
-         - tenniscomp-pgdata:/var/lib/postgresql/data
-
-   volumes:
-     tenniscomp-pgdata:
-   ```
+3. The database container is defined in **`docker-compose.yml`** in the project root, which comes
+   with the clone. To change something only on your own computer (e.g. the port), put it in a
+   `docker-compose.override.yml` next to it; that file is git-ignored.
 
 ### Step 1: First-time setup (once, after cloning)
 
@@ -134,7 +116,7 @@ Other ways to open the database:
 
 | Problem | Fix |
 | --- | --- |
-| `Cannot connect to the Docker daemon` / database won't start | Open Docker Desktop and wait until it is running. Check `docker-compose.yml` is in the project root. |
+| `Cannot connect to the Docker daemon` / database won't start | Open Docker Desktop and wait until it is running, then run `docker compose up -d` from the project root. |
 | `EADDRINUSE :::3000` | A backend is already running. Stop it: `lsof -ti:3000 \| xargs kill` |
 | `Port 5173 is in use` | Another frontend is running. Stop it: `lsof -ti:5173 \| xargs kill`. The frontend must use port 5173, because the backend only accepts requests from there. |
 | `relation "user" does not exist` | Tables are missing. Run `npx prisma migrate deploy` in `backend/`. |
@@ -299,5 +281,5 @@ TennisComp/
 │   │   └── prisma/       # Database client for NestJS
 │   └── test/             # Backend tests
 ├── docs/                 # API contracts and design notes
-└── docker-compose.yml    # Database container (git-ignored, see Quick start step 0)
+└── docker-compose.yml    # Database container (Postgres 16)
 ```
