@@ -3,7 +3,7 @@
  * same name in frontend/api/ (and frontend/types/competition.ts), so the pages
  * render these without mapping. Change both sides together.
  */
-export type SeasonStatus = 'ACTIVE' | 'COMPLETED' | 'ARCHIVED'
+export type SeasonStatus = 'UPCOMING' | 'ACTIVE' | 'COMPLETED' | 'ARCHIVED'
 export type MembershipStatus = 'ACTIVE' | 'INACTIVE'
 
 export interface PlayerIdentity {

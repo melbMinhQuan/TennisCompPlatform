@@ -1,3 +1,5 @@
+import type { SeasonStatus } from '../player/player.types'
+
 export interface ClubCompetition {
   id: string
   name: string
@@ -9,7 +11,7 @@ export interface ClubCompetition {
 interface SeasonContext {
   seasonId: string
   seasonLabel: string
-  seasonStatus: 'ACTIVE' | 'COMPLETED' | 'ARCHIVED'
+  seasonStatus: SeasonStatus
   competitionId: string
   competitionName: string
 }
