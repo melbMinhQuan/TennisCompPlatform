@@ -357,6 +357,7 @@ model Season {
 }
 
 enum SeasonStatus {
+  UPCOMING
   ACTIVE
   COMPLETED
   ARCHIVED
