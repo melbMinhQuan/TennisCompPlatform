@@ -18,6 +18,16 @@ export function formatFixtureDate(date: string | null) {
   return `${weekday} ${day.padStart(2, "0")} ${month}`;
 }
 
+/** "SAT 26 SEP 2026", or "Date to be confirmed" for a postponed fixture. */
+export function formatFixtureDateWithYear(date: string | null) {
+  return date ? `${formatFixtureDate(date)} ${dateParts(date).year}` : formatFixtureDate(date);
+}
+
+/** Today's date in Melbourne as YYYY-MM-DD, to compare with fixture dates. */
+export function todayInMelbourne() {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Australia/Melbourne" });
+}
+
 /** "29 AUG 2026" */
 export function formatResultDate(date: string) {
   const { day, month, year } = dateParts(date);

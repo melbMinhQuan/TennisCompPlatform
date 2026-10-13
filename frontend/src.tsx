@@ -25,6 +25,8 @@ import ClubAdminPlaceholderPage from "./pages/ClubAdminPlaceholderPage";
 import ClubAdminSupportPage from "./pages/ClubAdminSupportPage";
 import ClubAdminNotificationsPage from "./pages/ClubAdminNotificationsPage";
 import ClubAdminDashboardPage from "./pages/ClubAdminDashboardPage";
+import ClubAdminFixturesPage from "./pages/ClubAdminFixturesPage";
+import ClubAdminFixtureDetailPage from "./pages/ClubAdminFixtureDetailPage";
 import ClubAdminPlayersPage from "./pages/ClubAdminPlayersPage";
 import ClubAdminAddPlayerPage from "./pages/ClubAdminAddPlayerPage";
 import ClubAdminPlayerDetailPage from "./pages/ClubAdminPlayerDetailPage";
@@ -136,7 +138,12 @@ function App() {
 
         <Route
           path="fixtures"
-          element={<ClubAdminPlaceholderPage title="Fixtures & Results" />}
+          element={<ClubAdminFixturesPage />}
+        />
+
+        <Route
+          path="fixtures/:fixtureId"
+          element={<ClubAdminFixtureDetailPage />}
         />
 
         <Route

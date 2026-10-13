@@ -6,6 +6,9 @@ import { mockClubAdminNotifications } from "./mock-club-admin-notifications";
 export const mockClubAdminDashboard = snapshot;
 export type ClubAdminDashboardData = typeof snapshot;
 
+/** The signed-in administrator's club. Later this comes from the login (UserRole), not the sample. */
+export const clubAdminClubId = snapshot.club.id;
+
 /** Unread notices for the sidebar badge and dashboard tile; same sample as the Notifications page. */
 export const clubAdminUnreadCount = mockClubAdminNotifications.filter((notice) => !notice.readAt).length;
 
