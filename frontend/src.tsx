@@ -19,8 +19,17 @@ import MatchFixturePage from "./pages/MatchFixturePage";
 import MatchScorecardPage from "./pages/MatchScorecardPage";
 import SiteNavigation from "./components/SiteNavigation";
 
+// Club Admin pages
 import ClubAdminLayout from "./components/ClubAdminLayout";
 import ClubAdminPlaceholderPage from "./pages/ClubAdminPlaceholderPage";
+import ClubAdminPlayersPage from "./pages/ClubAdminPlayersPage";
+import ClubAdminAddPlayerPage from "./pages/ClubAdminAddPlayerPage";
+import ClubAdminPlayerDetailPage from "./pages/ClubAdminPlayerDetailPage";
+import ClubAdminTeamsPage from "./pages/ClubAdminTeamsPage";
+import ClubAdminTeamDetailPage from "./pages/ClubAdminTeamDetailPage";
+import ClubAdminTeamAddPlayersPage from "./pages/ClubAdminTeamAddPlayersPage";
+import ClubAdminTeamAssignManagerPage from "./pages/ClubAdminTeamAssignManagerPage";
+
 
 function App() {
   return <PlayerSession><BrowserRouter>
@@ -90,12 +99,37 @@ function App() {
 
         <Route
           path="players"
-          element={<ClubAdminPlaceholderPage title="Players" />}
+          element={<ClubAdminPlayersPage />}
+        />
+
+        <Route
+          path="players/add"
+          element={<ClubAdminAddPlayerPage />}
+        />
+
+        <Route
+          path="players/:playerId"
+          element={<ClubAdminPlayerDetailPage />}
         />
 
         <Route
           path="teams"
-          element={<ClubAdminPlaceholderPage title="Teams" />}
+          element={<ClubAdminTeamsPage />}
+        />
+
+        <Route
+          path="teams/:teamId"
+          element={<ClubAdminTeamDetailPage />}
+        />
+
+        <Route
+          path="teams/:teamId/add-players"
+          element={<ClubAdminTeamAddPlayersPage />}
+        />
+
+        <Route
+          path="teams/:teamId/manager"
+          element={<ClubAdminTeamAssignManagerPage />}
         />
 
         <Route

@@ -1,0 +1,213 @@
+import { useMemo, useState } from "react";
+import {
+  Link,
+  useNavigate,
+  useParams,
+} from "react-router";
+import {
+  mockTeams,
+  mockPlayers,
+  mockClubMemberships,
+} from "../data/clubAdminPlayers";
+import {
+  assignTeamManager,
+  useTeamManagers,
+} from "../data/teamManagerStore";
+
+const CLUB_ID = "CLB01";
+
+export default function ClubAdminTeamAssignManagerPage() {
+  const { teamId } = useParams<{ teamId: string }>();
+  const navigate = useNavigate();
+  const managers = useTeamManagers();
+
+  const [search, setSearch] = useState("");
+  const [selectedId, setSelectedId] = useState("");
+
+  const team = mockTeams.find(
+    (item) => item.id === teamId && item.clubId === CLUB_ID
+  );
+
+  const currentManagerId = teamId
+    ? managers[teamId]
+    : undefined;
+
+  const candidates = useMemo(() => {
+    const activeClubPlayerIds = new Set(
+      mockClubMemberships
+        .filter(
+          (membership) =>
+            membership.clubId === CLUB_ID &&
+            membership.status === "ACTIVE"
+        )
+        .map((membership) => membership.playerId)
+    );
+    const query = search.trim().toLowerCase();
+
+    return mockPlayers
+      .filter(
+        (player) =>
+          player.status === "ACTIVE" &&
+          activeClubPlayerIds.has(player.id) &&
+          (!query ||
+            `${player.firstName} ${player.lastName}`
+              .toLowerCase()
+              .includes(query) ||
+            player.id.toLowerCase().includes(query))
+      )
+      .sort((a, b) =>
+        `${a.firstName} ${a.lastName}`.localeCompare(
+          `${b.firstName} ${b.lastName}`
+        )
+      );
+  }, [search]);
+
+  if (!team) {
+    return (
+      <section className="text-white md:text-[#1a3049]">
+        <h1 className="text-2xl font-bold">Team not found</h1>
+        <Link to="/club-admin/teams" className="underline">
+          Back to teams
+        </Link>
+      </section>
+    );
+  }
+
+  const targetTeamId = team.id;
+  const detailPath = `/club-admin/teams/${targetTeamId}`;
+  const selectedManagerId = selectedId || currentManagerId || "";
+  const currentManager = mockPlayers.find(
+    (player) => player.id === currentManagerId
+  );
+
+  function handleAssign() {
+    const isEligible = candidates.some(
+      (player) => player.id === selectedManagerId
+    );
+
+    if (!isEligible) return;
+
+    assignTeamManager(targetTeamId, selectedManagerId);
+    navigate(detailPath, {
+      state: { managerUpdated: true },
+    });
+  }
+
+  return (
+    <section className="text-white md:text-[#1a3049]">
+      <p className="text-xs font-semibold uppercase tracking-wide text-[#d2dfed] md:text-[#60758d]">
+        Teams / {team.name} / Assign manager
+      </p>
+
+      <Link
+        to={detailPath}
+        className="mt-5 inline-flex min-h-11 items-center rounded-lg bg-[#e6eff9] px-5 text-sm font-medium text-[#1a3049]"
+      >
+        ‹ Back to team
+      </Link>
+
+      <h1 className="mt-6 text-3xl font-bold md:text-4xl">
+        Assign manager
+      </h1>
+
+      <p className="mt-3 text-sm text-[#d2dfed] md:text-[#60758d]">
+        Select an active player who is an active member of
+        this club. Eligible indicates basic demo criteria;
+        manager role and permission rules may differ in the
+        future.
+      </p>
+
+      <div className="mt-5 rounded-2xl bg-white p-5 text-[#1a3049] md:p-6">
+        <label
+          htmlFor="team-manager-search"
+          className="text-sm font-semibold"
+        >
+          Search players
+        </label>
+
+        <input
+          id="team-manager-search"
+          type="search"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search by name or Player ID"
+          className="mt-2 min-h-11 w-full rounded-lg border border-[#c8d8e9] px-4 outline-none focus:ring-2 focus:ring-[#4278b7]"
+        />
+
+        <div className="mt-5 border-b border-[#dbe4ef] pb-3">
+          <h2 className="font-bold">
+            Eligible players ({candidates.length})
+          </h2>
+          {currentManagerId && (
+            <p className="mt-1 text-sm text-[#60758d]">
+              Current manager:{" "}
+              {currentManager
+                ? `${currentManager.firstName} ${currentManager.lastName}`
+                : "Unknown player"}
+            </p>
+          )}
+        </div>
+
+        <div className="max-h-[480px] overflow-y-auto">
+          {candidates.length === 0 ? (
+            <p className="py-6 text-sm text-[#60758d]">
+              No eligible players found.
+            </p>
+          ) : (
+            candidates.map((player) => (
+              <label
+                key={player.id}
+                className="flex cursor-pointer items-center gap-3 border-b border-[#e4eaf2] py-4 last:border-0"
+              >
+                <input
+                  type="radio"
+                  name="team-manager"
+                  value={player.id}
+                  checked={selectedManagerId === player.id}
+                  onChange={() => setSelectedId(player.id)}
+                  className="h-4 w-4 accent-[#4278b7]"
+                />
+
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold">
+                    {player.firstName} {player.lastName}
+                  </p>
+                  <p className="text-xs text-[#60758d]">
+                    {player.id}
+                  </p>
+                </div>
+
+                <span className="rounded-md bg-[#e4f5ec] px-2 py-1 text-xs font-semibold text-[#187650]">
+                  Eligible
+                </span>
+              </label>
+            ))
+          )}
+        </div>
+
+        <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <Link
+            to={detailPath}
+            className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[#e6eff9] px-5 font-medium"
+          >
+            Cancel
+          </Link>
+
+          <button
+            type="button"
+            disabled={
+              !selectedManagerId ||
+              !candidates.some(
+                (player) => player.id === selectedManagerId
+              )
+            }
+            onClick={handleAssign}
+            className="min-h-11 rounded-lg bg-[#4278b7] px-5 font-medium text-white hover:bg-[#356aa8] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Assign manager
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
