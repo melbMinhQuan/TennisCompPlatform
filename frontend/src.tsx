@@ -22,6 +22,8 @@ import SiteNavigation from "./components/SiteNavigation";
 // Club Admin pages
 import ClubAdminLayout from "./components/ClubAdminLayout";
 import ClubAdminPlaceholderPage from "./pages/ClubAdminPlaceholderPage";
+import ClubAdminSupportPage from "./pages/ClubAdminSupportPage";
+import ClubAdminDashboardPage from "./pages/ClubAdminDashboardPage";
 import ClubAdminPlayersPage from "./pages/ClubAdminPlayersPage";
 import ClubAdminAddPlayerPage from "./pages/ClubAdminAddPlayerPage";
 import ClubAdminPlayerDetailPage from "./pages/ClubAdminPlayerDetailPage";
@@ -29,7 +31,6 @@ import ClubAdminTeamsPage from "./pages/ClubAdminTeamsPage";
 import ClubAdminTeamDetailPage from "./pages/ClubAdminTeamDetailPage";
 import ClubAdminTeamAddPlayersPage from "./pages/ClubAdminTeamAddPlayersPage";
 import ClubAdminTeamAssignManagerPage from "./pages/ClubAdminTeamAssignManagerPage";
-
 
 function App() {
   return <PlayerSession><BrowserRouter>
@@ -94,7 +95,7 @@ function App() {
       <Route path="/club-admin" element={<ClubAdminLayout />}>
         <Route
           index
-          element={<ClubAdminPlaceholderPage title="Dashboard" />}
+          element={<ClubAdminDashboardPage />}
         />
 
         <Route
@@ -144,7 +145,7 @@ function App() {
 
         <Route
           path="support"
-          element={<ClubAdminPlaceholderPage title="Help & Support" />}
+          element={<ClubAdminSupportPage />}
         />
 
         <Route
