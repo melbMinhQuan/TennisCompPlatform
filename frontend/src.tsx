@@ -23,6 +23,7 @@ import SiteNavigation from "./components/SiteNavigation";
 import ClubAdminLayout from "./components/ClubAdminLayout";
 import ClubAdminPlaceholderPage from "./pages/ClubAdminPlaceholderPage";
 import ClubAdminSupportPage from "./pages/ClubAdminSupportPage";
+import ClubAdminNotificationsPage from "./pages/ClubAdminNotificationsPage";
 import ClubAdminDashboardPage from "./pages/ClubAdminDashboardPage";
 import ClubAdminPlayersPage from "./pages/ClubAdminPlayersPage";
 import ClubAdminAddPlayerPage from "./pages/ClubAdminAddPlayerPage";
@@ -140,7 +141,7 @@ function App() {
 
         <Route
           path="notifications"
-          element={<ClubAdminPlaceholderPage title="Notifications" />}
+          element={<ClubAdminNotificationsPage />}
         />
 
         <Route
