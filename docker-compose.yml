@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: tenniscomp-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: tenniscomp
+      POSTGRES_PASSWORD: tenniscomp
+      POSTGRES_DB: tenniscomp
+    ports:
+      - '5432:5432'
+    volumes:
+      - tenniscomp-pgdata:/var/lib/postgresql/data
+
+volumes:
+  tenniscomp-pgdata:
