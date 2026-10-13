@@ -8,9 +8,16 @@ export function fullName(person: { firstName: string; lastName: string }): strin
   return `${person.firstName} ${person.lastName}`.trim()
 }
 
-/** "Winter 2026" from Season.season_type and year; either part may be missing. */
-export function seasonLabel(season: { seasonType: string | null; year: number | null }): string {
-  return [season.seasonType, season.year].filter(part => part !== null && part !== '').join(' ') || 'Season to be confirmed'
+/**
+ * "Winter 2026" from Season.season_type and year; either part may be missing.
+ * A season that ends in a later year, as summer does, is "Summer 2026/27".
+ */
+export function seasonLabel(season: { seasonType: string | null; year: number | null; endDate?: Date | null }): string {
+  const endYear = season.endDate?.getUTCFullYear()
+  const years = season.year !== null && endYear !== undefined && endYear > season.year
+    ? `${season.year}/${String(endYear).slice(-2)}`
+    : season.year
+  return [season.seasonType, years].filter(part => part !== null && part !== '').join(' ') || 'Season to be confirmed'
 }
 
 /**

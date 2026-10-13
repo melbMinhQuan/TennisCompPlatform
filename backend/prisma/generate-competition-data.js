@@ -201,15 +201,25 @@ const SEASONS = [
   // independent. MF13 is the format whose shape this actually is: two singles
   // rubbers and one doubles, each decided on a single set.
   { id: 'SEA04', competition_id: 'COMP05', year: 2026, season_type: 'Autumn', start_date: '2026-02-02', end_date: '2026-05-25', status: 'COMPLETED', format: 'MF13', setsToWin: 1, playDay: 1, startTime: '19:30', sections: 1, complete: true },
+  // The next Weekend Senior season, not started yet. The Winter 2026 sections
+  // are full, so its two sections start empty, ready for new teams.
+  { id: 'SEA05', competition_id: 'COMP01', year: 2026, season_type: 'Summer', start_date: '2026-10-31', end_date: '2027-03-27', status: 'UPCOMING', format: 'MF01', setsToWin: 2, playDay: 6, startTime: '13:00', sections: 2, teamsPerSection: 0, complete: false },
 ]
+
+/** "Winter 2026", or "Summer 2026/27" for a season that runs into the next year. */
+const seasonName = s => {
+  const endYear = Number(String(s.end_date).slice(0, 4))
+  return endYear > s.year ? `${s.season_type} ${s.year}/${String(endYear).slice(2)}` : `${s.season_type} ${s.year}`
+}
 
 const sections = []
 const teams = []
 for (const s of SEASONS) {
   for (let n = 0; n < s.sections; n++) {
     const sectionId = `SEC${pad(sections.length + 1, 2)}`
-    sections.push({ id: sectionId, season_id: s.id, name: `Section ${n + 1}`, gender: '', age_group: 'Adult', min_age: 18, max_age: '', team_count: 8 })
-    for (let t = 0; t < 8; t++) {
+    const teamCount = s.teamsPerSection ?? 8
+    sections.push({ id: sectionId, season_id: s.id, name: `Section ${n + 1}`, gender: '', age_group: 'Adult', min_age: 18, max_age: '', team_count: teamCount })
+    for (let t = 0; t < teamCount; t++) {
       const club = clubs[(n * 8 + t) % clubs.length]
       teams.push({
         id: `TEAM${pad(teams.length + 1, 3)}`, club_id: club.id, section_id: sectionId,
@@ -419,6 +429,8 @@ function setScore() {
 function buildFixtures(season) {
   for (const section of sectionsOf(season.id)) {
     const list = teamsOf(section.id)
+    // A section with no teams yet has nothing to draw.
+    if (!list.length) continue
     const base = roundRobin(list.map(t => t.id))
     // First Saturday (or Monday for night tennis) on or after the start date.
     let first = season.start_date
@@ -829,7 +841,7 @@ for (const { season, section, premiers, runnersUp, decidedOn } of premierships) 
       awards.push({
         id: `AWD${pad(awards.length + 1, 3)}`, player_id: p.id,
         award_type: type,
-        title: `${season.season_type} ${season.year} ${section.name} ${label}`,
+        title: `${seasonName(season)} ${section.name} ${label}`,
         competition_id: season.competition_id, season_id: season.id, team_id: teamId,
         awarded_on: decidedOn,
       })
@@ -1011,6 +1023,7 @@ const README = [
   ['Doubles first', 'Rubber 1 is the doubles, played at the scheduled start time; the two singles follow 90 minutes later.'],
   ['Rubber winner is derived', 'winner_side is blank for a completed rubber, because the winner is read from the set scores. It is only stored for a walkover, forfeit or retirement, where the scores cannot decide it.'],
   ['Finals come from the ladder', 'Finals fixtures exist only for seasons whose home-and-away rounds are finished, and the teams are taken from the final ladder positions. The current season has no finals yet.'],
+  ['Upcoming season', 'Summer 2026/27 Weekend Senior (SEA05) is UPCOMING with two empty sections, team_count 0, so new teams have somewhere to be entered. It has no teams, fixtures or ladder until they are.'],
   ['Ladder points and tie-break', 'Four points for a match win plus one per rubber won. Ties are separated by rubber percentage, then game percentage, then team name. Confirm this matches the association\'s rule before relying on it.'],
   ['Emergency players', 'Emergencies are not pre-registered on a roster. They appear only in the rubber they were called into, with is_emergency = TRUE, matching the last-minute substitution the client described.'],
   ['Result workflow', 'Results run enter -> opponent confirmation -> finalised. A few stay PENDING_CONFIRMATION and some are DISPUTED with a CorrectionRequest raised; AuditLog records who did what and when.'],
@@ -1032,7 +1045,7 @@ const book = XLSX.utils.book_new()
 const sheets = [
   ['README', README], ['User', [...users, ...adminUsers]], ['Association', ASSOCS], ['Club', clubs], ['Venue', venues],
   ['Competition', competitions], ['MatchFormat', matchFormats], ['EligibilityRule', eligibilityRules],
-  ['Season', SEASONS.map(({ format, setsToWin, playDay, startTime, sections: _s, complete, ...r }) => (void format, void setsToWin, void playDay, void startTime, void _s, void complete, r))],
+  ['Season', SEASONS.map(({ format, setsToWin, playDay, startTime, sections: _s, teamsPerSection, complete, ...r }) => (void format, void setsToWin, void playDay, void startTime, void _s, void teamsPerSection, void complete, r))],
   ['SectionGrade', sections], ['Team', strip(teams)], ['Player', [...players, ...adminPlayers]],
   ['ClubMembership', clubMemberships], ['AssociationMembership', associationMemberships],
   ['TeamPlayer', teamPlayers], ['UtrLink', utrLinks], ['UtrRatingSnapshot', utrSnapshots],
