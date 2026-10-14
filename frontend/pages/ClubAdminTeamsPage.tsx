@@ -1,11 +1,11 @@
 import { Link } from "react-router";
 import { useMemo, useState } from "react";
 import {
-  mockTeams,
   mockPlayers,
 } from "../data/mock-club-admin-players";
 import { useTeamPlayers } from "../data/teamSquadStore";
 import { useTeamManagers } from "../data/teamManagerStore";
+import { useClubTeams } from "../data/teamStore";
 import {
   matchButtonClass,
   matchCardClass,
@@ -27,6 +27,7 @@ export default function ClubAdminTeamsPage() {
   const [competition, setCompetition] = useState("ALL");
   const [seasonFilter, setSeasonFilter] =
     useState<SeasonFilter>("current");
+  const clubTeams = useClubTeams();
   const teamPlayers = useTeamPlayers();
   const teamManagers = useTeamManagers();
   const playerById = useMemo(
@@ -35,7 +36,7 @@ export default function ClubAdminTeamsPage() {
   );
 
   const teams = useMemo(() => {
-    return mockTeams
+    return clubTeams
       .filter((team) => team.clubId === CLUB_ID)
       .map((team) => {
         const manager = playerById.get(teamManagers[team.id] ?? "");
@@ -61,7 +62,7 @@ export default function ClubAdminTeamsPage() {
         a.name.localeCompare(b.name) ||
         a.sectionId.localeCompare(b.sectionId)
       );
-  }, [teamPlayers, teamManagers, playerById]);
+  }, [clubTeams, teamPlayers, teamManagers, playerById]);
 
   // Competition and season are not currently stored
   // in the provided mock data.
@@ -147,15 +148,12 @@ export default function ClubAdminTeamsPage() {
           </button>
         </div>
 
-        {/* Create Team will be implemented later */}
-        <button
-          type="button"
-          disabled
-          title="Create team will be available in a later step"
-          className={`${matchButtonClass} cursor-not-allowed opacity-60 md:whitespace-nowrap`}
+        <Link
+          to="/club-admin/teams/create"
+          className={`${matchButtonClass} md:whitespace-nowrap`}
         >
           + Create team
-        </button>
+        </Link>
       </div>
 
       {/* Team list */}

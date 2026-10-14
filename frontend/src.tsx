@@ -32,6 +32,7 @@ import ClubAdminAddPlayerPage from "./pages/ClubAdminAddPlayerPage";
 import ClubAdminPlayerDetailPage from "./pages/ClubAdminPlayerDetailPage";
 import ClubAdminTeamsPage from "./pages/ClubAdminTeamsPage";
 import ClubAdminTeamDetailPage from "./pages/ClubAdminTeamDetailPage";
+import ClubAdminTeamCreatePage from "./pages/ClubAdminTeamCreatePage";
 import ClubAdminTeamAddPlayersPage from "./pages/ClubAdminTeamAddPlayersPage";
 import ClubAdminTeamAssignManagerPage from "./pages/ClubAdminTeamAssignManagerPage";
 
@@ -119,6 +120,11 @@ function App() {
         <Route
           path="teams"
           element={<ClubAdminTeamsPage />}
+        />
+
+        <Route
+          path="teams/create"
+          element={<ClubAdminTeamCreatePage />}
         />
 
         <Route

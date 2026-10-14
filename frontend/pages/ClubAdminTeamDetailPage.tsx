@@ -5,7 +5,10 @@ import {
   mockTeams,
   mockPlayers,
 } from "../data/mock-club-admin-players";
-import { useTeamPlayers } from "../data/teamSquadStore";
+import {
+  removePlayerFromTeam,
+  useTeamPlayers,
+} from "../data/teamSquadStore";
 import {
   useTeamManagers,
   removeTeamManager,
@@ -32,6 +35,10 @@ export default function ClubAdminTeamDetailPage() {
 
   const [managerRemoved, setManagerRemoved] =
     useState(false);
+  const [playerToRemove, setPlayerToRemove] =
+    useState<string | null>(null);
+  const [removedPlayerName, setRemovedPlayerName] =
+    useState<string | null>(null);
 
   const managerId = teamId
     ? managers[teamId]
@@ -84,6 +91,9 @@ export default function ClubAdminTeamDetailPage() {
         )
       );
   }, [team, teamPlayers]);
+  const playerPendingRemoval = squad.find(
+    (player) => player.id === playerToRemove
+  );
 
   if (!team) {
     return (
@@ -218,11 +228,10 @@ export default function ClubAdminTeamDetailPage() {
                     </span>
                   )}
 
-                  {/* Removal will be implemented later */}
                   <button
                     type="button"
-                    disabled
-                    className="text-sm font-medium text-red-500 opacity-50"
+                    onClick={() => setPlayerToRemove(player.id)}
+                    className="text-sm font-medium text-[#b53b3b] hover:underline focus-visible:outline-2 focus-visible:outline-[#b53b3b]"
                   >
                     Remove
                   </button>
@@ -243,7 +252,79 @@ export default function ClubAdminTeamDetailPage() {
               : `+ ${remaining} more players`}
           </button>
         )}
+
+        {removedPlayerName && (
+          <p
+            role="status"
+            className="mt-4 rounded-lg bg-[#e4f5ec] p-3 text-sm text-[#187650]"
+          >
+            {removedPlayerName} was removed from the squad.
+          </p>
+        )}
       </div>
+
+      {playerToRemove && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="remove-player-title"
+            aria-describedby="remove-player-description"
+            className="w-full max-w-md rounded-2xl bg-white p-6 text-[#1a3049] shadow-xl"
+          >
+            <h2
+              id="remove-player-title"
+              className="text-xl font-bold"
+            >
+              Remove player from squad?
+            </h2>
+
+            <p
+              id="remove-player-description"
+              className="mt-3 text-sm leading-6 text-muted"
+            >
+              Remove{" "}
+              <strong>
+                {playerPendingRemoval
+                  ? `${playerPendingRemoval.firstName} ${playerPendingRemoval.lastName}`
+                  : "this player"}
+              </strong>{" "}
+              from {team.name}? This will not end their club
+              membership.
+            </p>
+
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setPlayerToRemove(null)}
+                className={secondary}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const player = playerPendingRemoval;
+                  if (!player) {
+                    setPlayerToRemove(null);
+                    return;
+                  }
+
+                  removePlayerFromTeam(team.id, player.id);
+                  setRemovedPlayerName(
+                    `${player.firstName} ${player.lastName}`
+                  );
+                  setPlayerToRemove(null);
+                }}
+                className="min-h-11 rounded-lg bg-[#b53b3b] px-5 text-sm font-medium text-white hover:bg-[#963030]"
+              >
+                Remove player
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Team Manager */}
       <div className="mt-4 rounded-2xl bg-white p-5 text-[#1a3049] md:p-6">
