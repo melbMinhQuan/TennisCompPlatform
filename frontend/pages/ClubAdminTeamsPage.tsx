@@ -2,8 +2,10 @@ import { Link } from "react-router";
 import { useMemo, useState } from "react";
 import {
   mockTeams,
+  mockPlayers,
 } from "../data/mock-club-admin-players";
 import { useTeamPlayers } from "../data/teamSquadStore";
+import { useTeamManagers } from "../data/teamManagerStore";
 import {
   matchButtonClass,
   matchCardClass,
@@ -26,11 +28,17 @@ export default function ClubAdminTeamsPage() {
   const [seasonFilter, setSeasonFilter] =
     useState<SeasonFilter>("current");
   const teamPlayers = useTeamPlayers();
+  const teamManagers = useTeamManagers();
+  const playerById = useMemo(
+    () => new Map(mockPlayers.map((player) => [player.id, player])),
+    []
+  );
 
   const teams = useMemo(() => {
     return mockTeams
       .filter((team) => team.clubId === CLUB_ID)
       .map((team) => {
+        const manager = playerById.get(teamManagers[team.id] ?? "");
         const playerCount = new Set(
           teamPlayers
             .filter(
@@ -44,13 +52,16 @@ export default function ClubAdminTeamsPage() {
         return {
           ...team,
           playerCount,
+          managerName: manager
+            ? `${manager.firstName} ${manager.lastName}`
+            : null,
         };
       })
       .sort((a, b) =>
         a.name.localeCompare(b.name) ||
         a.sectionId.localeCompare(b.sectionId)
       );
-  }, [teamPlayers]);
+  }, [teamPlayers, teamManagers, playerById]);
 
   // Competition and season are not currently stored
   // in the provided mock data.
@@ -190,7 +201,9 @@ export default function ClubAdminTeamsPage() {
                   </p>
 
                   <p className="mt-1 text-xs text-muted">
-                    Manager not recorded in mock data
+                    {team.managerName
+                      ? `Manager: ${team.managerName}`
+                      : "No manager"}
                   </p>
                 </div>
 

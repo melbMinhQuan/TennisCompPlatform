@@ -13,6 +13,7 @@ import {
   assignTeamManager,
   useTeamManagers,
 } from "../data/teamManagerStore";
+import { useTeamPlayers } from "../data/teamSquadStore";
 import {
   matchButtonClass,
   matchCardClass,
@@ -26,6 +27,7 @@ export default function ClubAdminTeamAssignManagerPage() {
   const { teamId } = useParams<{ teamId: string }>();
   const navigate = useNavigate();
   const managers = useTeamManagers();
+  const teamPlayers = useTeamPlayers();
 
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState("");
@@ -82,8 +84,14 @@ export default function ClubAdminTeamAssignManagerPage() {
   const targetTeamId = team.id;
   const detailPath = `/club-admin/teams/${targetTeamId}`;
   const selectedManagerId = selectedId || currentManagerId || "";
-  const currentManager = mockPlayers.find(
-    (player) => player.id === currentManagerId
+  const squadPlayerIds = new Set(
+    teamPlayers
+      .filter(
+        (teamPlayer) =>
+          teamPlayer.teamId === targetTeamId &&
+          teamPlayer.status === "ACTIVE"
+      )
+      .map((teamPlayer) => teamPlayer.playerId)
   );
 
   function handleAssign() {
@@ -142,16 +150,8 @@ export default function ClubAdminTeamAssignManagerPage() {
 
         <div className="mt-5 border-b border-[#dbe4ef] pb-3">
           <h2 className="font-bold">
-            Eligible players ({candidates.length})
+            Choose one person ({candidates.length})
           </h2>
-          {currentManagerId && (
-            <p className="mt-1 text-sm text-muted">
-              Current manager:{" "}
-              {currentManager
-                ? `${currentManager.firstName} ${currentManager.lastName}`
-                : "Unknown player"}
-            </p>
-          )}
         </div>
 
         <div className="max-h-[480px] overflow-y-auto">
@@ -179,13 +179,18 @@ export default function ClubAdminTeamAssignManagerPage() {
                     {player.firstName} {player.lastName}
                   </p>
                   <p className="text-xs text-muted">
-                    {player.id}
+                    {player.id} ·{" "}
+                    {squadPlayerIds.has(player.id)
+                      ? "In this squad"
+                      : "Club member"}
                   </p>
                 </div>
 
-                <span className="rounded-md bg-[#e4f5ec] px-2 py-1 text-xs font-semibold text-[#187650]">
-                  Eligible
-                </span>
+                {player.id === currentManagerId && (
+                  <span className="rounded-md bg-[#e8f0fa] px-2.5 py-1 text-xs font-semibold text-[#1a3049]">
+                    Current manager
+                  </span>
+                )}
               </label>
             ))
           )}

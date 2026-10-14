@@ -212,6 +212,11 @@ export default function ClubAdminTeamDetailPage() {
                   <span className="rounded-md bg-[#e4f5ec] px-2.5 py-1 text-xs font-semibold text-[#187650]">
                     In squad
                   </span>
+                  {player.id === managerId && (
+                    <span className="rounded-md bg-[#e8f0fa] px-2.5 py-1 text-xs font-semibold text-[#1a3049]">
+                      Team manager
+                    </span>
+                  )}
 
                   {/* Removal will be implemented later */}
                   <button
