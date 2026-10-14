@@ -1,8 +1,8 @@
 # Club Admin notifications: display-only Sprint 2 implementation
 
-Route: `/club-admin/notifications` (US-22, Should). `ClubAdminNotificationsPage.tsx` loads the sample through `api/club-admin-notifications.ts` and renders one `components/club-admin/ClubAdminNotificationRow.tsx` per notice. No live API calls are made. "Mark as read" and "Mark all as read" only change the page's own state and reset on reload.
+Route: `/club-admin/notifications` (US-22, Should). `ClubAdminNotificationsPage.tsx` loads the sample through `api/club-admin-notifications.ts` and renders one `components/club-admin/ClubAdminNotificationRow.tsx` per notice. No live API calls are made. "Mark as read" and "Mark all as read" update a shared in-memory read state (`data/club-admin-notification-reads.ts`) and reset on reload.
 
-The sidebar badge and the dashboard's unread tile use the same sample (`clubAdminUnreadCount` in `data/club-admin-dashboard.ts`), so all three show the same number.
+The sidebar badge and the dashboard's unread tile read the same state (`useClubAdminUnreadCount`), so all three update together.
 
 ## Sample data
 

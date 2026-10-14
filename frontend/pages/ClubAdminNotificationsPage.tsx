@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { getClubAdminNotifications } from "../api/club-admin-notifications";
 import { useApiData } from "../api/useApiData";
+import { markNotificationsRead, useReadNotificationIds } from "../data/club-admin-notification-reads";
 import ClubAdminNotificationRow from "../components/club-admin/ClubAdminNotificationRow";
 import MatchLoadState from "../components/MatchLoadState";
 import { matchCardClass, matchLightButtonClass, pageClass, pageIntroClass, pageTitleClass, tabClass } from "../components/MatchesUI";
@@ -8,21 +9,21 @@ import { matchCardClass, matchLightButtonClass, pageClass, pageIntroClass, pageT
 type View = "unread" | "all";
 
 /**
- * Club administrator Notifications (US-22). Display-only: "Mark as read" only changes this page's
- * state until PATCH /api/v1/club-admin/notifications/:id/read exists.
+ * Club administrator Notifications (US-22). Display-only: "Mark as read" updates the shared
+ * in-memory read state (sidebar and dashboard too) until PATCH /api/v1/club-admin/notifications/:id/read exists.
  */
 export default function ClubAdminNotificationsPage() {
   const { data, error, retry } = useApiData(getClubAdminNotifications);
   const [view, setView] = useState<View>("unread");
-  const [readIds, setReadIds] = useState<Set<string>>(new Set());
+  const readIds = useReadNotificationIds();
 
   const notifications = (data ?? []).map((item) =>
     readIds.has(item.id) && !item.readAt ? { ...item, readAt: "read-on-this-page" } : item,
   );
   const unreadCount = notifications.filter((item) => item.readAt === null).length;
   const shown = view === "unread" ? notifications.filter((item) => item.readAt === null) : notifications;
-  const markRead = (id: string) => setReadIds((current) => new Set(current).add(id));
-  const markAllRead = () => setReadIds(new Set(notifications.map((item) => item.id)));
+  const markRead = (id: string) => markNotificationsRead([id]);
+  const markAllRead = () => markNotificationsRead(notifications.map((item) => item.id));
 
   return (
     <div className={pageClass}>

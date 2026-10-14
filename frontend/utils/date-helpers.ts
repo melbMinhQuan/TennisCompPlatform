@@ -23,9 +23,14 @@ export function formatFixtureDateWithYear(date: string | null) {
   return date ? `${formatFixtureDate(date)} ${dateParts(date).year}` : formatFixtureDate(date);
 }
 
+/** A timestamp's date in Melbourne as YYYY-MM-DD (today by default), to compare or format. */
+export function melbourneDate(value: string | Date = new Date()) {
+  return new Date(value).toLocaleDateString("en-CA", { timeZone: "Australia/Melbourne" });
+}
+
 /** Today's date in Melbourne as YYYY-MM-DD, to compare with fixture dates. */
 export function todayInMelbourne() {
-  return new Date().toLocaleDateString("en-CA", { timeZone: "Australia/Melbourne" });
+  return melbourneDate();
 }
 
 /** "29 AUG 2026" */

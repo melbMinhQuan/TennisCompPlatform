@@ -1,5 +1,4 @@
 import snapshot from "./mock-club-admin-dashboard.json";
-import { mockClubAdminNotifications } from "./mock-club-admin-notifications";
 
 // Display-only snapshot of competition_data.xlsx (Glen Waverley Tennis Club, CLB01), not a live
 // database response. The page loads it through api/club-admin-dashboard.ts.
@@ -8,9 +7,6 @@ export type ClubAdminDashboardData = typeof snapshot;
 
 /** The signed-in administrator's club. Later this comes from the login (UserRole), not the sample. */
 export const clubAdminClubId = snapshot.club.id;
-
-/** Unread notices for the sidebar badge and dashboard tile; same sample as the Notifications page. */
-export const clubAdminUnreadCount = mockClubAdminNotifications.filter((notice) => !notice.readAt).length;
 
 /**
  * The selected season's teams, and the teams that still need setting up

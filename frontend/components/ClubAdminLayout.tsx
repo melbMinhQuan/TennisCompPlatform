@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, Outlet, useLocation } from "react-router";
 import ClubAdminNavigation from "./layout/ClubAdminNavigation";
 import logo from "../resources/Logo.png";
-import { clubAdminUnreadCount } from "../data/club-admin-dashboard";
+import { useClubAdminUnreadCount } from "../data/club-admin-notification-reads";
 
 // Hardcoded until login returns the role and club (US-18). Glen Waverley's club administrator in
 // competition_data.xlsx: UserRole UR003 (CLUB_ADMIN, CLB01) → Player PLR006 Ethan Wright
@@ -12,11 +12,11 @@ const MOCK_ADMIN = {
   initials: "EW",
   role: "Club Administrator",
   clubName: "Glen Waverley TC",
-  unreadCount: clubAdminUnreadCount,
 };
 
 export default function ClubAdminLayout() {
   const { pathname } = useLocation();
+  const unreadCount = useClubAdminUnreadCount();
 
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const drawerRef = useRef<HTMLDialogElement>(null);
@@ -165,7 +165,7 @@ export default function ClubAdminLayout() {
 
           <ClubAdminNavigation
             mobile
-            unreadCount={MOCK_ADMIN.unreadCount}
+            unreadCount={unreadCount}
             onNavigate={() => setIsMobileMenuOpen(false)}
           />
         </div>
@@ -182,7 +182,7 @@ export default function ClubAdminLayout() {
           </p>
 
           <ClubAdminNavigation
-            unreadCount={MOCK_ADMIN.unreadCount}
+            unreadCount={unreadCount}
           />
         </aside>
 
