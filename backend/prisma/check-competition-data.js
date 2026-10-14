@@ -31,8 +31,6 @@ count('players with a non-.example address',
   S.Player.filter(p => !/\.example$/.test(String(p._lookup_user_email))).length)
 count('User rows with a non-.example address',
   S.User.filter(u => !/\.example$/.test(String(u.email))).length)
-count('players whose email differs from their login email',
-  S.Player.filter(p => p.email !== p._lookup_user_email).length)
 
 // ── Legal tennis set scores: 6-0..6-4, 7-5, or 7-6 on a tiebreak
 const illegal = S.RubberSet.filter(s => {
@@ -108,6 +106,11 @@ const playerByLogin = new Map(S.Player.map(p => [p._lookup_user_email, p]))
 count('club admins who are not members of their club',
   S.UserRole.filter(r => r.role_type === 'CLUB_ADMIN')
     .filter(r => !memberOf.has(`${playerByLogin.get(r._lookup_user_email)?.id}|${r.club_id}`)).length)
+
+// ── Team names are unique within a season, ignoring case and surrounding spaces
+const teamSeason = new Map(S.SectionGrade.map(s => [s.id, s.season_id]))
+const teamKeys = S.Team.map(t => `${teamSeason.get(t.section_id)}|${String(t.name).trim().toLowerCase()}`)
+count('teams sharing a name with another team in the same season', teamKeys.length - new Set(teamKeys).size)
 
 // ── A user holds exactly one role
 const rolesPerUser = new Map()
@@ -461,7 +464,7 @@ const next = S.Fixture
   .sort((a, b) => String(a.schedule_date).localeCompare(String(b.schedule_date)))[0]
 const widgets = {
   'Name / Status': `${sample.first_name} ${sample.last_name} / ${sample.status}`,
-  'Email': sample.email,
+  'Email': sample._lookup_user_email,
   'Club / Team': team ? `${team.name}` : 'MISSING',
   'UTR tiles': snaps.slice(-3).map(s => s.rating).reverse().join(', ') || 'MISSING',
   'Percentile': rank ? `Top ${(100 - Number(rank.percentile_rank)).toFixed(0)}%` : 'MISSING',

@@ -123,6 +123,9 @@ const EMAIL = 'chloe@club.example'
 test('MAP-001: season, format, status and time labels', () => {
   assert.equal(seasonLabel({ seasonType: 'Winter', year: 2026 }), 'Winter 2026')
   assert.equal(seasonLabel({ seasonType: null, year: null }), 'Season to be confirmed')
+  assert.equal(seasonLabel({ seasonType: 'Summer', year: 2026, endDate: date('2027-03-27') }), 'Summer 2026/27')
+  assert.equal(seasonLabel({ seasonType: 'Winter', year: 2026, endDate: date('2026-10-24') }), 'Winter 2026')
+  assert.equal(seasonLabel({ seasonType: 'Summer', year: null, endDate: date('2027-03-27') }), 'Summer')
   assert.equal(formatLabel({ singlesCount: 2, doublesCount: 1 }), 'Team singles & doubles')
   assert.equal(formatLabel({ singlesCount: 0, doublesCount: 4 }), 'Team doubles')
   assert.equal(formatLabel(null), 'Format to be confirmed')
