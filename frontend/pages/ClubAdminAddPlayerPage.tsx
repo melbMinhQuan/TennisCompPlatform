@@ -1,15 +1,21 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
-import { mockPlayers, mockClubs, mockClubMemberships } from "../data/clubAdminPlayers";
+import { mockPlayers, mockClubs, mockClubMemberships } from "../data/mock-club-admin-players";
 import type { ClubAdminPlayer } from "../types/clubAdminPlayer";
+import {
+  matchButtonClass,
+  matchCardClass,
+  matchLightButtonClass,
+  pageTitleClass,
+} from "../components/MatchesUI";
 
 type Stage = "search" | "choose" | "done";
 type Result = { player: ClubAdminPlayer; score: number };
 const CLUB_ID = "CLB01";
 const clubName = mockClubs.find((club) => club.id === CLUB_ID)?.name ?? "Glen Waverley Tennis Club";
-const button = "inline-flex min-h-11 items-center justify-center rounded-lg bg-[#4278b7] px-5 py-2 font-medium text-white hover:bg-[#356aa8]";
-const secondary = "inline-flex min-h-11 items-center justify-center rounded-lg bg-[#e6eff9] px-5 py-2 font-medium text-[#1a3049] hover:bg-[#d9e6f5]";
-const inputStyle = "mt-1 min-h-11 w-full rounded-lg border border-[#c8d8e9] bg-white px-4 text-[#1a3049] outline-none focus:ring-2 focus:ring-[#4278b7]";
+const button = matchButtonClass;
+const secondary = matchLightButtonClass;
+const inputStyle = "mt-1 min-h-11 w-full rounded-lg border border-[#c8d8e9] bg-white px-4 text-[#1a3049] outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3f72af]";
 const normalize = (value: string) => value.trim().toLowerCase().replace(/\s+/g, " ");
 
 function toISODate(value: string) {
@@ -117,15 +123,15 @@ export default function ClubAdminAddPlayerPage() {
 
   return (
     <section className="text-white md:text-[#1a3049]">
-      <p className="text-xs font-semibold uppercase tracking-wide text-[#d2dfed] md:text-[#60758d]">Players / Add a player</p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-[#d2dfed] md:text-muted">Players / Add a player</p>
       {stage !== "done" && (
         <button type="button" onClick={() => stage === "choose" ? setStage("search") : window.history.back()}
           className={`${secondary} mt-5`}>
           ‹ {stage === "choose" ? "Change search" : "Players"}
         </button>
       )}
-      <h1 className="mt-5 text-3xl font-bold md:text-4xl">Add a player</h1>
-      <p className="mt-4 text-sm text-[#d2dfed] md:text-[#60758d]">
+      <h1 className={`mt-5 ${pageTitleClass}`}>Add a player</h1>
+      <p className="mt-4 text-sm text-[#d2dfed] md:text-muted">
         {stage === "search" ? "First we check if this person is already in the system, so nobody is entered twice."
           : stage === "choose" ? "Pick the person you mean. Each result tells you what will happen."
           : "All done. Here's what happened and what you can do next."}
@@ -136,7 +142,7 @@ export default function ClubAdminAddPlayerPage() {
           return (
             <li key={label} className="flex items-center gap-2">
               {index > 0 && <span className="mr-1 text-[#a9bdd4]">—</span>}
-              <span className={`flex h-8 w-8 items-center justify-center rounded-full font-semibold ${index < current ? "bg-[#187b5a] text-white" : index === current ? "bg-[#4278b7] text-white md:bg-[#4278b7]" : "bg-[#e6eff9] text-[#60758d]"}`}>
+              <span className={`flex h-8 w-8 items-center justify-center rounded-full font-semibold ${index < current ? "bg-[#187b5a] text-white" : index === current ? "bg-[#3f72af] text-white" : "bg-[#e8f0fa] text-[#526579]"}`}>
                 {index < current ? "✓" : index + 1}
               </span>
               <span className={index === current ? "font-bold" : "opacity-80"}>{label}</span>
@@ -146,12 +152,12 @@ export default function ClubAdminAddPlayerPage() {
       </ol>
 
       {stage === "search" && (
-        <form onSubmit={search} className="mt-5 rounded-2xl bg-white p-5 text-[#1a3049] md:p-6">
+        <form onSubmit={search} className={`mt-5 text-[#1a3049] ${matchCardClass}`}>
           <h2 className="mb-4 text-lg font-bold">Who are you adding?</h2>
           <div className="grid gap-4 md:grid-cols-3">
             <label className="text-sm font-semibold">Full name *
               <input className={inputStyle} value={fullName} onChange={(event) => setFullName(event.target.value)} placeholder="Full name" required />
-              <span className="mt-1 block text-xs font-normal text-[#60758d]">Required</span>
+              <span className="mt-1 block text-xs font-normal text-muted">Required</span>
             </label>
             <label className="text-sm font-semibold">Date of birth
               <input
@@ -180,14 +186,14 @@ export default function ClubAdminAddPlayerPage() {
                 }}
               />
 
-              <span className="mt-1 block text-xs font-normal text-[#60758d]">Helps find the right person</span>
+              <span className="mt-1 block text-xs font-normal text-muted">Helps find the right person</span>
             </label>
             <label className="text-sm font-semibold">Email
               <input className={inputStyle} type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Email address" />
-              <span className="mt-1 block text-xs font-normal text-[#60758d]">Optional</span>
+              <span className="mt-1 block text-xs font-normal text-muted">Optional</span>
             </label>
           </div>
-          <p className="mt-4 text-sm text-[#60758d]">We search every club in Waverley Tennis, not just yours. Results never show date of birth or contact details.</p>
+          <p className="mt-4 text-sm text-muted">This demo searches a small sample from across Waverley Tennis. The live registry will search all clubs. Results never show date of birth or contact details.</p>
           {error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
           <button className={`${button} mt-4 w-full md:w-auto`} type="submit">Search</button>
         </form>
@@ -210,7 +216,7 @@ export default function ClubAdminAddPlayerPage() {
                     </span>
                   </div>
                   <p className="mt-2 text-sm font-medium">Name {exact ? "✓" : "similar"} {dateOfBirth && ` · Date of birth ${dateOfBirth === player.dateOfBirth ? "✓" : "×"}`} {email && ` · Email ${normalize(email) === normalize(player.email ?? "") ? "✓" : "×"}`}</p>
-                  <p className="mt-2 text-sm text-[#60758d]">{member ? "Already a Glen Waverley member — nothing to add." : clubs.length ? `Plays for ${clubs.join(", ")}. Adding them keeps the same Player ID and history.` : "No active club membership found in the mock data."}</p>
+                  <p className="mt-2 text-sm text-muted">{member ? "Already a Glen Waverley member. There is nothing to add." : clubs.length ? `Plays for ${clubs.join(", ")}. Adding them keeps the same Player ID and history.` : "No active club membership found in the mock data."}</p>
                   {member ? (
                     <Link to={`/club-admin/players/${player.id}`} className={`${secondary} mt-3 w-full md:w-auto`}>View player</Link>
                   ) : (
@@ -222,7 +228,7 @@ export default function ClubAdminAddPlayerPage() {
           </div>
           <div className="mt-4 rounded-2xl border-2 border-dashed border-[#b7cce3] bg-[#f4f8fc] p-5 text-[#1a3049] md:p-6">
             <h3 className="font-bold">Not in the list?</h3>
-            <p className="mt-2 text-sm text-[#60758d]">Only create a new player if none of the results above is this person.</p>
+            <p className="mt-2 text-sm text-muted">Only create a new player if none of the results above is this person.</p>
             <button type="button" className={`${secondary} mt-3 w-full md:w-auto`} onClick={createNew}>Create new player</button>
           </div>
         </div>

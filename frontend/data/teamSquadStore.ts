@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { mockTeamPlayers } from "./clubAdminPlayers";
+import { mockTeamPlayers } from "./mock-club-admin-players";
 import type { ClubAdminTeamPlayer } from "../types/clubAdminPlayer";
 
 let teamPlayers: ClubAdminTeamPlayer[] = [...mockTeamPlayers];

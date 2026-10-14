@@ -2,8 +2,14 @@ import { Link } from "react-router";
 import { useMemo, useState } from "react";
 import {
   mockTeams,
-} from "../data/clubAdminPlayers";
+} from "../data/mock-club-admin-players";
 import { useTeamPlayers } from "../data/teamSquadStore";
+import {
+  matchButtonClass,
+  matchCardClass,
+  pageTitleClass,
+  tabClass,
+} from "../components/MatchesUI";
 
 const CLUB_ID = "CLB01";
 
@@ -78,11 +84,11 @@ export default function ClubAdminTeamsPage() {
       </p>
 
       {/* Page heading */}
-      <h1 className="mt-5 text-[30px] font-bold leading-tight md:mt-6 md:text-[36px]">
+      <h1 className={`mt-5 md:mt-6 ${pageTitleClass}`}>
         Teams
       </h1>
 
-      <p className="mt-4 text-sm leading-6 text-[#d2dfed] md:text-base md:text-[#60758d]">
+      <p className="mt-4 text-sm leading-6 text-[#d2dfed] md:text-base md:text-muted">
         Your club’s teams. A team plays in one
         competition, season and section.
       </p>
@@ -97,7 +103,7 @@ export default function ClubAdminTeamsPage() {
             onChange={(event) =>
               setCompetition(event.target.value)
             }
-            className="min-h-11 w-full rounded-lg border border-[#c6d6e8] bg-white px-4 text-base text-[#1a3049] outline-none focus:ring-2 focus:ring-[#4278b7]"
+            className="min-h-11 w-full rounded-lg border border-[#c6d6e8] bg-white px-4 text-base text-[#1a3049] outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3f72af]"
           >
             <option value="ALL">All competitions</option>
             <option value={DEFAULT_COMPETITION}>
@@ -115,11 +121,7 @@ export default function ClubAdminTeamsPage() {
             type="button"
             aria-pressed={isCurrentSeason}
             onClick={() => setSeasonFilter("current")}
-            className={`min-h-11 rounded-lg px-4 text-sm font-medium md:px-5 ${
-              isCurrentSeason
-                ? "bg-[#4278b7] text-white"
-                : "bg-[#e5effa] text-[#1a3049] hover:bg-[#d6e5f6]"
-            }`}
+            className={tabClass(isCurrentSeason)}
           >
             Summer 2026/27
           </button>
@@ -128,11 +130,7 @@ export default function ClubAdminTeamsPage() {
             type="button"
             aria-pressed={!isCurrentSeason}
             onClick={() => setSeasonFilter("past")}
-            className={`min-h-11 rounded-lg px-4 text-sm font-medium md:px-5 ${
-              !isCurrentSeason
-                ? "bg-[#4278b7] text-white"
-                : "bg-[#e5effa] text-[#1a3049] hover:bg-[#d6e5f6]"
-            }`}
+            className={tabClass(!isCurrentSeason)}
           >
             Past seasons
           </button>
@@ -143,14 +141,14 @@ export default function ClubAdminTeamsPage() {
           type="button"
           disabled
           title="Create team will be available in a later step"
-          className="min-h-11 rounded-lg bg-[#4278b7] px-5 font-medium text-white opacity-60 md:whitespace-nowrap"
+          className={`${matchButtonClass} cursor-not-allowed opacity-60 md:whitespace-nowrap`}
         >
           + Create team
         </button>
       </div>
 
       {/* Team list */}
-      <div className="mt-4 rounded-2xl bg-white p-5 text-[#1a3049] md:p-6">
+      <div className={`mt-4 text-[#1a3049] ${matchCardClass}`}>
         <h2 className="border-b border-[#dbe4ef] pb-1 text-lg font-bold">
           {isCurrentSeason
             ? `${DEFAULT_SEASON} · ${visibleTeams.length} ${
@@ -160,12 +158,12 @@ export default function ClubAdminTeamsPage() {
         </h2>
 
         {!isCurrentSeason ? (
-          <p className="py-8 text-sm text-[#60758d]">
+          <p className="py-8 text-sm text-muted">
             Historical season information is not available
             in the current mock data.
           </p>
         ) : visibleTeams.length === 0 ? (
-          <p className="py-8 text-sm text-[#60758d]">
+          <p className="py-8 text-sm text-muted">
             No teams found for this competition.
           </p>
         ) : (
@@ -182,7 +180,7 @@ export default function ClubAdminTeamsPage() {
                     {team.name}
                   </p>
 
-                  <p className="mt-0.5 text-sm text-[#60758d]">
+                  <p className="mt-0.5 text-sm text-muted">
                     {DEFAULT_COMPETITION} ·{" "}
                     {team.sectionId} ·{" "}
                     {team.playerCount}{" "}
@@ -191,7 +189,7 @@ export default function ClubAdminTeamsPage() {
                       : "players"}
                   </p>
 
-                  <p className="mt-1 text-xs text-[#60758d]">
+                  <p className="mt-1 text-xs text-muted">
                     Manager not recorded in mock data
                   </p>
                 </div>
@@ -200,7 +198,7 @@ export default function ClubAdminTeamsPage() {
                   <span
                     className={`rounded-md px-2.5 py-1 text-xs font-semibold ${
                       hasPlayers
-                        ? "bg-[#e4f5ec] text-[#187650]"
+                        ? "bg-[#e5f4ec] text-[#197354]"
                         : "bg-[#fff1df] text-[#a45a15]"
                     }`}
                   >
@@ -210,7 +208,7 @@ export default function ClubAdminTeamsPage() {
                   </span>
                     <Link
                         to={`/club-admin/teams/${team.id}`}
-                        className="text-sm font-medium text-[#4278b7] hover:underline"
+                        className="text-sm font-medium text-[#3f72af] hover:underline focus-visible:outline-2 focus-visible:outline-[#3f72af]"
                         >
                         View ›
                     </Link>
@@ -222,7 +220,7 @@ export default function ClubAdminTeamsPage() {
       </div>
 
       {/* Information box */}
-      <div className="mt-4 rounded-2xl bg-[#e5effa] p-5 text-[#1a3049] md:p-6">
+      <div className="mt-4 rounded-2xl bg-[#e8f0fa] p-5 text-[#1a3049] md:p-6">
         <h2 className="font-bold">
           Why is there a new team each season?
         </h2>

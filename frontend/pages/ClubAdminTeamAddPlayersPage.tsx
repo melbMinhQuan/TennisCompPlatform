@@ -5,11 +5,17 @@ import {
   mockTeams,
   mockPlayers,
   mockClubMemberships,
-} from "../data/clubAdminPlayers";
+} from "../data/mock-club-admin-players";
 import {
   useTeamPlayers,
   addPlayersToTeam,
 } from "../data/teamSquadStore";
+import {
+  matchButtonClass,
+  matchCardClass,
+  matchLightButtonClass,
+  pageTitleClass,
+} from "../components/MatchesUI";
 
 const CLUB_ID = "CLB01";
 
@@ -136,26 +142,26 @@ export default function ClubAdminTeamAddPlayersPage() {
 
   return (
     <section className="text-white md:text-[#1a3049]">
-      <p className="text-xs font-semibold uppercase tracking-wide text-[#d2dfed] md:text-[#60758d]">
+      <p className="text-xs font-semibold uppercase tracking-wide text-[#d2dfed] md:text-muted">
         Teams / {team.name} / Add players
       </p>
 
       <Link
         to={detailPath}
-        className="mt-5 inline-flex min-h-11 items-center rounded-lg bg-[#e6eff9] px-5 text-sm font-medium text-[#1a3049]"
+        className={`${matchLightButtonClass} mt-5`}
       >
         ‹ Back to team
       </Link>
 
-      <h1 className="mt-6 text-3xl font-bold md:text-4xl">
+      <h1 className={`mt-6 ${pageTitleClass}`}>
         Add players
       </h1>
 
-      <p className="mt-3 text-sm text-[#d2dfed] md:text-[#60758d]">
+      <p className="mt-3 text-sm text-[#d2dfed] md:text-muted">
         Select eligible club members to add to {team.name}.
       </p>
 
-      <div className="mt-5 rounded-2xl bg-white p-5 text-[#1a3049] md:p-6">
+      <div className={`mt-5 text-[#1a3049] ${matchCardClass}`}>
         <label
           htmlFor="team-player-search"
           className="text-sm font-semibold"
@@ -169,21 +175,21 @@ export default function ClubAdminTeamAddPlayersPage() {
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder="Search by name or Player ID"
-          className="mt-2 min-h-11 w-full rounded-lg border border-[#c8d8e9] px-4 outline-none focus:ring-2 focus:ring-[#4278b7]"
+          className="mt-2 min-h-11 w-full rounded-lg border border-[#c8d8e9] px-4 outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3f72af]"
         />
 
         <div className="mt-5 flex items-center justify-between border-b border-[#dbe4ef] pb-3">
           <h2 className="font-bold">
             Players ({members.length})
           </h2>
-          <span className="text-sm text-[#60758d]">
+          <span className="text-sm text-muted">
             {selected.length} selected
           </span>
         </div>
 
         <div className="max-h-[480px] overflow-y-auto">
           {members.length === 0 ? (
-            <p className="py-6 text-sm text-[#60758d]">
+            <p className="py-6 text-sm text-muted">
               No players found.
             </p>
           ) : (
@@ -199,14 +205,14 @@ export default function ClubAdminTeamAddPlayersPage() {
                   disabled={!eligible}
                   checked={selected.includes(player.id)}
                   onChange={() => togglePlayer(player.id)}
-                  className="h-4 w-4 accent-[#4278b7]"
+                  className="h-4 w-4 accent-[#3f72af]"
                 />
 
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold">
                     {player.firstName} {player.lastName}
                   </p>
-                  <p className="text-xs text-[#60758d]">
+                  <p className="text-xs text-muted">
                     {player.id}
                   </p>
                   {!eligible && (
@@ -239,7 +245,7 @@ export default function ClubAdminTeamAddPlayersPage() {
         <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <Link
             to={detailPath}
-            className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[#e6eff9] px-5 font-medium"
+            className={matchLightButtonClass}
           >
             Cancel
           </Link>
@@ -248,7 +254,7 @@ export default function ClubAdminTeamAddPlayersPage() {
             type="button"
             disabled={selected.length === 0}
             onClick={handleAdd}
-            className="min-h-11 rounded-lg bg-[#4278b7] px-5 font-medium text-white hover:bg-[#356aa8] disabled:cursor-not-allowed disabled:opacity-50"
+            className={`${matchButtonClass} disabled:cursor-not-allowed disabled:opacity-50`}
           >
             Add {selected.length}{" "}
             {selected.length === 1 ? "player" : "players"}

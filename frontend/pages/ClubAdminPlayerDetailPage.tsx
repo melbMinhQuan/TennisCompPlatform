@@ -7,12 +7,15 @@ import {
   mockClubMemberships,
   mockTeams,
   mockTeamPlayers,
-} from "../data/clubAdminPlayers";
+} from "../data/mock-club-admin-players";
+import {
+  matchLightButtonClass,
+  pageTitleClass,
+} from "../components/MatchesUI";
 
 const CLUB_ID = "CLB01";
 
-const secondaryButton =
-  "inline-flex min-h-11 items-center justify-center rounded-lg border border-[#c8d8e9] bg-white px-5 text-sm font-medium text-[#1a3049] hover:bg-[#e6eff9]";
+const secondaryButton = matchLightButtonClass;
 
 function formatDate(value: string | null | undefined) {
   if (!value) return "—";
@@ -71,7 +74,7 @@ export default function ClubAdminPlayerDetailPage() {
   if (!player || !currentMembership) {
     return (
       <section className="text-white md:text-[#1a3049]">
-        <h1 className="text-3xl font-bold">Player not found</h1>
+        <h1 className={pageTitleClass}>Player not found</h1>
         <p className="mt-3">
           This player is not a member of your club.
         </p>
@@ -103,22 +106,19 @@ export default function ClubAdminPlayerDetailPage() {
   return (
     <section className="text-white md:text-[#1a3049]">
       {/* Breadcrumb */}
-      <p className="text-xs font-semibold uppercase tracking-wide text-[#d2dfed] md:text-[#60758d]">
+      <p className="text-xs font-semibold uppercase tracking-wide text-[#d2dfed] md:text-muted">
         Players / {fullName}
       </p>
 
-      <Link
-        to="/club-admin/players"
-        className="mt-5 inline-flex min-h-11 items-center rounded-lg bg-[#e6eff9] px-5 text-sm font-semibold text-[#1a3049]"
-      >
+      <Link to="/club-admin/players" className={`${secondaryButton} mt-5`}>
         ‹ Players
       </Link>
 
-      <h1 className="mt-6 text-3xl font-bold md:text-4xl">
+      <h1 className={`mt-6 ${pageTitleClass}`}>
         {fullName}
       </h1>
 
-      <p className="mt-4 text-sm text-[#d2dfed] md:text-[#60758d]">
+      <p className="mt-4 text-sm text-[#d2dfed] md:text-muted">
         Player ID {player.id} · One record shared by every
         club they play for.
       </p>
@@ -197,7 +197,7 @@ export default function ClubAdminPlayerDetailPage() {
                 {club?.name ?? membership.clubId}
               </p>
 
-              <p className="mt-1 text-sm text-[#60758d]">
+              <p className="mt-1 text-sm text-muted">
                 {membership.clubId === CLUB_ID
                   ? `Joined ${formatDate(membership.startDate)}`
                   : "Managed by that club"}
@@ -242,7 +242,7 @@ export default function ClubAdminPlayerDetailPage() {
         </h2>
 
         {playerTeams.length === 0 ? (
-          <p className="py-4 text-sm text-[#60758d]">
+          <p className="py-4 text-sm text-muted">
             No team yet.
           </p>
         ) : (
@@ -252,7 +252,7 @@ export default function ClubAdminPlayerDetailPage() {
               className="border-b border-[#dbe4ef] py-4 last:border-b-0"
             >
               <p className="font-semibold">{team.name}</p>
-              <p className="mt-1 text-sm text-[#60758d]">
+              <p className="mt-1 text-sm text-muted">
                 Section {team.sectionId}
               </p>
 
@@ -263,7 +263,7 @@ export default function ClubAdminPlayerDetailPage() {
 
                 <Link
                   to="/club-admin/teams"
-                  className="text-sm font-semibold text-[#4278b7] hover:underline"
+                  className="text-sm font-semibold text-[#3f72af] hover:underline focus-visible:outline-2 focus-visible:outline-[#3f72af]"
                 >
                   View team ›
                 </Link>
@@ -274,7 +274,7 @@ export default function ClubAdminPlayerDetailPage() {
 
         <Link
           to="/club-admin/teams"
-          className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-[#e6eff9] px-5 text-sm font-medium text-[#1a3049] md:w-auto"
+          className={`${secondaryButton} mt-4 w-full md:w-auto`}
         >
           + Add to a team
         </Link>
@@ -296,7 +296,7 @@ export default function ClubAdminPlayerDetailPage() {
               End membership?
             </h2>
 
-            <p className="mt-3 text-sm text-[#60758d]">
+            <p className="mt-3 text-sm text-muted">
               This will mark the Glen Waverley membership as
               inactive in this page's demo state.
               No database changes will be made.
@@ -313,7 +313,7 @@ export default function ClubAdminPlayerDetailPage() {
 
               <button
                 type="button"
-                className="min-h-11 rounded-lg bg-[#4278b7] px-5 font-medium text-white"
+                className="min-h-11 rounded-lg bg-red-600 px-5 font-medium text-white hover:bg-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700"
                 onClick={() => {
                   setEnded(true);
                   setShowConfirm(false);

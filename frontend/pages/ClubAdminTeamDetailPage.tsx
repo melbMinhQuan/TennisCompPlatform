@@ -4,20 +4,22 @@ import { Link, useLocation, useParams } from "react-router";
 import {
   mockTeams,
   mockPlayers,
-} from "../data/clubAdminPlayers";
+} from "../data/mock-club-admin-players";
 import { useTeamPlayers } from "../data/teamSquadStore";
 import {
   useTeamManagers,
   removeTeamManager,
 } from "../data/teamManagerStore";
+import {
+  matchButtonClass,
+  matchLightButtonClass,
+  pageTitleClass,
+} from "../components/MatchesUI";
 
 const CLUB_ID = "CLB01";
 
-const button =
-  "inline-flex min-h-11 items-center justify-center rounded-lg bg-[#4278b7] px-5 py-2 text-sm font-medium text-white hover:bg-[#356aa8]";
-
-const secondary =
-  "inline-flex min-h-11 items-center justify-center rounded-lg bg-[#e6eff9] px-5 py-2 text-sm font-medium text-[#1a3049] hover:bg-[#d9e6f5]";
+const button = matchButtonClass;
+const secondary = matchLightButtonClass;
 
 export default function ClubAdminTeamDetailPage() {
   const { teamId } = useParams<{ teamId: string }>();
@@ -86,7 +88,7 @@ export default function ClubAdminTeamDetailPage() {
   if (!team) {
     return (
       <section className="text-white md:text-[#1a3049]">
-        <h1 className="text-3xl font-bold">
+        <h1 className={pageTitleClass}>
           Team not found
         </h1>
         <p className="mt-3 text-sm">
@@ -109,7 +111,7 @@ export default function ClubAdminTeamDetailPage() {
   return (
     <section className="text-white md:text-[#1a3049]">
       {/* Breadcrumb */}
-      <p className="text-xs font-semibold uppercase tracking-wide text-[#d2dfed] md:text-[#526579]">
+      <p className="text-xs font-semibold uppercase tracking-wide text-[#d2dfed] md:text-muted">
         Teams&nbsp; / &nbsp;{team.name}
       </p>
 
@@ -122,11 +124,11 @@ export default function ClubAdminTeamDetailPage() {
       </Link>
 
       {/* Heading */}
-      <h1 className="mt-6 text-[30px] font-bold leading-tight md:text-[36px]">
+      <h1 className={`mt-6 ${pageTitleClass}`}>
         {team.name}
       </h1>
 
-      <p className="mt-4 text-sm text-[#d2dfed] md:text-base md:text-[#60758d]">
+      <p className="mt-4 text-sm text-[#d2dfed] md:text-base md:text-muted">
         Section {team.sectionId.replace(/^SEC0*/, "")}
         {" · "}
         Team ID {team.id}
@@ -187,7 +189,7 @@ export default function ClubAdminTeamDetailPage() {
 
         <div className="mt-4 border-t border-[#dbe4ef]">
           {squad.length === 0 ? (
-            <p className="py-6 text-sm text-[#60758d]">
+            <p className="py-6 text-sm text-muted">
               No active players in this squad.
             </p>
           ) : (
@@ -201,7 +203,7 @@ export default function ClubAdminTeamDetailPage() {
                     {player.firstName} {player.lastName}
                   </p>
 
-                  <p className="mt-0.5 text-sm text-[#60758d]">
+                  <p className="mt-0.5 text-sm text-muted">
                     {player.id}
                   </p>
                 </div>
@@ -229,7 +231,7 @@ export default function ClubAdminTeamDetailPage() {
           <button
             type="button"
             onClick={() => setShowAll(!showAll)}
-            className="mt-4 text-sm font-medium text-[#4278b7] hover:underline"
+            className="mt-4 text-sm font-medium text-[#3f72af] hover:underline focus-visible:outline-2 focus-visible:outline-[#3f72af]"
           >
             {showAll
               ? "Show less"
@@ -250,15 +252,15 @@ export default function ClubAdminTeamDetailPage() {
               <p className="text-lg font-semibold">
                 {manager.firstName} {manager.lastName}
               </p>
-              <p className="mt-1 text-sm text-[#60758d]">
+              <p className="mt-1 text-sm text-muted">
                 Player ID: {manager.id}
               </p>
-              <p className="mt-1 text-sm text-[#60758d]">
+              <p className="mt-1 text-sm text-muted">
                 {manager.email}
               </p>
             </div>
 
-            <p className="mt-4 text-sm leading-6 text-[#60758d]">
+            <p className="mt-4 text-sm leading-6 text-muted">
               This manager is assigned to this team only.
             </p>
 
@@ -281,7 +283,7 @@ export default function ClubAdminTeamDetailPage() {
           </>
         ) : (
           <>
-            <p className="mt-2 text-sm leading-6 text-[#60758d]">
+            <p className="mt-2 text-sm leading-6 text-muted">
               No manager is currently assigned to this team.
               Assign an eligible club member to manage
               the team's squad and match information.
@@ -334,14 +336,14 @@ export default function ClubAdminTeamDetailPage() {
 
             <p
               id="remove-manager-description"
-              className="mt-3 text-sm leading-6 text-[#60758d]"
+              className="mt-3 text-sm leading-6 text-muted"
             >
               Are you sure you want to remove{" "}
               <strong>{managerName}</strong> as manager
               of {team.name}?
             </p>
 
-            <p className="mt-2 text-sm text-[#60758d]">
+            <p className="mt-2 text-sm text-muted">
               This will not remove them from the club
               or from the team squad.
             </p>
