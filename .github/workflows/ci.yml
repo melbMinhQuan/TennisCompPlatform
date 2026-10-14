@@ -1,5 +1,8 @@
 # Runs on every push and every pull request into main: installs the project the
-# same way a new teammate would, then tests and builds both applications.
+# same way a new teammate would, then checks, tests and builds both applications.
+# On a push to main, a fully green run then releases: the backend first, then the
+# frontend, each checked live, then the whole live site in a browser. Any failing
+# check stops the release there.
 # A red cross on a pull request means one of these steps failed; open the run
 # to see which test ID broke (they match "TestingPlan.xlsx").
 name: CI
@@ -31,13 +34,26 @@ jobs:
       - name: Generate the Prisma client
         run: npm run prisma:generate --workspace=backend
 
-      - name: Backend tests
-        run: npm test --workspace=backend
+      # Every sheet of the workbook the database is seeded from, against schema.prisma and the
+      # competition rules: unique ids, foreign keys, scores that agree with their rubbers, ...
+      - name: Check the test data (competition_data.xlsx)
+        run: npm run data:check --workspace=backend
 
-      - name: Frontend tests
-        run: npm test --workspace=frontend
+      - name: Type-check the end-to-end tests
+        run: npx tsc -p e2e
 
-      - name: Frontend build (type-check and bundle)
+      # Each fails if coverage drops below its minimum; the figures are on the run's summary page.
+      - name: Backend tests, with coverage
+        run: npm run test:coverage --workspace=backend
+
+      - name: Frontend tests, with coverage
+        run: npm run test:coverage --workspace=frontend
+
+      - name: Coverage summary
+        if: ${{ !cancelled() }}
+        run: node .github/scripts/coverage-summary.mjs >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Frontend build (type-check the app and its tests, then bundle)
         run: npm run build --workspace=frontend
 
   # The whole app in a browser against a real, freshly seeded database: the E2E rows
@@ -78,13 +94,29 @@ jobs:
         working-directory: backend
         run: npx prisma migrate deploy
 
+      # A schema.prisma change with no migration passes every other test, then breaks the live
+      # database on release. This compares the freshly migrated database with the schema.
+      - name: Check every schema.prisma change has a migration
+        working-directory: backend
+        run: |
+          npx prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --exit-code || {
+            echo "::error::schema.prisma does not match the migrations (differences above). In backend/, run: npx prisma migrate dev --name <what-changed>, then commit the new migration folder."
+            exit 1
+          }
+
+      # SEED-002: seeds the empty database twice inside a transaction that is then rolled back. The
+      # second run must add nothing, so running the seed again can never duplicate a player.
+      - name: Seeding twice adds no duplicate players or rows
+        run: npm run test:database --workspace=backend
+
       - name: Load the test data (competition_data.xlsx)
         run: npm run seed:competition --workspace=backend
 
       - name: Install the test browser
         run: npx playwright install --with-deps chromium
 
-      # Playwright starts the backend and frontend itself (see playwright.config.ts).
+      # Playwright starts the backend and serves the production frontend build itself
+      # (see playwright.config.ts), so the tests run against what gets deployed.
       - name: End-to-end tests
         run: npm run test:e2e
 
@@ -95,3 +127,105 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
+
+  # Azure runs the backend from a package of its own (npm workspaces keep every dependency in
+  # the root node_modules), whose dependencies are installed fresh rather than from the lockfile.
+  # This builds that package exactly as it is deployed, starts it the way Azure does on an empty
+  # database, and checks it answers. On main, this tested package is what the deploy uploads.
+  backend-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: tenniscomp
+          POSTGRES_PASSWORD: tenniscomp
+          POSTGRES_DB: tenniscomp
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U tenniscomp" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://tenniscomp:tenniscomp@localhost:5432/tenniscomp?schema=public
+
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies (exactly as locked)
+        run: npm ci
+
+      - name: Generate the Prisma client
+        run: npm run prisma:generate --workspace=backend
+
+      - name: Build the backend
+        run: npm run build --workspace=backend
+
+      # prisma (the CLI) is installed as a runtime dependency here because the App Service
+      # startup command runs `prisma migrate deploy` before the API starts, so a release that
+      # adds a migration applies it automatically.
+      - name: Package the backend on its own
+        run: |
+          mkdir deploy
+          cp -r backend/dist backend/prisma backend/package.json deploy/
+          cd deploy
+          npm install --omit=dev
+          npm install prisma@5.22.0
+          npx prisma generate
+
+      # The same two commands as App Service's startup command:
+      # npx prisma migrate deploy && node dist/main.js
+      - name: Start the package the way Azure does, on an empty database
+        working-directory: deploy
+        env:
+          CORS_ORIGIN: http://localhost:5173
+        run: |
+          npx prisma migrate deploy
+          node dist/main.js > ../backend.log 2>&1 &
+
+      - name: Check the package answers
+        env:
+          BACKEND_URL: http://localhost:3000
+          FRONTEND_URL: http://localhost:5173
+          GIVE_UP_AFTER_SECONDS: 60
+        run: node .github/scripts/smoke-test.mjs backend
+
+      - name: Show the backend's log
+        if: failure()
+        run: cat backend.log
+
+      # tar keeps file permissions and links (Prisma's engine must stay executable), which an
+      # artifact upload on its own would drop.
+      - name: Bundle the tested package for the deploy
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: tar -czf backend-package.tgz -C deploy .
+
+      - name: Hand the tested package to the deploy
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-package
+          path: backend-package.tgz
+          retention-days: 7
+          if-no-files-found: error
+          overwrite: true
+
+  # Releases only after every job above passes, and only for a push to main: pull requests and
+  # other branches stop at the checks. The backend goes first, and the frontend only once the
+  # live backend has passed its check. To redeploy, open the run and choose "Re-run all jobs".
+  deploy-backend:
+    needs: [test-and-build, end-to-end, backend-package]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/deploy-backend.yml
+    secrets: inherit
+
+  deploy-frontend:
+    needs: deploy-backend
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/deploy-frontend.yml
+    secrets: inherit

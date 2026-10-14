@@ -1,0 +1,14 @@
+{
+  // Type-checks the end-to-end tests and the Playwright configs (CI runs: npx tsc -p e2e).
+  // Playwright itself only strips types, so a mistake here would otherwise surface mid-run.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "types": ["node"]
+  },
+  "include": ["**/*.ts", "../playwright.config.ts", "../playwright.live.config.ts"]
+}

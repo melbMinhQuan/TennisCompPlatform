@@ -136,7 +136,10 @@ Other ways to open the database:
 | `npm run dev:frontend` | Starts the frontend on port 5173 |
 | `npm run prisma:studio --workspace=backend` | Opens the database in the browser on port 5555 |
 | `npm test` | Unit and integration tests (no database needed) |
+| `npm run test:coverage --workspace=backend` (or `=frontend`) | The same tests with a coverage report; fails below the minimums |
 | `npm run test:e2e` | End-to-end tests in Chrome (database must be running and seeded) |
+| `npm run data:check --workspace=backend` | Checks the test-data workbook against the schema and the competition rules |
+| `npm run test:database --workspace=backend` | Seeds a local database twice inside a transaction it rolls back; fails if the second run adds anything |
 | `docker compose up -d` | Starts the database |
 | `docker compose down` | Stops the database and keeps the data |
 | `docker compose down -v` | Stops the database and **deletes all data** |
@@ -152,18 +155,35 @@ test's name starts with its ID (e.g. `AUTH-002`), so a failure points straight t
 | --- | --- | --- | --- |
 | Unit | One function or service, with a fake database | `backend/test/`, `frontend/tests/` | `npm test` |
 | Integration | A real HTTP route, or a rendered React component | same folders; `I-` IDs | `npm test` |
+| Database | The seed against a real Postgres, rolled back afterwards | `backend/test/seed-competition.integration.cjs` | `npm run test:database --workspace=backend` |
 | End to end | The whole app in Chrome against the real seeded database | `e2e/` | `npm run test:e2e` |
+| Live | The deployed site in a browser, after each release | `e2e/live/`; `LIVE-` IDs | CI only (see below) |
 
 `npm run test:e2e` reuses the backend and frontend if they are already running; otherwise it
 starts them. It uses your installed Google Chrome. When a test fails, a screenshot and a
 step-by-step trace are saved in `test-results/`.
 
-**CI:** GitHub Actions (`.github/workflows/ci.yml`) runs on every push and pull request, in two
-jobs:
+**Coverage.** `npm run test:coverage` in either workspace reports which code the tests run, and
+fails if it drops below a minimum set a few points under the October 2026 level (backend:
+`test:coverage` in `backend/package.json`; frontend: `frontend/vite.config.ts`). The frontend
+figure is low on purpose: pages are tested end to end, which coverage does not count, so the
+logic in `api/`, `context/` and `utils/` has a stricter minimum of its own.
 
-- **test-and-build:** unit and integration tests, then the frontend build.
-- **end-to-end:** creates an empty database, migrates and seeds it, starts the app and runs the
-  end-to-end tests.
+**CI/CD:** GitHub Actions (`.github/workflows/ci.yml`) runs on every push and pull request:
+
+- **test-and-build:** checks the test-data workbook (`data:check`), type-checks the end-to-end
+  tests, runs the backend and frontend tests with coverage (figures on the run's summary page),
+  then type-checks and builds the frontend, its tests included.
+- **end-to-end:** creates an empty database and migrates it, fails if `schema.prisma` has a change
+  with no migration, seeds it twice in a transaction it rolls back (the second run must add
+  nothing), seeds it for real, then runs the end-to-end tests against the production build of
+  the frontend.
+- **backend-package:** builds the backend package exactly as Azure receives it, starts it the way
+  Azure does on an empty database, and checks it answers.
+- **deploy-backend, then deploy-frontend:** only for a push to `main`, and only once all three
+  jobs above pass. The backend uploaded is the package just tested; the frontend goes out only
+  after the live backend passes its check; then a browser logs in to the live site. See
+  [docs/deployment.md](docs/deployment.md).
 
 A red ❌ on a pull request means something broke; open the run to see which test ID failed. For an
 end-to-end failure, download the `playwright-report` file attached to the run.
@@ -176,6 +196,12 @@ end-to-end failure, download the `playwright-report` file attached to the run.
 rows. It covers two associations, twelve clubs, five competitions, 292 fixtures, 274 results,
 ladders, standings, UTR ratings and notifications. Names and match formats are real; dates of
 birth, phone numbers, ratings and contact details are made up (see the `README` sheet inside it).
+
+Two names, Hiro Mitchell and Amelia Lee, each belong to two different people on purpose, so the
+app can be tested on look-alikes. Duplicate-player tests keep it that way: `data:check` fails on
+a player registered twice (same name and date of birth) unless a merge request pairs the two
+(DATA-001); TEAM-003 and E2E-010 check same-name players are never mixed up; SEED-002 checks
+that running the seed again never adds a second copy of anything.
 
 Run these in `backend/`:
 

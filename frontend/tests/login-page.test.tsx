@@ -54,6 +54,16 @@ describe("I-UI-001: login form", () => {
     vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("Failed to fetch"); }));
     renderLogin();
     submit("chloe@club.example", "right");
-    expect((await screen.findByRole("alert")).textContent).not.toMatch(/Incorrect email or password/);
+    expect(await screen.findByRole("alert")).toHaveProperty("textContent", "We couldn’t reach the server. Please try again in a minute.");
+  });
+
+  test("a backend that is still starting gets the same plain message, not a parsing error", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      new Response("<!DOCTYPE html><h1>Service Unavailable</h1>", { status: 503, headers: { "Content-Type": "text/html" } }),
+    ));
+    renderLogin();
+    submit("chloe@club.example", "right");
+    expect(await screen.findByRole("alert")).toHaveProperty("textContent", "We couldn’t reach the server. Please try again in a minute.");
+    expect(screen.queryByText("Dashboard reached")).toBeNull();
   });
 });
