@@ -35,14 +35,14 @@ export class DashboardService {
   /** The demo resolves by email; future auth can call the same player-based methods. */
   async resolvePlayer(email: string) {
     const user = await this.prisma.user.findUnique({
-      where: { email }, select: { email: true, player: { include: playerInclude } },
+      where: { email }, select: { email: true, profile: { include: playerInclude } },
     })
     if (!user) throw new NotFoundException({ statusCode: 404, code: 'USER_NOT_FOUND', message: 'Account not found' })
-    if (!user.player) throw new NotFoundException({
+    if (!user.profile) throw new NotFoundException({
       statusCode: 404, code: 'PLAYER_PROFILE_NOT_LINKED',
       message: 'Login account found, but it does not have a linked player profile yet.',
     })
-    return { player: user.player, loginEmail: user.email }
+    return { player: user.profile, loginEmail: user.email }
   }
 
   async dashboard(query: DashboardQuery): Promise<DashboardData> {

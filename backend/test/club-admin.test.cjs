@@ -103,7 +103,7 @@ const prisma = {
         && (where.clubId === undefined || r.clubId !== null)
         && (where.associationId === undefined || r.associationId === where.associationId)
         && (where.teamId === undefined || r.teamId === where.teamId))
-      return role ? { ...role, user: { player: role.player ?? null } } : null
+      return role ? { ...role, user: { profile: role.player ?? null } } : null
     },
   },
   club: { findUnique: async ({ where }) => clubs[where.id] ?? null },
