@@ -104,9 +104,10 @@ jobs:
             exit 1
           }
 
-      # SEED-002: seeds the empty database twice inside a transaction that is then rolled back. The
-      # second run must add nothing, so running the seed again can never duplicate a player.
-      - name: Seeding twice adds no duplicate players or rows
+      # Tests that need a real database, each in a transaction that is rolled back: SEED-002 (seeding
+      # a second time adds nothing, so no player is ever duplicated) and MATCH-005 / DUP-003
+      # (incomplete names and duplicate profiles, on the real seeded data).
+      - name: Database tests (seeding twice, matching players), rolled back
         run: npm run test:database --workspace=backend
 
       - name: Load the test data (competition_data.xlsx)

@@ -139,7 +139,8 @@ Other ways to open the database:
 | `npm run test:coverage --workspace=backend` (or `=frontend`) | The same tests with a coverage report; fails below the minimums |
 | `npm run test:e2e` | End-to-end tests in Chrome (database must be running and seeded) |
 | `npm run data:check --workspace=backend` | Checks the test-data workbook against the schema and the competition rules |
-| `npm run test:database --workspace=backend` | Seeds a local database twice inside a transaction it rolls back; fails if the second run adds anything |
+| `npm run test:database --workspace=backend` | Tests on a real local database, rolled back afterwards: seeding twice, matching players |
+| `npm run players:duplicates --workspace=backend` | Lists profiles that are probably one person registered twice ([docs/player-matching.md](docs/player-matching.md)) |
 | `docker compose up -d` | Starts the database |
 | `docker compose down` | Stops the database and keeps the data |
 | `docker compose down -v` | Stops the database and **deletes all data** |
@@ -155,7 +156,7 @@ test's name starts with its ID (e.g. `AUTH-002`), so a failure points straight t
 | --- | --- | --- | --- |
 | Unit | One function or service, with a fake database | `backend/test/`, `frontend/tests/` | `npm test` |
 | Integration | A real HTTP route, or a rendered React component | same folders; `I-` IDs | `npm test` |
-| Database | The seed against a real Postgres, rolled back afterwards | `backend/test/seed-competition.integration.cjs` | `npm run test:database --workspace=backend` |
+| Database | The seed and player matching against a real Postgres, rolled back afterwards | `backend/test/seed-competition.integration.cjs`, `player-matching.integration.cjs` | `npm run test:database --workspace=backend` |
 | End to end | The whole app in Chrome against the real seeded database | `e2e/` | `npm run test:e2e` |
 | Live | The deployed site in a browser, after each release | `e2e/live/`; `LIVE-` IDs | CI only (see below) |
 
@@ -175,9 +176,9 @@ logic in `api/`, `context/` and `utils/` has a stricter minimum of its own.
   tests, runs the backend and frontend tests with coverage (figures on the run's summary page),
   then type-checks and builds the frontend, its tests included.
 - **end-to-end:** creates an empty database and migrates it, fails if `schema.prisma` has a change
-  with no migration, seeds it twice in a transaction it rolls back (the second run must add
-  nothing), seeds it for real, then runs the end-to-end tests against the production build of
-  the frontend.
+  with no migration, runs the database tests in transactions it rolls back (seeding twice must
+  add nothing; player matching on the seeded data), seeds it for real, then runs the end-to-end
+  tests against the production build of the frontend.
 - **backend-package:** builds the backend package exactly as Azure receives it, starts it the way
   Azure does on an empty database, and checks it answers.
 - **deploy-backend, then deploy-frontend:** only for a push to `main`, and only once all three
@@ -202,6 +203,10 @@ app can be tested on look-alikes. Duplicate-player tests keep it that way: `data
 a player registered twice (same name and date of birth) unless a merge request pairs the two
 (DATA-001); TEAM-003 and E2E-010 check same-name players are never mixed up; SEED-002 checks
 that running the seed again never adds a second copy of anything.
+
+Scoresheets often record incomplete names ("Josh" for Joshua Smith). How the system works out
+which player is meant, and finds profiles registered twice, is in
+[docs/player-matching.md](docs/player-matching.md).
 
 Run these in `backend/`:
 
