@@ -89,3 +89,33 @@ export interface ClubAdminSupportContacts {
     email: string | null
   } | null
 }
+
+/**
+ * A section of an UPCOMING season run by the admin's association, which a new
+ * team may enter. teamCount is how many teams have entered so far, from any club.
+ */
+export interface OpenSection extends ClubSection {
+  teamCount: number
+}
+
+/**
+ * One registry search result. Never carries date of birth or contact details:
+ * the matches only say whether what the admin typed agrees with the record.
+ */
+export interface RegistryMatch {
+  id: string
+  firstName: string
+  lastName: string
+  match: {
+    // 'exact' when the full name is the same, otherwise why it could be them.
+    name: 'exact' | 'similar'
+    nameReasons: string[]
+    // null when the admin did not give one.
+    dateOfBirth: boolean | null
+    email: boolean | null
+  }
+  // An ACTIVE membership of the admin's club, so there is nothing to add.
+  inThisClub: boolean
+  // Other clubs the player is an active member of, by name.
+  otherClubs: string[]
+}

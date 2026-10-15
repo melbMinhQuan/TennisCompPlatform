@@ -3,10 +3,14 @@ import { Prisma } from '@prisma/client'
 import { readOrUnavailable } from '../common/data-unavailable'
 import { roleHolderName } from '../common/role-holder'
 import { calendarDate, fullName, seasonLabel } from '../player/player-mappers'
+import { nameFit, normalizeName, parseWrittenName } from '../player-matching/names'
 import { PrismaService } from '../prisma/prisma.service'
+import type { RegistrySearchDto } from './club-admin.dto'
 import type {
   ClubAdminSupportContacts, ClubCompetition, ClubPlayer, ClubPlayerDetail, ClubPlayerMembership, ClubSection, ClubTeam, ClubTeamDetail,
+  OpenSection, RegistryMatch,
 } from './club-admin.types'
+import { isCurrentMembership, localToday } from './membership'
 
 const seasonInclude = Prisma.validator<Prisma.SeasonInclude>()({ competition: true })
 type SeasonWithCompetition = Prisma.SeasonGetPayload<{ include: typeof seasonInclude }>
@@ -15,9 +19,9 @@ const teamInclude = Prisma.validator<Prisma.TeamInclude>()({ section: { include:
 type TeamWithSeason = Prisma.TeamGetPayload<{ include: typeof teamInclude }>
 
 // The player's login and role, to leave club admins' own profiles out of the Players pages.
-const playerRole = { user: { select: { userRole: { select: { roleType: true, revokedAt: true } } } } } as const
+export const playerRole = { user: { select: { userRole: { select: { roleType: true, revokedAt: true } } } } } as const
 type PlayerWithRole = { user: { userRole: { roleType: string; revokedAt: Date | null } | null } | null }
-const isClubAdmin = (player: PlayerWithRole) =>
+export const isClubAdmin = (player: PlayerWithRole) =>
   player.user?.userRole?.roleType === 'CLUB_ADMIN' && player.user.userRole.revokedAt === null
 
 const playerNotFound = () => new NotFoundException({ statusCode: 404, code: 'PLAYER_NOT_FOUND', message: 'Player not found' })
@@ -154,6 +158,76 @@ export class ClubAdminService {
           .sort((a, b) => b.seasonLabel.localeCompare(a.seasonLabel) || a.teamName.localeCompare(b.teamName)),
       }
     }, 'Player details are unavailable right now')
+  }
+
+  /**
+   * Sections a new team can enter: those of UPCOMING seasons in competitions
+   * the admin's association runs, whether or not the club has a team there yet.
+   */
+  async openSections(clubId: string): Promise<OpenSection[]> {
+    return readOrUnavailable(async () => {
+      const club = await this.prisma.club.findUnique({ where: { id: clubId }, select: { associationId: true } })
+      if (!club) return []
+      const sections = await this.prisma.sectionGrade.findMany({
+        where: { season: { status: 'UPCOMING', competition: { associationId: club.associationId } } },
+        include: { season: { include: seasonInclude }, _count: { select: { teams: true } } },
+        orderBy: [{ season: { competition: { name: 'asc' } } }, ...newestSeason.map(season => ({ season })), { name: 'asc' }, { id: 'asc' }],
+      })
+      return sections.map(section => ({
+        id: section.id, name: section.name, gender: section.gender, ageGroup: section.ageGroup,
+        ...this.seasonContext(section.season), teamCount: section._count.teams,
+      }))
+    }, 'Sections are unavailable right now')
+  }
+
+  /**
+   * Registered players who could be the person the admin is adding, best match
+   * first, at most 20. The name decides who is a candidate, using the same
+   * rules as scoresheet matching; date of birth and email only rank them, so a
+   * typo there never hides the right person. Merged profiles and club admins
+   * are left out.
+   */
+  async searchRegistry(clubId: string, search: RegistrySearchDto): Promise<RegistryMatch[]> {
+    const written = parseWrittenName(search.name)
+    if (!written) return []
+    // A cheap first cut by initial; nameFit below makes the real decision.
+    const initial = (written.kind === 'full' ? written.last : written.word).charAt(0)
+    const startsWith = { startsWith: initial, mode: 'insensitive' as const }
+    return readOrUnavailable(async () => {
+      const people = await this.prisma.player.findMany({
+        where: {
+          mergeIntoId: null,
+          ...(written.kind === 'full' ? { lastName: startsWith } : { OR: [{ firstName: startsWith }, { lastName: startsWith }] }),
+        },
+        include: {
+          user: { select: { email: true, ...playerRole.user.select } },
+          clubMemberships: { include: { club: { select: { name: true } } } },
+        },
+        take: 2000,
+      })
+      const today = localToday()
+      const typedName = normalizeName(search.name)
+      return people
+        .filter(person => !isClubAdmin(person))
+        .flatMap(person => {
+          const nameReasons = nameFit(written, person)
+          if (!nameReasons) return []
+          const exact = normalizeName(fullName(person)) === typedName
+          const dateOfBirth = search.dateOfBirth ? calendarDate(person.dateOfBirth) === search.dateOfBirth : null
+          const email = search.playerEmail ? person.user?.email === search.playerEmail : null
+          const current = person.clubMemberships.filter(membership => isCurrentMembership(membership, today))
+          const match: RegistryMatch = {
+            id: person.id, firstName: person.firstName, lastName: person.lastName,
+            match: { name: exact ? 'exact' : 'similar', nameReasons, dateOfBirth, email },
+            inThisClub: current.some(membership => membership.clubId === clubId),
+            otherClubs: current.filter(membership => membership.clubId !== clubId).map(membership => membership.club.name).sort(),
+          }
+          return [{ match, score: (exact ? 100 : 20) + (dateOfBirth ? 30 : 0) + (email ? 30 : 0) }]
+        })
+        .sort((a, b) => b.score - a.score || byName(a.match, b.match))
+        .slice(0, 20)
+        .map(({ match }) => match)
+    }, 'The player registry is unavailable right now')
   }
 
   /** The admin's club and its association, with the association's administrator and records secretary named. */
