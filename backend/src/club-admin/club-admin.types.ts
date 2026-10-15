@@ -1,4 +1,4 @@
-import type { MembershipStatus, PlayerStatus, TeamPlayerStatus } from '@prisma/client'
+import type { MembershipStatus, NotificationTargetType, NotificationType, PlayerStatus, TeamPlayerStatus } from '@prisma/client'
 import type { SeasonStatus } from '../player/player.types'
 
 export interface ClubCompetition {
@@ -118,4 +118,20 @@ export interface RegistryMatch {
   inThisClub: boolean
   // Other clubs the player is an active member of, by name.
   otherClubs: string[]
+}
+
+/** One of the admin's in-app notices, in the shape the Notifications page uses. */
+export interface ClubAdminNotification {
+  id: string
+  type: NotificationType
+  title: string
+  message: string
+  // "Round 13 · Syndal A vs Glen Waverley A" when the notice is about a fixture; null otherwise.
+  match: string | null
+  details: Record<string, unknown> | null
+  targetType: NotificationTargetType | null
+  targetId: string | null
+  // Null means unread.
+  readAt: string | null
+  createdAt: string
 }
