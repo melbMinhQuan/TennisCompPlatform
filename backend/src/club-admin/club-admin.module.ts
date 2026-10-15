@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common'
 import { CurrentUserResolver, DemoEmailUserResolver } from '../common/auth/current-user'
+import { ClubAdminDashboardService } from './club-admin-dashboard.service'
 import { ClubAdminEditService } from './club-admin-edit.service'
 import { ClubAdminFixtureService } from './club-admin-fixture.service'
 import { ClubAdminNotificationService } from './club-admin-notification.service'
@@ -10,6 +11,6 @@ import { ClubAdminService } from './club-admin.service'
 @Module({
   controllers: [ClubAdminController],
   // Swap DemoEmailUserResolver for an Entra External ID resolver once sign-in moves there.
-  providers: [{ provide: CurrentUserResolver, useClass: DemoEmailUserResolver }, ClubAdminGuard, ClubAdminService, ClubAdminEditService, ClubAdminNotificationService, ClubAdminFixtureService],
+  providers: [{ provide: CurrentUserResolver, useClass: DemoEmailUserResolver }, ClubAdminGuard, ClubAdminService, ClubAdminEditService, ClubAdminNotificationService, ClubAdminFixtureService, ClubAdminDashboardService],
 })
 export class ClubAdminModule {}

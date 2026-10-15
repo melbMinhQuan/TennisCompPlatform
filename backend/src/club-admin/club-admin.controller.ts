@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Put, Query, UseGuards } from '@nestjs/common'
+import { ClubAdminDashboardService } from './club-admin-dashboard.service'
 import { ClubAdminEditService } from './club-admin-edit.service'
 import { ClubAdminFixtureService } from './club-admin-fixture.service'
 import { ClubAdminNotificationService } from './club-admin-notification.service'
@@ -19,7 +20,13 @@ export class ClubAdminController {
     private readonly edits: ClubAdminEditService,
     private readonly notifications: ClubAdminNotificationService,
     private readonly fixtures: ClubAdminFixtureService,
+    private readonly dashboards: ClubAdminDashboardService,
   ) {}
+
+  @Get('dashboard')
+  async getDashboard(@AdminClubId() clubId: string, @AdminUserId() userId: string) {
+    return { data: await this.dashboards.dashboard(clubId, userId) }
+  }
 
   @Get('competitions')
   async getCompetitions(@AdminClubId() clubId: string) {

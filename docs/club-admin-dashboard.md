@@ -25,6 +25,37 @@ The sample shows 26 active club memberships, two Winter 2026 teams, six active s
 
 The Figma numbers (128 members, eight teams, two tasks, three notices), CL-004 identifier and “Summer 2026/27 entries are open” are illustrative. This implementation uses the workbook's CLB01 identifier and actual sample counts instead. The team selector demonstrates current and past seasons. The sample's Summer 2025 label reflects `seasonType` + `year`; a cross-year season label should later be formatted from its dates or a deliberate display label.
 
+## Backend API
+
+`GET /api/v1/club-admin/dashboard` → `{ data: ClubAdminDashboard }`, built in
+[`club-admin-dashboard.service.ts`](../backend/src/club-admin/club-admin-dashboard.service.ts),
+tests in [`club-admin-dashboard.test.cjs`](../backend/test/club-admin-dashboard.test.cjs) (I-CLUBDASH-*).
+The frontend still uses the snapshot; connect it to this. As on the other club admin routes, the
+club comes from the admin's CLUB_ADMIN role (403 `NOT_CLUB_ADMIN` otherwise), and a database
+failure is a 503 `DATA_UNAVAILABLE`.
+
+It is a club-wide view, so it shares no logic with the player dashboard. It follows the table
+above, with these choices:
+
+| Field | How it is worked out |
+| --- | --- |
+| `asOf` | Today in Melbourne; the day the counts are for. |
+| `club` | `Club` and its association's name. `id` is the club's UUID; use it for `clubAdminClubId`. |
+| `adminName` | The admin's profile first name ("Welcome, Margaret"), or their account email when they have no profile. Never null. |
+| `activeMembers` | Distinct players with a current membership (ACTIVE, started, not ended). Club admins' own profiles are not counted, as on the Players page. |
+| `seasons` | Seasons the club has a team in, oldest first. Cross-year seasons are labelled "Summer 2025/26". |
+| `teams` | Every club team in every season; the page filters by `seasonId`. `squadCount` counts ACTIVE squad places. `managerName` is the current TEAM_MANAGER's name, or their email without a profile. "Needs attention" is still worked out on the page by `dashboardSeasonSummary`. |
+| `unreadCount` | **New.** The admin's unread IN_APP notifications, as `GET notifications` counts them. Use it instead of the in-memory count. |
+| `activity` | **Up to 5** newest `AuditLog` events about the results of fixtures the club plays in: `MatchResult` events, and `CorrectionRequest` reviews traced to their result. `match` is "Round 12 · Forest Hill B vs Glen Waverley B". Team and player changes made through the club admin routes are not listed. |
+
+**Not returned:** `notices` and `fixtures`. The page never reads them: unread notices are counted
+in `unreadCount`, and fixtures come from `GET fixtures`. Remove them from the
+`ClubAdminDashboardData` type when it stops being derived from the snapshot JSON.
+
+Checked against a database seeded with `seed:competition`: Glen Waverley shows 26 active members,
+Winter 2026 teams with 6 squad players each and managers Diego Brooks and Ethan Campbell, and the
+same three newest activity items as the snapshot.
+
 ## Database changes / additions to discuss
 
 No database migration is required for the summary, team rows, manager checks or basic fixture/result display. Do not add stored dashboard counters.

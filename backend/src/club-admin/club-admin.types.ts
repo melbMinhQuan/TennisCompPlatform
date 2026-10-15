@@ -185,3 +185,41 @@ export interface ClubAdminFixture {
     rubbers: FixtureRubber[]
   } | null
 }
+
+/**
+ * The club admin's dashboard. Counts are worked out when asked, never stored.
+ * The page picks a season and filters `teams` by seasonId.
+ */
+export interface ClubAdminDashboard {
+  // Today in Melbourne, YYYY-MM-DD: the day the counts are for.
+  asOf: string
+  club: {
+    id: string
+    name: string
+    associationName: string
+    phone: string | null
+    email: string | null
+    address: string | null
+  }
+  // The admin's first name for "Welcome, Ethan"; their account email when they have no profile.
+  adminName: string
+  // Players with a current membership of the club; club admins are not counted.
+  activeMembers: number
+  // Seasons the club has a team in, oldest first.
+  seasons: { id: string; label: string; competition: string; status: SeasonStatus }[]
+  teams: {
+    id: string
+    name: string
+    seasonId: string
+    competition: string
+    section: string
+    // ACTIVE squad places.
+    squadCount: number
+    // The current team manager, or their account email when they have no profile; null when there is none.
+    managerName: string | null
+  }[]
+  // The admin's unread in-app notifications, as the Notifications page counts them.
+  unreadCount: number
+  // The most recent result events for the club's fixtures, newest first.
+  activity: { id: string; summary: string; match: string | null; date: string }[]
+}
