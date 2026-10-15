@@ -168,7 +168,8 @@ step-by-step trace are saved in `test-results/`.
 fails if it drops below a minimum set a few points under the October 2026 level (backend:
 `test:coverage` in `backend/package.json`; frontend: `frontend/vite.config.ts`). The frontend
 figure is low on purpose: pages are tested end to end, which coverage does not count, so the
-logic in `api/`, `context/` and `utils/` has a stricter minimum of its own.
+logic in `api/`, `context/` and `utils/` has a stricter minimum of its own. The club
+administrator pages have no end-to-end tests yet; add them before raising the frontend minimum.
 
 **CI/CD:** GitHub Actions (`.github/workflows/ci.yml`) runs on every push and pull request:
 
