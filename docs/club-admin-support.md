@@ -17,7 +17,7 @@ layout and wording style match Sprint 1.
 
 ## Contacts (hardcoded until the API exists)
 `frontend/api/club-admin-support.ts` returns `frontend/data/mock-club-admin-support-contacts.ts`,
-taken from `competition_data.xlsx` for Ethan Wright (UR003, CLUB_ADMIN for CLB01):
+taken from `competition_data.xlsx` for Margaret Hayes (UR101, CLUB_ADMIN for CLB01):
 - Club CLB01 Glen Waverley Tennis Club: phone, email, address (what players see).
 - Association ASSOC01 Waverley Tennis: phone and email, administrator Raj Mitchell (UR001),
   records secretary Mia Coleman (UR002). Volunteers are named only, no personal phone or email.
