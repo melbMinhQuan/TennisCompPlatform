@@ -118,17 +118,29 @@ export const CLUB_ADMIN_HELP_FAQS = [
     steps: [
       "Go to Teams and select ＋ Create team.",
       "Choose the competition, the season and a section with available places.",
-      "Check the suggested team name. It must be unique within the section.",
+      "Check the suggested team name. It must be unique within the season.",
       "Select Create team, then use ＋ Add players and Assign team manager.",
     ],
     points: ["If the season or section you need is not available, please contact the association."],
   },
   {
+    id: "new-team-each-season",
+    topic: "teams",
+    title: "Why do I create a new team each season?",
+    content: "A team belongs to one competition, one season and one section.",
+    points: [
+      "Keeping each season’s team separate means past results, ladders and squads stay correct.",
+      "Club memberships carry over to the new season, so your players do not need to be added to the club again.",
+      "For the new season, create the team, then add players to its squad and assign a team manager.",
+    ],
+  },
+  {
     id: "blocked-player",
     topic: "teams",
     title: "Why can’t I add a player to a team?",
-    content: "Only your club’s players are listed. A player who can’t be added is greyed out with the reason, for example:",
+    content: "A player who can’t be added is greyed out with the reason, for example:",
     points: [
+      "They are not an active member of your club.",
       "They are under the competition’s minimum age.",
       "Their membership is inactive.",
       "They are already in this squad.",

@@ -12,8 +12,11 @@ import {
   matchLightButtonClass,
   pageTitleClass,
 } from "../components/MatchesUI";
+import { clubAdminClubId } from "../data/club-admin-dashboard";
+import { seasonOf, teamPlacement } from "../data/club-admin-sections";
 
-const CLUB_ID = "CLB01";
+// The signed-in administrator's club (sample until the login returns it).
+const CLUB_ID = clubAdminClubId;
 
 const secondaryButton = matchLightButtonClass;
 
@@ -70,6 +73,9 @@ export default function ClubAdminPlayerDetailPage() {
         return team ? [team] : [];
       });
   }, [playerId]);
+
+  // Only teams in the season being played now count as "this season".
+  const currentTeamCount = playerTeams.filter((team) => seasonOf(team.seasonId)?.status === "ACTIVE").length;
 
   if (!player || !currentMembership) {
     return (
@@ -162,10 +168,10 @@ export default function ClubAdminPlayerDetailPage() {
             {/* Team count */}
             <div>
             <p className="text-xl font-bold">
-                {playerTeams.length}
+                {currentTeamCount}
             </p>
             <p className="text-xs text-[#aebed0]">
-                Team this season
+                {currentTeamCount === 1 ? "Team this season" : "Teams this season"}
             </p>
             </div>
         </div>
@@ -253,16 +259,22 @@ export default function ClubAdminPlayerDetailPage() {
             >
               <p className="font-semibold">{team.name}</p>
               <p className="mt-1 text-sm text-muted">
-                Section {team.sectionId}
+                {teamPlacement(team)}
               </p>
 
               <div className="mt-2 flex flex-wrap items-center gap-3">
-                <span className="rounded-md bg-[#e4f5ec] px-3 py-1 text-xs font-semibold text-[#187650]">
-                  In squad
-                </span>
+                {seasonOf(team.seasonId)?.status === "ACTIVE" ? (
+                  <span className="rounded-md bg-[#e4f5ec] px-3 py-1 text-xs font-semibold text-[#187650]">
+                    In squad
+                  </span>
+                ) : (
+                  <span className="rounded-md bg-[#f0f1f3] px-3 py-1 text-xs font-semibold text-[#64748b]">
+                    Past season
+                  </span>
+                )}
 
                 <Link
-                  to="/club-admin/teams"
+                  to={`/club-admin/teams/${team.id}`}
                   className="text-sm font-semibold text-[#3f72af] hover:underline focus-visible:outline-2 focus-visible:outline-[#3f72af]"
                 >
                   View team ›

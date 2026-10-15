@@ -28,7 +28,8 @@ export default function PlayerProfile({ player }: { player: PlayerProfileData })
         <ProfileDetails
           rows={[
             ["Age", player.age ?? "Not supplied"],
-            ["Gender", player.gender || "Not supplied"],
+            // The API sends the database value (FEMALE); show it as "Female".
+            ["Gender", player.gender ? player.gender.charAt(0) + player.gender.slice(1).toLowerCase() : "Not supplied"],
             ["Email", player.email || "Not supplied"],
             ["Phone", player.phone || "Not supplied"],
           ]}

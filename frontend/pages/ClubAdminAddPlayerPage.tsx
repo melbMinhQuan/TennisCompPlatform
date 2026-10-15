@@ -8,10 +8,12 @@ import {
   matchLightButtonClass,
   pageTitleClass,
 } from "../components/MatchesUI";
+import { clubAdminClubId } from "../data/club-admin-dashboard";
 
 type Stage = "search" | "choose" | "done";
 type Result = { player: ClubAdminPlayer; score: number };
-const CLUB_ID = "CLB01";
+// The signed-in administrator's club (sample until the login returns it).
+const CLUB_ID = clubAdminClubId;
 const clubName = mockClubs.find((club) => club.id === CLUB_ID)?.name ?? "Glen Waverley Tennis Club";
 const button = matchButtonClass;
 const secondary = matchLightButtonClass;

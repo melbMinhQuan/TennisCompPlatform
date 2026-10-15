@@ -16,8 +16,10 @@ import {
   matchLightButtonClass,
   pageTitleClass,
 } from "../components/MatchesUI";
+import { clubAdminClubId } from "../data/club-admin-dashboard";
 
-const CLUB_ID = "CLB01";
+// The signed-in administrator's club (sample until the login returns it).
+const CLUB_ID = clubAdminClubId;
 
 export default function ClubAdminTeamAddPlayersPage() {
   const { teamId } = useParams<{ teamId: string }>();

@@ -18,8 +18,11 @@ import {
   matchLightButtonClass,
   pageTitleClass,
 } from "../components/MatchesUI";
+import { clubAdminClubId } from "../data/club-admin-dashboard";
+import { seasonOf, teamPlacement } from "../data/club-admin-sections";
 
-const CLUB_ID = "CLB01";
+// The signed-in administrator's club (sample until the login returns it).
+const CLUB_ID = clubAdminClubId;
 
 const button = matchButtonClass;
 const secondary = matchLightButtonClass;
@@ -139,7 +142,7 @@ export default function ClubAdminTeamDetailPage() {
       </h1>
 
       <p className="mt-4 text-sm text-[#d2dfed] md:text-base md:text-muted">
-        Section {team.sectionId.replace(/^SEC0*/, "")}
+        {teamPlacement(team)}
         {" · "}
         Team ID {team.id}
       </p>
@@ -173,10 +176,10 @@ export default function ClubAdminTeamDetailPage() {
 
           <div>
             <p className="text-xl font-bold">
-              Not available
+              {seasonOf(team.seasonId)?.label ?? "Not recorded"}
             </p>
             <p className="text-sm text-[#b8c9dc]">
-              Next match
+              Season
             </p>
           </div>
         </div>

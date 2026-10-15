@@ -5,7 +5,7 @@ It reuses the player Help page components (topics, search, answers, contact card
 layout and wording style match Sprint 1.
 
 ## Content
-- `frontend/data/club-admin-support-content.ts`: 6 topics and 18 answers, written from User Stories
+- `frontend/data/club-admin-support-content.ts`: 6 topics and 19 answers, written from User Stories
   Model v2.1, the Sprint 2 plan, the Sprint 1 client review and the Sprint 2 Figma screens
   (Add a player: 1 Search → 2 Choose → 3 Done; Teams → Create team → Add players; Team manager).
 - Rules it follows: search before creating a player (one Player ID), memberships become

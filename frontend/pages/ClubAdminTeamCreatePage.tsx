@@ -1,19 +1,20 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router";
 import { createClubTeam, hasTeamNameInSeason, useClubTeams } from "../data/teamStore";
+import { clubAdminClubId } from "../data/club-admin-dashboard";
+import { mockSections, upcomingSeason } from "../data/club-admin-sections";
 
-const CLUB_ID = "CLB01";
+// The signed-in administrator's club (sample until the login returns it).
+const CLUB_ID = clubAdminClubId;
 const primary = "inline-flex min-h-11 items-center justify-center rounded-lg bg-[#4278b7] px-5 text-sm font-semibold text-white hover:bg-[#35699f]";
 const secondary = "inline-flex min-h-11 items-center justify-center rounded-lg bg-[#e5effa] px-5 text-sm font-semibold text-[#263d58] hover:bg-[#d8e6f5]";
 const input = "mt-1 min-h-11 w-full rounded-lg border border-[#c6d6e8] bg-white px-4 text-sm text-[#263d58] outline-none focus:ring-2 focus:ring-[#4278b7]";
 
-const COMPETITION = "Weekend Senior";
-const SEASON = "Summer 2026/27";
-const SEASON_ID = "SEA05";
-const sections = [
-  { id: "SEC06", name: "Section 1" },
-  { id: "SEC07", name: "Section 2" },
-];
+// New teams are entered into the next season (UPCOMING), using its sections from the seed data.
+const COMPETITION = upcomingSeason?.competition ?? "Weekend Senior";
+const SEASON = upcomingSeason?.label ?? "Summer 2026/27";
+const SEASON_ID = upcomingSeason?.id ?? "SEA05";
+const sections = mockSections.filter((section) => section.seasonId === SEASON_ID);
 
 type CreatedTeam = { id: string; name: string; section: string; competition: string; season: string };
 
@@ -91,7 +92,7 @@ export default function ClubAdminTeamCreatePage() {
             <div className="mt-4 grid gap-4 md:grid-cols-3">
               <label className="text-sm font-semibold">Competition *
                 <select required className={input} value={competition} onChange={e => setCompetition(e.target.value)}><option value={COMPETITION}>{COMPETITION}</option></select>
-                <span className="mt-2 block text-xs font-normal text-[#60758d]">Run by Waverley &amp; District TA</span>
+                <span className="mt-2 block text-xs font-normal text-[#60758d]">Run by Waverley Tennis</span>
               </label>
               <label className="text-sm font-semibold">Season *
                 <select required className={input} value={season} onChange={e => setSeason(e.target.value)}><option value={SEASON}>{SEASON}</option></select>
@@ -109,7 +110,7 @@ export default function ClubAdminTeamCreatePage() {
             <h2 className="text-lg font-bold">Team name</h2>
             <label className="mt-4 block text-sm font-semibold">Name *
               <input required maxLength={80} value={name} onChange={e => setName(e.target.value)} className={input} placeholder="Glen Waverley C" />
-              <span className="mt-2 block text-xs font-normal text-[#60758d]">Suggested from your club name – must be unique in this season</span>
+              <span className="mt-2 block text-xs font-normal text-[#60758d]">Suggested from your club name. It must be unique in this season.</span>
             </label>
           </div>
           {duplicate && <p className="mt-3 text-sm text-[#b53b3b]">A team with this name already exists in this season.</p>}

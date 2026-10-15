@@ -12,10 +12,13 @@ import {
   pageTitleClass,
   tabClass,
 } from "../components/MatchesUI";
+import { clubAdminClubId } from "../data/club-admin-dashboard";
+import HelpTopicLink from "../components/club-admin/HelpTopicLink";
 
 type StatusFilter = "ACTIVE" | "INACTIVE" | "ALL";
-const CLUB_ID = "CLB01";
-const PAGE_SIZE = 3;
+// The signed-in administrator's club (sample until the login returns it).
+const CLUB_ID = clubAdminClubId;
+const PAGE_SIZE = 10;
 
 export default function ClubAdminPlayersPage() {
   const [search, setSearch] = useState("");
@@ -65,7 +68,7 @@ export default function ClubAdminPlayersPage() {
       </p>
       <h1 className={`mt-5 md:mt-6 ${pageTitleClass}`}>Players</h1>
       <p className="mt-4 text-sm leading-6 text-[#d2dfed] md:text-base md:text-muted">
-        Everyone in Glen Waverley Tennis Club. <span className="hidden md:inline">To add someone, use “Add a player”.</span>
+        Members of Glen Waverley Tennis Club. Search by name or Player ID, and open a player to see their membership and teams.
       </p>
 
       <div className="mt-5 flex flex-col gap-3 md:mt-4 md:flex-row md:items-end">
@@ -119,10 +122,7 @@ export default function ClubAdminPlayersPage() {
         </nav>
       </div>
 
-      <div className="mt-4 hidden rounded-2xl bg-[#e8f0fa] p-6 text-[#1a3049] md:block">
-        <h2 className="font-bold">How adding works</h2>
-        <p className="mt-2 text-sm">1&nbsp; Search the whole Waverley Tennis system &nbsp; → &nbsp; 2&nbsp; Choose the right person (or create a new one only if they’re not there) &nbsp; → &nbsp; 3&nbsp; Done – then add them to a team.</p>
-      </div>
+      <HelpTopicLink topic="players" label="How to add a player without creating a duplicate" />
     </section>
   );
 }
