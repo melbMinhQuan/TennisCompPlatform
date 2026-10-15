@@ -213,13 +213,8 @@ export default function ClubAdminTeamAddPlayersPage() {
                     {player.firstName} {player.lastName}
                   </p>
                   <p className="text-xs text-muted">
-                    {player.id}
+                    {player.id} · {eligible ? "Active member" : reason}
                   </p>
-                  {!eligible && (
-                    <p className="mt-1 text-xs text-[#a45a15]">
-                      {reason}
-                    </p>
-                  )}
                 </div>
 
                 <span

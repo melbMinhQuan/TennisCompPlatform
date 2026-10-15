@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import {
   mockPlayers,
 } from "../data/mock-club-admin-players";
+import { mockClubAdminDashboard } from "../data/club-admin-dashboard";
 import { useTeamPlayers } from "../data/teamSquadStore";
 import { useTeamManagers } from "../data/teamManagerStore";
 import { useClubTeams } from "../data/teamStore";
@@ -14,12 +15,10 @@ import {
 } from "../components/MatchesUI";
 
 const CLUB_ID = "CLB01";
-
-// Temporary display configuration.
-// The current mock file does not include competition,
-// season, or team manager relationships.
-const DEFAULT_COMPETITION = "Weekend Senior";
-const DEFAULT_SEASON = "Summer 2026/27";
+const CURRENT_SEASON_ID = "SEA05";
+const seasons = mockClubAdminDashboard.seasons;
+const currentSeason = seasons.find(season => season.id === CURRENT_SEASON_ID)!;
+const competitionNames = [...new Set(seasons.map(season => season.competition))];
 
 type SeasonFilter = "current" | "past";
 
@@ -64,21 +63,15 @@ export default function ClubAdminTeamsPage() {
       );
   }, [clubTeams, teamPlayers, teamManagers, playerById]);
 
-  // Competition and season are not currently stored
-  // in the provided mock data.
-  // Keep these filters visible, but do not invent
-  // historical records or competition relationships.
   const visibleTeams = useMemo(() => {
-    if (seasonFilter === "past") return [];
-
-    if (
-      competition !== "ALL" &&
-      competition !== DEFAULT_COMPETITION
-    ) {
-      return [];
-    }
-
-    return teams;
+    return teams.filter(team => {
+      const season = seasons.find(item => item.id === team.seasonId);
+      const seasonMatches = seasonFilter === "current"
+        ? team.seasonId === CURRENT_SEASON_ID
+        : season?.status === "COMPLETED" || season?.status === "ARCHIVED";
+      const competitionMatches = competition === "ALL" || season?.competition === competition;
+      return seasonMatches && competitionMatches;
+    });
   }, [teams, competition, seasonFilter]);
 
   const isCurrentSeason = seasonFilter === "current";
@@ -118,9 +111,7 @@ export default function ClubAdminTeamsPage() {
             className="min-h-11 w-full rounded-lg border border-[#c6d6e8] bg-white px-4 text-base text-[#1a3049] outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3f72af]"
           >
             <option value="ALL">All competitions</option>
-            <option value={DEFAULT_COMPETITION}>
-              {DEFAULT_COMPETITION}
-            </option>
+            {competitionNames.map(name => <option key={name} value={name}>{name}</option>)}
           </select>
         </label>
 
@@ -135,7 +126,7 @@ export default function ClubAdminTeamsPage() {
             onClick={() => setSeasonFilter("current")}
             className={tabClass(isCurrentSeason)}
           >
-            Summer 2026/27
+            {currentSeason.label}
           </button>
 
           <button
@@ -160,17 +151,16 @@ export default function ClubAdminTeamsPage() {
       <div className={`mt-4 text-[#1a3049] ${matchCardClass}`}>
         <h2 className="border-b border-[#dbe4ef] pb-1 text-lg font-bold">
           {isCurrentSeason
-            ? `${DEFAULT_SEASON} · ${visibleTeams.length} ${
+            ? `${currentSeason.label} · ${visibleTeams.length} ${
                 visibleTeams.length === 1 ? "team" : "teams"
               }`
-            : "Past seasons"}
+            : `Past seasons · ${visibleTeams.length} ${
+                visibleTeams.length === 1 ? "team" : "teams"
+              }`}
         </h2>
 
         {!isCurrentSeason ? (
-          <p className="py-8 text-sm text-muted">
-            Historical season information is not available
-            in the current mock data.
-          </p>
+          <p className="py-8 text-sm text-muted">No teams found for past seasons.</p>
         ) : visibleTeams.length === 0 ? (
           <p className="py-8 text-sm text-muted">
             No teams found for this competition.
@@ -190,7 +180,8 @@ export default function ClubAdminTeamsPage() {
                   </p>
 
                   <p className="mt-0.5 text-sm text-muted">
-                    {DEFAULT_COMPETITION} ·{" "}
+                    {seasons.find(season => season.id === team.seasonId)?.competition} ·{" "}
+                    {seasons.find(season => season.id === team.seasonId)?.label} ·{" "}
                     {team.sectionId} ·{" "}
                     {team.playerCount}{" "}
                     {team.playerCount === 1

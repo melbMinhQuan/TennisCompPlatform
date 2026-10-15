@@ -88,11 +88,11 @@ export const mockClubMemberships: ClubAdminMembership[] = [
 ];
 
 export const mockTeams: ClubAdminTeam[] = [
-  {"id":"TEAM001","clubId":"CLB01","sectionId":"SEC01","name":"Glen Waverley A"},
-  {"id":"TEAM009","clubId":"CLB01","sectionId":"SEC02","name":"Glen Waverley A"},
-  {"id":"TEAM017","clubId":"CLB01","sectionId":"SEC03","name":"Glen Waverley A"},
-  {"id":"TEAM029","clubId":"CLB01","sectionId":"SEC04","name":"Glen Waverley B"},
-  {"id":"TEAM033","clubId":"CLB01","sectionId":"SEC05","name":"Glen Waverley A"},
+  {"id":"TEAM001","clubId":"CLB01","sectionId":"SEC01","seasonId":"SEA01","contactUserId":null,"homeVenueId":"VEN01","name":"Glen Waverley A"},
+  {"id":"TEAM009","clubId":"CLB01","sectionId":"SEC02","seasonId":"SEA02","contactUserId":null,"homeVenueId":"VEN01","name":"Glen Waverley A"},
+  {"id":"TEAM017","clubId":"CLB01","sectionId":"SEC03","seasonId":"SEA03","contactUserId":null,"homeVenueId":"VEN01","name":"Glen Waverley A"},
+  {"id":"TEAM029","clubId":"CLB01","sectionId":"SEC04","seasonId":"SEA03","contactUserId":null,"homeVenueId":"VEN01","name":"Glen Waverley B"},
+  {"id":"TEAM033","clubId":"CLB01","sectionId":"SEC05","seasonId":"SEA04","contactUserId":null,"homeVenueId":"VEN01","name":"Glen Waverley A"},
 ];
 
 export const mockTeamPlayers: ClubAdminTeamPlayer[] = [

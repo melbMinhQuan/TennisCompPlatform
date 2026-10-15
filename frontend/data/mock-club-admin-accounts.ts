@@ -1,5 +1,5 @@
-// Temporary, until POST /auth/login returns the role. The 12 CLUB_ADMIN rows (UR101 to UR112) in
-// the UserRole sheet of backend/prisma/competition_data.xlsx, as login email → club ID.
+// Temporary, until POST /auth/login returns the role. These are the 12 CLUB_ADMIN rows from the
+// UserRole sheet of backend/prisma/competition_data.xlsx, as login email → seeded club UUID.
 // Only used to choose which dashboard to open after a successful login; it is not a security check.
 export const mockClubAdminAccounts: Record<string, string> = {
   "margaret.hayes@admin.example": "CLB01",

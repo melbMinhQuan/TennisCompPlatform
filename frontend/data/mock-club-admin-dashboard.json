@@ -34,6 +34,12 @@
       "label": "Autumn 2026",
       "competition": "Night Tennis",
       "status": "COMPLETED"
+    },
+    {
+      "id": "SEA05",
+      "label": "Summer 2026/27",
+      "competition": "Weekend Senior",
+      "status": "UPCOMING"
     }
   ],
   "teams": [

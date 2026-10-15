@@ -1,5 +1,5 @@
 
-export type PlayerStatus = "ACTIVE" | "INACTIVE";
+export type PlayerStatus = "ACTIVE" | "INACTIVE" | "SUSPENDED";
 
 export type MembershipStatus = "ACTIVE" | "INACTIVE";
 
@@ -37,6 +37,9 @@ export interface ClubAdminTeam {
   id: string;
   clubId: string;
   sectionId: string;
+  seasonId: string;
+  contactUserId: string | null;
+  homeVenueId: string | null;
   name: string;
 }
 

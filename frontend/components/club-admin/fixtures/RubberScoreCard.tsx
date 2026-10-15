@@ -13,7 +13,7 @@ export default function RubberScoreCard({ rubber }: { rubber: FixtureRubber }) {
         <span className="block text-muted">vs</span>
         {rubber.awayPlayers.join(" & ") || "Away players unavailable"}
       </p>
-      {rubber.outcome !== "COMPLETED" && (
+      {rubber.outcome && rubber.outcome !== "COMPLETED" && (
         <p className="mt-2 text-xs font-semibold text-[#8a4b00]">{sentenceCase(rubber.outcome)}</p>
       )}
 
