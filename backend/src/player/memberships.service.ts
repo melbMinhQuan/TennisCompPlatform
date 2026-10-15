@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
-import { Prisma, RoleType } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 import { PrismaService } from '../prisma/prisma.service'
 import { readOrUnavailable } from '../common/data-unavailable'
+import { roleHolderName } from '../common/role-holder'
 import { PlayerLookupService } from './player-lookup.service'
 import { calendarDate, fullName, seasonLabel } from './player-mappers'
 import type { MembershipTeam, PlayerMemberships, SupportContacts, TeamDetails } from './player.types'
@@ -91,9 +92,9 @@ export class MembershipsService {
       ])
       const team = teams.find(candidate => candidate.section.season.status === 'ACTIVE') ?? null
       const [managerName, adminName, recordsSecretaryName] = await Promise.all([
-        team ? this.roleHolderName('TEAM_MANAGER', { teamId: team.id }) : null,
-        club ? this.roleHolderName('CLUB_ADMIN', { clubId: club.clubId }) : null,
-        association ? this.roleHolderName('RECORDS_SECRETARY', { associationId: association.associationId }) : null,
+        team ? roleHolderName(this.prisma, 'TEAM_MANAGER', { teamId: team.id }) : null,
+        club ? roleHolderName(this.prisma, 'CLUB_ADMIN', { clubId: club.clubId }) : null,
+        association ? roleHolderName(this.prisma, 'RECORDS_SECRETARY', { associationId: association.associationId }) : null,
       ])
       return {
         team: team && {
@@ -129,15 +130,5 @@ export class MembershipsService {
       seasonStatus: team.section.season.status,
       sectionName: team.section.name,
     }
-  }
-
-  /** Name of whoever currently holds a role in a club, team or association, or null. */
-  private async roleHolderName(roleType: RoleType, context: Prisma.UserRoleWhereInput): Promise<string | null> {
-    const role = await this.prisma.userRole.findFirst({
-      where: { ...context, roleType, revokedAt: null },
-      include: { user: { select: { player: { select: { firstName: true, lastName: true } } } } },
-      orderBy: [{ grantedAt: 'asc' }, { id: 'asc' }],
-    })
-    return role?.user.player ? fullName(role.user.player) : null
   }
 }

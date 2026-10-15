@@ -11,11 +11,11 @@ The hardcoded JSON is a snapshot of `backend/prisma/competition_data.xlsx` inspe
 | Display | Existing source / later API calculation |
 | --- | --- |
 | Club name, ID, association and official contacts | `Club` → `Association`; club context from the authenticated, unrevoked `UserRole` |
-| Administrator name | `UserRole.userId` → `User.player` |
+| Administrator name | `UserRole.userId` → `User.profile` |
 | Active member count | Distinct players with `ClubMembership.clubId`, ACTIVE status and valid start/end dates; club-wide, independent of season |
 | Competition and season selector | `Team.section` → `SectionGrade.season` → `Season.competition` |
 | Team count and squad size | Club-scoped `Team` rows for selected season; ACTIVE `TeamPlayer` rows |
-| Manager name / missing manager | Unrevoked TEAM_MANAGER `UserRole.teamId` → `User.player`; an assigned user without a player record still counts as assigned, using the account email as fallback |
+| Manager name / missing manager | Unrevoked TEAM_MANAGER `UserRole.teamId` → `User.profile`; an assigned user without a player record still counts as assigned, using the account email as fallback |
 | Teams needing attention | Distinct active-season teams without a manager OR with no active squad; not a stored counter, not proof of competition eligibility |
 | Unread notices | Recipient's IN_APP `Notification` rows with null `readAt`, filtered to authorised club context; EMAIL rows never count |
 | Recent result activity | `AuditLog` → own-club `MatchResult` → `Fixture` → home/away `Team`; most recent across seasons |
