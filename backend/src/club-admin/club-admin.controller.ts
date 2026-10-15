@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Put, Query, UseGuards } from '@nestjs/common'
 import { ClubAdminEditService } from './club-admin-edit.service'
+import { ClubAdminFixtureService } from './club-admin-fixture.service'
 import { ClubAdminNotificationService } from './club-admin-notification.service'
 import { AddTeamPlayersDto, AssignManagerDto, CreatePlayerDto, CreateTeamDto, RegistrySearchDto } from './club-admin.dto'
 import { AdminClubId, AdminUserId, ClubAdminGuard } from './club-admin.guard'
@@ -17,6 +18,7 @@ export class ClubAdminController {
     private readonly clubAdmin: ClubAdminService,
     private readonly edits: ClubAdminEditService,
     private readonly notifications: ClubAdminNotificationService,
+    private readonly fixtures: ClubAdminFixtureService,
   ) {}
 
   @Get('competitions')
@@ -122,5 +124,15 @@ export class ClubAdminController {
   @Patch('notifications/:notificationId/read')
   async markNotificationRead(@AdminUserId() userId: string, @Param('notificationId', ParseUUIDPipe) notificationId: string) {
     return { data: await this.notifications.markRead(userId, notificationId) }
+  }
+
+  @Get('fixtures')
+  async getFixtures(@AdminClubId() clubId: string) {
+    return { data: await this.fixtures.list(clubId) }
+  }
+
+  @Get('fixtures/:fixtureId')
+  async getFixture(@AdminClubId() clubId: string, @Param('fixtureId', ParseUUIDPipe) fixtureId: string) {
+    return { data: await this.fixtures.detail(clubId, fixtureId) }
   }
 }

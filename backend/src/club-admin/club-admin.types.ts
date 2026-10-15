@@ -1,4 +1,6 @@
-import type { MembershipStatus, NotificationTargetType, NotificationType, PlayerStatus, TeamPlayerStatus } from '@prisma/client'
+import type {
+  FixtureStatus, MembershipStatus, NotificationTargetType, NotificationType, PlayerStatus, ResultStatus, RubberOutcome, RubberType, TeamPlayerStatus,
+} from '@prisma/client'
 import type { SeasonStatus } from '../player/player.types'
 
 export interface ClubCompetition {
@@ -134,4 +136,52 @@ export interface ClubAdminNotification {
   // Null means unread.
   readAt: string | null
   createdAt: string
+}
+
+/** One side of a fixture. clubId tells the admin's own teams from opponents. */
+export interface FixtureTeam {
+  id: string
+  name: string
+  clubId: string
+}
+
+/** One rubber of a recorded result: who played and the set scores, home first. Null games were not recorded. */
+export interface FixtureRubber {
+  id: string
+  number: number
+  type: RubberType
+  // Null while the rubber's outcome is not recorded.
+  outcome: RubberOutcome | null
+  homePlayers: string[]
+  awayPlayers: string[]
+  sets: { number: number; home: number | null; away: number | null }[]
+}
+
+/** A fixture involving one of the admin's teams, in the shape the Fixtures pages use. */
+export interface ClubAdminFixture {
+  id: string
+  // The admin's club.
+  clubId: string
+  homeTeam: FixtureTeam
+  awayTeam: FixtureTeam
+  competition: string
+  seasonId: string
+  seasonLabel: string
+  section: string
+  // "Round 13", or the finals label ("Grand Final").
+  round: string
+  // YYYY-MM-DD and HH:mm local to the venue; null while not scheduled.
+  date: string | null
+  time: string | null
+  status: FixtureStatus
+  // True when the date, time or venue has been changed since the draw.
+  changed: boolean
+  venue: { name: string; address: string | null } | null
+  // Null until a result is submitted; a DRAFT is not shown.
+  result: {
+    status: Exclude<ResultStatus, 'DRAFT'>
+    homeRubbers: number | null
+    awayRubbers: number | null
+    rubbers: FixtureRubber[]
+  } | null
 }
