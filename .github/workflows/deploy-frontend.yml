@@ -1,0 +1,68 @@
+# Deploys the React frontend to Azure Static Web Apps, then checks the live site: first that
+# its pages load, then the whole site in a real browser. Only CI calls this, after the backend
+# has been deployed and checked; to redeploy, open that CI run and choose "Re-run all jobs".
+# VITE_API_URL is baked into the bundle at build time, so it is set here rather
+# than in Azure. Needs the repository secret AZURE_STATIC_WEB_APPS_API_TOKEN
+# (Static Web App -> Overview -> Manage deployment token).
+name: Deploy frontend
+
+on:
+  workflow_call:
+
+env:
+  BACKEND_URL: https://tenniscomp-dkdxhgawdsbnfwgw.newzealandnorth-01.azurewebsites.net
+  FRONTEND_URL: https://delightful-pond-03c981700.5.azurestaticapps.net
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies (exactly as locked)
+        run: npm ci
+
+      - name: Build the frontend
+        run: npm run build --workspace=frontend
+        env:
+          VITE_API_URL: ${{ env.BACKEND_URL }}
+
+      # The app is already built above, so Azure only uploads frontend/dist.
+      - name: Deploy to Azure Static Web Apps
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: upload
+          app_location: frontend/dist
+          output_location: ""
+          skip_app_build: true
+          skip_api_build: true
+
+      # Fails if the home page or a refreshed deep link (/dashboard) does not load the app.
+      - name: Check the live frontend
+        run: node .github/scripts/smoke-test.mjs frontend
+
+      - name: Install the test browser
+        run: npx playwright install --with-deps chromium
+
+      # A seeded player logs in and their dashboard loads: the deployed page, the backend address
+      # baked into it, CORS and the live database all working together (e2e/live).
+      - name: Check the whole live site in a browser
+        run: npx playwright test --config=playwright.live.config.ts
+
+      - name: Keep the report when something fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-site-report
+          path: playwright-report/
+          retention-days: 7

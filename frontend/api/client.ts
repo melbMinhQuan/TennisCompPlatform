@@ -11,18 +11,32 @@ export class ApiError extends Error {
   }
 }
 
+// No network, or an answer that is not the API's JSON: Azure's own page while the backend starts,
+// or the static site's index.html when VITE_API_URL is wrong. The technical reason stays off the page.
+const SERVER_UNREACHABLE = "We couldn’t reach the server. Please try again in a minute.";
+
 /** Sends one request to the backend and returns its JSON body, or throws with the server's message. */
 export async function request<T>(path: string, signal: AbortSignal, body?: unknown): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    credentials: "include",
-    method: body === undefined ? "GET" : "POST",
-    signal,
-    headers: body === undefined ? undefined : { "Content-Type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      credentials: "include",
+      method: body === undefined ? "GET" : "POST",
+      signal,
+      headers: body === undefined ? undefined : { "Content-Type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  } catch (error) {
+    if (signal.aborted) throw error;
+    throw new ApiError(SERVER_UNREACHABLE, 0);
+  }
+  const json = await response.json().catch((error: unknown) => {
+    if (signal.aborted) throw error;
+    return undefined;
   });
-  const json = await response.json();
+  if (json === undefined) throw new ApiError(SERVER_UNREACHABLE, response.status);
   if (!response.ok) {
-    throw new ApiError(typeof json.message === "string" ? json.message : `Request failed (${response.status})`, response.status);
+    throw new ApiError(typeof json?.message === "string" ? json.message : `Request failed (${response.status})`, response.status);
   }
   return json as T;
 }

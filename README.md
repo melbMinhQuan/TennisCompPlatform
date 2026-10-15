@@ -20,27 +20,9 @@ step says otherwise.
 
 1. Install **Node.js 20.12 or newer**. Check with `node -v`.
 2. Install **Docker Desktop** and open it. It must be running every time you use the app.
-3. Make sure **`docker-compose.yml`** is in the project root. It is git-ignored, so a fresh clone
-   does not have it. If it is missing, create it with this content:
-
-   ```yaml
-   services:
-     postgres:
-       image: postgres:16
-       container_name: tenniscomp-postgres
-       restart: unless-stopped
-       environment:
-         POSTGRES_USER: tenniscomp
-         POSTGRES_PASSWORD: tenniscomp
-         POSTGRES_DB: tenniscomp
-       ports:
-         - '5432:5432'
-       volumes:
-         - tenniscomp-pgdata:/var/lib/postgresql/data
-
-   volumes:
-     tenniscomp-pgdata:
-   ```
+3. The database container is defined in **`docker-compose.yml`** in the project root, which comes
+   with the clone. To change something only on your own computer (e.g. the port), put it in a
+   `docker-compose.override.yml` next to it; that file is git-ignored.
 
 ### Step 1: First-time setup (once, after cloning)
 
@@ -134,7 +116,7 @@ Other ways to open the database:
 
 | Problem | Fix |
 | --- | --- |
-| `Cannot connect to the Docker daemon` / database won't start | Open Docker Desktop and wait until it is running. Check `docker-compose.yml` is in the project root. |
+| `Cannot connect to the Docker daemon` / database won't start | Open Docker Desktop and wait until it is running, then run `docker compose up -d` from the project root. |
 | `EADDRINUSE :::3000` | A backend is already running. Stop it: `lsof -ti:3000 \| xargs kill` |
 | `Port 5173 is in use` | Another frontend is running. Stop it: `lsof -ti:5173 \| xargs kill`. The frontend must use port 5173, because the backend only accepts requests from there. |
 | `relation "user" does not exist` | Tables are missing. Run `npx prisma migrate deploy` in `backend/`. |
@@ -154,7 +136,11 @@ Other ways to open the database:
 | `npm run dev:frontend` | Starts the frontend on port 5173 |
 | `npm run prisma:studio --workspace=backend` | Opens the database in the browser on port 5555 |
 | `npm test` | Unit and integration tests (no database needed) |
+| `npm run test:coverage --workspace=backend` (or `=frontend`) | The same tests with a coverage report; fails below the minimums |
 | `npm run test:e2e` | End-to-end tests in Chrome (database must be running and seeded) |
+| `npm run data:check --workspace=backend` | Checks the test-data workbook against the schema and the competition rules |
+| `npm run test:database --workspace=backend` | Tests on a real local database, rolled back afterwards: seeding twice, matching players |
+| `npm run players:duplicates --workspace=backend` | Lists profiles that are probably one person registered twice ([docs/player-matching.md](docs/player-matching.md)) |
 | `docker compose up -d` | Starts the database |
 | `docker compose down` | Stops the database and keeps the data |
 | `docker compose down -v` | Stops the database and **deletes all data** |
@@ -170,18 +156,36 @@ test's name starts with its ID (e.g. `AUTH-002`), so a failure points straight t
 | --- | --- | --- | --- |
 | Unit | One function or service, with a fake database | `backend/test/`, `frontend/tests/` | `npm test` |
 | Integration | A real HTTP route, or a rendered React component | same folders; `I-` IDs | `npm test` |
+| Database | The seed and player matching against a real Postgres, rolled back afterwards | `backend/test/seed-competition.integration.cjs`, `player-matching.integration.cjs` | `npm run test:database --workspace=backend` |
 | End to end | The whole app in Chrome against the real seeded database | `e2e/` | `npm run test:e2e` |
+| Live | The deployed site in a browser, after each release | `e2e/live/`; `LIVE-` IDs | CI only (see below) |
 
 `npm run test:e2e` reuses the backend and frontend if they are already running; otherwise it
 starts them. It uses your installed Google Chrome. When a test fails, a screenshot and a
 step-by-step trace are saved in `test-results/`.
 
-**CI:** GitHub Actions (`.github/workflows/ci.yml`) runs on every push and pull request, in two
-jobs:
+**Coverage.** `npm run test:coverage` in either workspace reports which code the tests run, and
+fails if it drops below a minimum set a few points under the October 2026 level (backend:
+`test:coverage` in `backend/package.json`; frontend: `frontend/vite.config.ts`). The frontend
+figure is low on purpose: pages are tested end to end, which coverage does not count, so the
+logic in `api/`, `context/` and `utils/` has a stricter minimum of its own. The club
+administrator pages have no end-to-end tests yet; add them before raising the frontend minimum.
 
-- **test-and-build:** unit and integration tests, then the frontend build.
-- **end-to-end:** creates an empty database, migrates and seeds it, starts the app and runs the
-  end-to-end tests.
+**CI/CD:** GitHub Actions (`.github/workflows/ci.yml`) runs on every push and pull request:
+
+- **test-and-build:** checks the test-data workbook (`data:check`), type-checks the end-to-end
+  tests, runs the backend and frontend tests with coverage (figures on the run's summary page),
+  then type-checks and builds the frontend, its tests included.
+- **end-to-end:** creates an empty database and migrates it, fails if `schema.prisma` has a change
+  with no migration, runs the database tests in transactions it rolls back (seeding twice must
+  add nothing; player matching on the seeded data), seeds it for real, then runs the end-to-end
+  tests against the production build of the frontend.
+- **backend-package:** builds the backend package exactly as Azure receives it, starts it the way
+  Azure does on an empty database, and checks it answers.
+- **deploy-backend, then deploy-frontend:** only for a push to `main`, and only once all three
+  jobs above pass. The backend uploaded is the package just tested; the frontend goes out only
+  after the live backend passes its check; then a browser logs in to the live site. See
+  [docs/deployment.md](docs/deployment.md).
 
 A red ❌ on a pull request means something broke; open the run to see which test ID failed. For an
 end-to-end failure, download the `playwright-report` file attached to the run.
@@ -194,6 +198,16 @@ end-to-end failure, download the `playwright-report` file attached to the run.
 rows. It covers two associations, twelve clubs, five competitions, 292 fixtures, 274 results,
 ladders, standings, UTR ratings and notifications. Names and match formats are real; dates of
 birth, phone numbers, ratings and contact details are made up (see the `README` sheet inside it).
+
+Two names, Hiro Mitchell and Amelia Lee, each belong to two different people on purpose, so the
+app can be tested on look-alikes. Duplicate-player tests keep it that way: `data:check` fails on
+a player registered twice (same name and date of birth) unless a merge request pairs the two
+(DATA-001); TEAM-003 and E2E-010 check same-name players are never mixed up; SEED-002 checks
+that running the seed again never adds a second copy of anything.
+
+Scoresheets often record incomplete names ("Josh" for Joshua Smith). How the system works out
+which player is meant, and finds profiles registered twice, is in
+[docs/player-matching.md](docs/player-matching.md).
 
 Run these in `backend/`:
 
@@ -299,5 +313,5 @@ TennisComp/
 │   │   └── prisma/       # Database client for NestJS
 │   └── test/             # Backend tests
 ├── docs/                 # API contracts and design notes
-└── docker-compose.yml    # Database container (git-ignored, see Quick start step 0)
+└── docker-compose.yml    # Database container (Postgres 16)
 ```

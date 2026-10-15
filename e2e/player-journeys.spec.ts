@@ -94,7 +94,7 @@ test("E2E-008: find who to contact", async ({ page }) => {
   const contacts = page.getByRole("complementary", { name: "Who should I contact?" });
   await expect(contacts).toContainText("Your team · Mount Waverley A");
   await expect(contacts).toContainText("Yuki Green");
-  await expect(contacts).toContainText("Ethan Wright");
+  await expect(contacts).toContainText("Margaret Hayes");
   await expect(contacts).toContainText("Mia Coleman");
 });
 

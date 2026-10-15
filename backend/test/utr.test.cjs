@@ -55,3 +55,31 @@ test('UTR-004: configuration fails closed and refuses production mocks', async (
     else process.env.NODE_ENV = originalEnv
   }
 })
+
+test('UTR-005: the demo rating comes only from the mock provider, never in production', async () => {
+  const originalMode = process.env.UTR_PROVIDER
+  const originalEnv = process.env.NODE_ENV
+  // The demo has no player, so it must never look up a real player's UTR connection.
+  const store = { getAccessToken: async () => { throw new Error('demo looked up a player connection') } }
+  try {
+    delete process.env.NODE_ENV
+    for (const mode of [undefined, 'disabled', 'engage']) {
+      if (mode === undefined) delete process.env.UTR_PROVIDER
+      else process.env.UTR_PROVIDER = mode
+      await assert.rejects(new UtrService(store).getDemoRating(), /UTR demo is disabled/)
+    }
+    process.env.UTR_PROVIDER = 'mock'
+    const service = new UtrService(store)
+    const demo = await service.getDemoRating()
+    assert.equal(demo.source, 'mock')
+    assert.equal(demo.singles, 6.25)
+    // A process switched to production after it started still refuses.
+    process.env.NODE_ENV = 'production'
+    await assert.rejects(service.getDemoRating(), /UTR demo is disabled/)
+  } finally {
+    if (originalMode === undefined) delete process.env.UTR_PROVIDER
+    else process.env.UTR_PROVIDER = originalMode
+    if (originalEnv === undefined) delete process.env.NODE_ENV
+    else process.env.NODE_ENV = originalEnv
+  }
+})

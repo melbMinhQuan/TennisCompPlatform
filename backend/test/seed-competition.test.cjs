@@ -11,7 +11,7 @@ test('SEED-001: deferred unique tables seed successfully and reruns preserve exi
     name, XLSX.utils.sheet_to_json(book.Sheets[name], { defval: '' }),
   ]))
   const stored = new Map()
-  const deferred = new Set(['rubberSet', 'userRole'])
+  const deferred = new Set(['rubberSet'])
   const tx = new Proxy({}, {
     get: (_, name) => {
       if (!stored.has(name)) stored.set(name, new Map())

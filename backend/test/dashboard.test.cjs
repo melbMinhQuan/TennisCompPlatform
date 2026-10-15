@@ -167,6 +167,19 @@ test('I-DASH-008: bad queries and outages do not return false empty data or priv
   } finally { databaseDown = false }
 })
 
+test('I-DASH-010: UTR history says "not available" rather than showing an empty history, and only for a real player', async () => {
+  const singles = await get('/utr-history')
+  assert.equal(singles.status, 200)
+  assert.deepEqual(singles.body.data, { available: false, items: [], nextCursor: null, hasMore: false, discipline: 'SINGLES' })
+  assert.equal((await get('/utr-history', { discipline: 'DOUBLES' })).body.data.discipline, 'DOUBLES')
+  assert.equal((await get('/utr-history', { discipline: 'MIXED' })).status, 400)
+  for (const [email, code] of [['unknown@example.test', 'USER_NOT_FOUND'], ['unlinked@example.test', 'PLAYER_PROFILE_NOT_LINKED']]) {
+    const response = await get('/utr-history', { email })
+    assert.equal(response.status, 404)
+    assert.equal(response.body.code, code)
+  }
+})
+
 test('I-DASH-009: email lookup is disabled when NODE_ENV=production', async () => {
   const previous = process.env.NODE_ENV
   process.env.NODE_ENV = 'production'

@@ -7,6 +7,8 @@ const IN_CI = Boolean(process.env.CI);
 
 export default defineConfig({
   testDir: "./e2e",
+  // e2e/live checks the deployed site after a release (playwright.live.config.ts), never localhost.
+  testIgnore: "live/**",
   timeout: 30_000,
   expect: { timeout: 10_000 },
   fullyParallel: true,
@@ -34,10 +36,11 @@ export default defineConfig({
       timeout: 120_000,
     },
     {
-      command: "npm run dev:frontend",
+      // In CI, the production build (what gets deployed) served by `vite preview`; locally, the dev server.
+      command: IN_CI ? "npm run build --workspace=frontend && npm run preview --workspace=frontend" : "npm run dev:frontend",
       url: "http://localhost:5173",
       reuseExistingServer: !IN_CI,
-      timeout: 60_000,
+      timeout: 120_000,
     },
   ],
 });

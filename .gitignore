@@ -2,7 +2,8 @@ node_modules
 dist
 .env
 *.tsbuildinfo
-docker-compose.yml
+# Personal Docker overrides (ports etc.); docker-compose.yml itself is committed
+docker-compose.override.yml
 players_login_data.xlsx
 .DS_Store
 
@@ -16,3 +17,7 @@ players_login_data.xlsx
 # Playwright output
 test-results/
 playwright-report/
+
+# Coverage reports (npm run test:coverage)
+coverage/
+lcov.info
