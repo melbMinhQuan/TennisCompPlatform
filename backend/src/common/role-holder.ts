@@ -10,8 +10,8 @@ export async function roleHolderName(
 ): Promise<string | null> {
   const role = await prisma.userRole.findFirst({
     where: { ...context, roleType, revokedAt: null },
-    include: { user: { select: { player: { select: { firstName: true, lastName: true } } } } },
+    include: { user: { select: { profile: { select: { firstName: true, lastName: true } } } } },
     orderBy: [{ grantedAt: 'asc' }, { id: 'asc' }],
   })
-  return role?.user.player ? fullName(role.user.player) : null
+  return role?.user.profile ? fullName(role.user.profile) : null
 }

@@ -49,7 +49,7 @@ function dateAfter(anchor: string, days: number): Date {
 export async function seedDashboard(tx: Prisma.TransactionClient, entries: SeedEntry[], dryRun = false) {
   const users = await tx.user.findMany({
     where: { email: { in: entries.map(e => e.email) } },
-    select: { id: true, email: true, player: { select: { id: true, mergeIntoId: true } } },
+    select: { id: true, email: true, profile: { select: { id: true, mergeIntoId: true } } },
   })
   const byEmail = new Map(users.map(u => [u.email, u]))
   if (users.length !== entries.length) {
@@ -86,7 +86,7 @@ export async function seedDashboard(tx: Prisma.TransactionClient, entries: SeedE
     const user = byEmail.get(entry.email)!
     const playerId = demoId(`player:${user.id}`)
     // Real profiles (or merged profiles) are left completely untouched.
-    if (user.player && (user.player.id !== playerId || user.player.mergeIntoId)) {
+    if (user.profile && (user.profile.id !== playerId || user.profile.mergeIntoId)) {
       preservedProfiles++
       return
     }

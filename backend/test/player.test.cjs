@@ -36,10 +36,10 @@ const people = {
   hiroTwo: { id: 'player-hiro-2', firstName: 'Hiro', lastName: 'Mitchell' },
 }
 const users = {
-  'chloe@club.example': { player: people.chloe },
-  'nolink@club.example': { player: null },
-  'hiro.one@club.example': { player: people.hiroOne },
-  'hiro.two@club.example': { player: people.hiroTwo },
+  'chloe@club.example': { profile: people.chloe },
+  'nolink@club.example': { profile: null },
+  'hiro.one@club.example': { profile: people.hiroOne },
+  'hiro.two@club.example': { profile: people.hiroTwo },
 }
 const rosters = [
   { teamId: mountA.id, team: mountA, playerId: 'player-chloe', player: people.chloe, status: 'ACTIVE' },
@@ -77,9 +77,9 @@ const retired = {
   rubberPlayers: [{ playerId: 'player-chloe', side: 'HOME', player: people.chloe }, { playerId: 'player-mei', side: 'AWAY', player: people.mei }],
 }
 const roles = [
-  { roleType: 'TEAM_MANAGER', teamId: mountA.id, revokedAt: null, user: { player: people.yuki } },
-  { roleType: 'CLUB_ADMIN', clubId: glen.id, revokedAt: null, user: { player: people.mei } },
-  { roleType: 'RECORDS_SECRETARY', associationId: 'assoc-1', revokedAt: new Date(), user: { player: people.mei } },
+  { roleType: 'TEAM_MANAGER', teamId: mountA.id, revokedAt: null, user: { profile: people.yuki } },
+  { roleType: 'CLUB_ADMIN', clubId: glen.id, revokedAt: null, user: { profile: people.mei } },
+  { roleType: 'RECORDS_SECRETARY', associationId: 'assoc-1', revokedAt: new Date(), user: { profile: people.mei } },
 ]
 let databaseDown = false
 const guard = rows => { if (databaseDown) throw new Error('password=secret host=db.internal'); return rows }
