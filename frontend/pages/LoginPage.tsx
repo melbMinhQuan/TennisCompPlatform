@@ -38,7 +38,7 @@ export default function LoginPage() {
       }
       setPlayerEmail(email.trim().toLowerCase());
       setPassword("");
-      navigate("/dashboard");
+      navigate(response.role === "CLUB_ADMIN" ? "/club-admin" : "/dashboard");
     } catch (error) {
       if (!controller.signal.aborted) {
         setError(error instanceof Error ? error.message : "Could not reach the login server.");
