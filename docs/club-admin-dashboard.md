@@ -40,6 +40,6 @@ Membership end status is INACTIVE plus `endDate`, shown as “Inactive” on scr
 
 ## API connection later
 
-A proposed read endpoint is `GET /api/v1/clubs/:clubId/dashboard?seasonId=...`. Derive club access from the authenticated role, reject other clubs (US-18), validate the selected season against the club's data and return a typed view matching the display snapshot. Do not accept client-provided actor/user IDs as authority. Include member counts, seasonal teams and attention, scoped notices and activity; use explicit empty/null values for unavailable information. A failed live request must show an error/retry state, never silently fall back to sample values.
+A proposed read endpoint is `GET /api/v1/club-admin/dashboard?seasonId=...`. Derive club access from the authenticated role, reject other clubs (US-18), validate the selected season against the club's data and return a typed view matching the display snapshot. Do not accept client-provided actor/user IDs as authority. Include member counts, seasonal teams and attention, scoped notices and activity; use explicit empty/null values for unavailable information. A failed live request must show an error/retry state, never silently fall back to sample values.
 
 Registry search before creation (US-19), active eligible squad assignment (US-21) and team manager access (US-45) remain the priority workflow. Club administrators do not correct confirmed scores or resolve disputes; those are association responsibilities under v2.1. Junior DOB/contact details are deliberately absent from the dashboard.
