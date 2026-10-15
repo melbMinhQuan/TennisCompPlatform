@@ -26,6 +26,9 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  // The person's profile (name, date of birth, contact details), not their role.
+  // Club admins and other staff have one too, so their name can be shown; the
+  // role is userRole alone.
   player        Player?
   // A user holds exactly one role (e.g. PLAYER, TEAM_MANAGER or CLUB_ADMIN).
   userRole      UserRole?

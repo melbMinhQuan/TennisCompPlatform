@@ -57,7 +57,7 @@ export type FixtureFilter = { view: FixtureView; season: string; team: string; s
 /**
  * Workbook snapshot for the administrator's club.
  *
- * Planned endpoint for the API team: GET /api/v1/clubs/:clubId/fixtures (plus a detail endpoint).
+ * Planned endpoint for the API team: GET /api/v1/club-admin/fixtures (plus a detail endpoint).
  * The backend must authorise the club from the login, including detail requests.
  * A live API failure must never fall back to this snapshot.
  */

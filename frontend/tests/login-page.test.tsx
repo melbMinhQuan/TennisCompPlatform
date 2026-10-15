@@ -10,7 +10,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-/** The login page inside the app's session provider, with /dashboard as a landing marker. */
+/** The login page inside the app's session provider, with /dashboard and /club-admin as landing markers. */
 function renderLogin() {
   render(
     <PlayerSession>
@@ -18,6 +18,7 @@ function renderLogin() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/dashboard" element={<p>Dashboard reached</p>} />
+          <Route path="/club-admin" element={<p>Club admin reached</p>} />
         </Routes>
       </MemoryRouter>
     </PlayerSession>,
@@ -48,6 +49,14 @@ describe("I-UI-001: login form", () => {
     submit("  Chloe@Club.EXAMPLE ", "right");
     expect(await screen.findByText("Dashboard reached")).toBeTruthy();
     expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({ email: "chloe@club.example", password: "right" });
+  });
+
+  test("a club admin opens the club admin dashboard instead", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ result: "login_success", role: "CLUB_ADMIN" }))));
+    renderLogin();
+    submit("admin@club.example", "right");
+    expect(await screen.findByText("Club admin reached")).toBeTruthy();
+    expect(screen.queryByText("Dashboard reached")).toBeNull();
   });
 
   test("an unreachable server says so instead of blaming the password", async () => {

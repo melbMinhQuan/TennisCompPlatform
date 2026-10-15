@@ -80,7 +80,7 @@ All test accounts share one password:
 | Email | Password |
 | --- | --- |
 | `chloe.cooper005@players.example` | `WaverleyDev#2026` |
-| `raj.mitchell001@players.example` | `WaverleyDev#2026` |
+| `julie.prentice@admin.example` | `WaverleyDev#2026` |
 
 Every other `.example` address in the `User` sheet of `backend/prisma/competition_data.xlsx` also
 works with the same password.

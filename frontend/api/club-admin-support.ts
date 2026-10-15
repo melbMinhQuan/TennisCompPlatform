@@ -22,9 +22,9 @@ export type ClubAdminSupportContactsData = {
 /**
  * Sample contacts for the display-only Sprint 2 page.
  *
- * Planned endpoint for the API team: GET /api/v1/clubs/:clubId/support-contacts,
+ * Planned endpoint for the API team: GET /api/v1/club-admin/support-contacts,
  * returning { data: ClubAdminSupportContactsData } for the logged-in club administrator's
- * club only (US-18). Connect it once login returns the role and clubId; errors must not
+ * club only (US-18). Connect it once login returns the role; errors must not
  * fall back to this sample.
  */
 export async function getClubAdminSupportContacts(signal: AbortSignal): Promise<ClubAdminSupportContactsData> {
