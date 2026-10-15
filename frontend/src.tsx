@@ -19,6 +19,23 @@ import MatchFixturePage from "./pages/MatchFixturePage";
 import MatchScorecardPage from "./pages/MatchScorecardPage";
 import SiteNavigation from "./components/SiteNavigation";
 
+// Club Admin pages
+import ClubAdminLayout from "./components/ClubAdminLayout";
+import ClubAdminPlaceholderPage from "./pages/ClubAdminPlaceholderPage";
+import ClubAdminSupportPage from "./pages/ClubAdminSupportPage";
+import ClubAdminNotificationsPage from "./pages/ClubAdminNotificationsPage";
+import ClubAdminDashboardPage from "./pages/ClubAdminDashboardPage";
+import ClubAdminFixturesPage from "./pages/ClubAdminFixturesPage";
+import ClubAdminFixtureDetailPage from "./pages/ClubAdminFixtureDetailPage";
+import ClubAdminPlayersPage from "./pages/ClubAdminPlayersPage";
+import ClubAdminAddPlayerPage from "./pages/ClubAdminAddPlayerPage";
+import ClubAdminPlayerDetailPage from "./pages/ClubAdminPlayerDetailPage";
+import ClubAdminTeamsPage from "./pages/ClubAdminTeamsPage";
+import ClubAdminTeamDetailPage from "./pages/ClubAdminTeamDetailPage";
+import ClubAdminTeamCreatePage from "./pages/ClubAdminTeamCreatePage";
+import ClubAdminTeamAddPlayersPage from "./pages/ClubAdminTeamAddPlayersPage";
+import ClubAdminTeamAssignManagerPage from "./pages/ClubAdminTeamAssignManagerPage";
+
 function App() {
   return <PlayerSession><BrowserRouter>
     <Routes>
@@ -78,6 +95,79 @@ function App() {
         />
         <Route path="*" element={<section className="rounded-2xl bg-white p-6"><h1 className="text-2xl font-semibold">Page not found</h1><Link className="mt-4 inline-block text-brand underline" to="/dashboard">Return to your profile</Link></section>} />
       </Route>
+
+      <Route path="/club-admin" element={<ClubAdminLayout />}>
+        <Route
+          index
+          element={<ClubAdminDashboardPage />}
+        />
+
+        <Route
+          path="players"
+          element={<ClubAdminPlayersPage />}
+        />
+
+        <Route
+          path="players/add"
+          element={<ClubAdminAddPlayerPage />}
+        />
+
+        <Route
+          path="players/:playerId"
+          element={<ClubAdminPlayerDetailPage />}
+        />
+
+        <Route
+          path="teams"
+          element={<ClubAdminTeamsPage />}
+        />
+
+        <Route
+          path="teams/create"
+          element={<ClubAdminTeamCreatePage />}
+        />
+
+        <Route
+          path="teams/:teamId"
+          element={<ClubAdminTeamDetailPage />}
+        />
+
+        <Route
+          path="teams/:teamId/add-players"
+          element={<ClubAdminTeamAddPlayersPage />}
+        />
+
+        <Route
+          path="teams/:teamId/manager"
+          element={<ClubAdminTeamAssignManagerPage />}
+        />
+
+        <Route
+          path="fixtures"
+          element={<ClubAdminFixturesPage />}
+        />
+
+        <Route
+          path="fixtures/:fixtureId"
+          element={<ClubAdminFixtureDetailPage />}
+        />
+
+        <Route
+          path="notifications"
+          element={<ClubAdminNotificationsPage />}
+        />
+
+        <Route
+          path="support"
+          element={<ClubAdminSupportPage />}
+        />
+
+        <Route
+          path="*"
+          element={<ClubAdminPlaceholderPage title="Page not found" />}
+        />
+      </Route>
+
       <Route path="*" element={<main className="p-8"><h1 className="text-2xl font-semibold">Page not found</h1><Link className="mt-4 inline-block text-brand underline" to="/login">Return to login</Link></main>} />
     </Routes>
   </BrowserRouter></PlayerSession>
