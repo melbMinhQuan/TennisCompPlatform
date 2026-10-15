@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common'
+import { Controller, Get, Param, ParseUUIDPipe, UseGuards } from '@nestjs/common'
 import { AdminClubId, ClubAdminGuard } from './club-admin.guard'
 import { ClubAdminService } from './club-admin.service'
 
@@ -24,5 +24,25 @@ export class ClubAdminController {
   @Get('teams')
   async getTeams(@AdminClubId() clubId: string) {
     return { data: await this.clubAdmin.teams(clubId) }
+  }
+
+  @Get('teams/:teamId')
+  async getTeam(@AdminClubId() clubId: string, @Param('teamId', ParseUUIDPipe) teamId: string) {
+    return { data: await this.clubAdmin.teamDetail(clubId, teamId) }
+  }
+
+  @Get('players')
+  async getPlayers(@AdminClubId() clubId: string) {
+    return { data: await this.clubAdmin.players(clubId) }
+  }
+
+  @Get('players/:playerId')
+  async getPlayer(@AdminClubId() clubId: string, @Param('playerId', ParseUUIDPipe) playerId: string) {
+    return { data: await this.clubAdmin.playerDetail(clubId, playerId) }
+  }
+
+  @Get('support-contacts')
+  async getSupportContacts(@AdminClubId() clubId: string) {
+    return { data: await this.clubAdmin.supportContacts(clubId) }
   }
 }
