@@ -1,7 +1,7 @@
 import { HttpException, ServiceUnavailableException } from '@nestjs/common'
 
 /**
- * Runs a database read and turns any failure that is not already an HTTP error
+ * Runs a database read or write and turns any failure that is not already an HTTP error
  * into a 503, so queries, connection details and credentials never leak.
  */
 export async function readOrUnavailable<T>(operation: () => Promise<T>, message: string): Promise<T> {
