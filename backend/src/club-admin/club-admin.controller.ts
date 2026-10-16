@@ -1,5 +1,8 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Post, Put, Query, UseGuards } from '@nestjs/common'
+import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Put, Query, UseGuards } from '@nestjs/common'
+import { ClubAdminDashboardService } from './club-admin-dashboard.service'
 import { ClubAdminEditService } from './club-admin-edit.service'
+import { ClubAdminFixtureService } from './club-admin-fixture.service'
+import { ClubAdminNotificationService } from './club-admin-notification.service'
 import { AddTeamPlayersDto, AssignManagerDto, CreatePlayerDto, CreateTeamDto, RegistrySearchDto } from './club-admin.dto'
 import { AdminClubId, AdminUserId, ClubAdminGuard } from './club-admin.guard'
 import { ClubAdminService } from './club-admin.service'
@@ -15,7 +18,15 @@ export class ClubAdminController {
   constructor(
     private readonly clubAdmin: ClubAdminService,
     private readonly edits: ClubAdminEditService,
+    private readonly notifications: ClubAdminNotificationService,
+    private readonly fixtures: ClubAdminFixtureService,
+    private readonly dashboards: ClubAdminDashboardService,
   ) {}
+
+  @Get('dashboard')
+  async getDashboard(@AdminClubId() clubId: string, @AdminUserId() userId: string) {
+    return { data: await this.dashboards.dashboard(clubId, userId) }
+  }
 
   @Get('competitions')
   async getCompetitions(@AdminClubId() clubId: string) {
@@ -105,5 +116,30 @@ export class ClubAdminController {
   @Post('players/:playerId/membership')
   async addMember(@AdminClubId() clubId: string, @AdminUserId() userId: string, @Param('playerId', ParseUUIDPipe) playerId: string) {
     return { data: await this.edits.addMember(clubId, userId, playerId) }
+  }
+
+  @Get('notifications')
+  async getNotifications(@AdminUserId() userId: string) {
+    return { data: await this.notifications.list(userId) }
+  }
+
+  @Patch('notifications/read-all')
+  async markAllNotificationsRead(@AdminUserId() userId: string) {
+    return { data: await this.notifications.markAllRead(userId) }
+  }
+
+  @Patch('notifications/:notificationId/read')
+  async markNotificationRead(@AdminUserId() userId: string, @Param('notificationId', ParseUUIDPipe) notificationId: string) {
+    return { data: await this.notifications.markRead(userId, notificationId) }
+  }
+
+  @Get('fixtures')
+  async getFixtures(@AdminClubId() clubId: string) {
+    return { data: await this.fixtures.list(clubId) }
+  }
+
+  @Get('fixtures/:fixtureId')
+  async getFixture(@AdminClubId() clubId: string, @Param('fixtureId', ParseUUIDPipe) fixtureId: string) {
+    return { data: await this.fixtures.detail(clubId, fixtureId) }
   }
 }
