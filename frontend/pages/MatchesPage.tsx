@@ -5,7 +5,6 @@ import { matchCardClass, pageClass, pageIntroClass, pageTitleClass, tabClass } f
 import MatchLoadState from "../components/MatchLoadState";
 import ResultCard from "../components/matches/ResultCard";
 import UpcomingFixtureCard from "../components/matches/UpcomingFixtureCard";
-import { isAwaitingResult, isUpcomingFixture } from "../components/profile/profile-mappers";
 
 export default function MatchesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -16,14 +15,10 @@ export default function MatchesPage() {
   const results = useApiData(getResults);
   const current = isHistory ? results : fixtures;
   const upcoming = (fixtures.data ?? [])
-    .filter((fixture) => isUpcomingFixture(fixture))
+    .filter((fixture) => fixture.status !== "Completed" && fixture.status !== "Cancelled")
     .sort((a, b) => (a.date ?? "9999").localeCompare(b.date ?? "9999") || (a.time ?? "").localeCompare(b.time ?? ""));
-  // Past fixtures with no result entered yet sit at the top of History, most recent first.
-  const awaiting = (fixtures.data ?? [])
-    .filter((fixture) => isAwaitingResult(fixture))
-    .sort((a, b) => b.date!.localeCompare(a.date!) || (b.time ?? "").localeCompare(a.time ?? ""));
   const history = [...(results.data ?? [])].sort((a, b) => b.date.localeCompare(a.date));
-  const shownCount = isHistory ? awaiting.length + history.length : upcoming.length;
+  const shownCount = isHistory ? history.length : upcoming.length;
 
   function changeView(nextView: "upcoming" | "results") {
     const nextParams = new URLSearchParams(searchParams);
@@ -77,8 +72,6 @@ export default function MatchesPage() {
               {isHistory ? "No finalised match results yet." : "No upcoming team fixtures are scheduled."}
             </p>
           )}
-          {isHistory &&
-            awaiting.map((fixture) => <UpcomingFixtureCard key={fixture.id} fixture={fixture} status="Awaiting result" />)}
           {isHistory
             ? history.map((result) => <ResultCard key={result.id} result={result} />)
             : upcoming.map((fixture) => <UpcomingFixtureCard key={fixture.id} fixture={fixture} />)}

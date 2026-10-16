@@ -7,18 +7,18 @@ import { RoleSessionContext } from "../context/RoleSession";
 
 // Hardcoded until the club admin API returns the administrator's name. Glen Waverley's club
 // administrator in competition_data.xlsx: UserRole UR101 (CLUB_ADMIN, CLB01) → User USR101
-// margaret.hayes@admin.example. The club name comes from the login response.
+// margaret.hayes@admin.example.
 const MOCK_ADMIN = {
   displayName: "Margaret Hayes",
   initials: "MH",
   role: "Club Administrator",
+  clubName: "Glen Waverley TC",
 };
 
 export default function ClubAdminLayout() {
   const { pathname } = useLocation();
   const unreadCount = useClubAdminUnreadCount();
-  const { signedIn, signOut } = useContext(RoleSessionContext);
-  const clubName = signedIn?.clubName;
+  const { signOut } = useContext(RoleSessionContext);
 
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const drawerRef = useRef<HTMLDialogElement>(null);
@@ -129,7 +129,7 @@ export default function ClubAdminLayout() {
             </p>
 
             <p className="text-xs leading-5 text-[#d3e0ee]">
-              {MOCK_ADMIN.role}{clubName ? ` · ${clubName}` : ""}
+              {MOCK_ADMIN.role} · {MOCK_ADMIN.clubName}
             </p>
           </div>
         </div>

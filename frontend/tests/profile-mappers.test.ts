@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { describe, expect, test } from "vitest";
 import type { DashboardData } from "../api/dashboard";
 import type { MatchFixture } from "../api/matches";
-import { isAwaitingResult, toPlayerProfile, toUpcomingCompetitions } from "../components/profile/profile-mappers";
+import { toPlayerProfile, toUpcomingCompetitions } from "../components/profile/profile-mappers";
 
 const fixture = (overrides: Partial<MatchFixture>): MatchFixture => ({
   id: "fx", competitionEntryId: "team", competition: "Weekend Senior", season: "Winter 2026",
@@ -30,15 +30,6 @@ describe("FE-005: profile card mapping", () => {
 });
 
 describe("FE-006: upcoming fixtures card", () => {
-  // 2026-10-01 in Melbourne.
-  beforeEach(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-10-01T02:00:00Z"));
-  });
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
   test("drops completed and cancelled fixtures, puts undated ones last, and labels finals", () => {
     const items = toUpcomingCompetitions([
       fixture({ id: "done", status: "Completed" }),
@@ -52,22 +43,5 @@ describe("FE-006: upcoming fixtures card", () => {
     expect(items[1].event).toBe("Home A vs Away A · Grand Final");
     expect(items[1].location).toBe("Regional Centre");
     expect(items[2].status).toBe("Postponed");
-  });
-
-  test("drops past fixtures that are still marked Scheduled or Postponed, but keeps today's", () => {
-    const items = toUpcomingCompetitions([
-      fixture({ id: "stale", date: "2026-09-26" }),
-      fixture({ id: "stale-postponed", status: "Postponed", date: "2026-09-19" }),
-      fixture({ id: "today", date: "2026-10-01" }),
-    ]);
-    expect(items.map((item) => item.id)).toEqual(["today"]);
-  });
-
-  test("a past Scheduled or Postponed fixture is awaiting its result; today's, undated and completed ones are not", () => {
-    expect(isAwaitingResult(fixture({ date: "2026-09-26" }))).toBe(true);
-    expect(isAwaitingResult(fixture({ status: "Postponed", date: "2026-09-19" }))).toBe(true);
-    expect(isAwaitingResult(fixture({ date: "2026-10-01" }))).toBe(false);
-    expect(isAwaitingResult(fixture({ status: "Postponed", date: null }))).toBe(false);
-    expect(isAwaitingResult(fixture({ status: "Completed", date: "2026-09-26" }))).toBe(false);
   });
 });

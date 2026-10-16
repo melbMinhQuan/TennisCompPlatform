@@ -4,8 +4,8 @@ import { matchButtonClass, matchCardClass, matchLabelClass } from "../MatchesUI"
 import { formatFixtureDate, formatTime } from "../../utils/date-helpers";
 import { formatRound } from "../../utils/formatters";
 
-/** One team fixture on the Matches page; `status` replaces the fixture's own status label. */
-export default function UpcomingFixtureCard({ fixture, status }: { fixture: MatchFixture; status?: string }) {
+/** One upcoming team fixture on the Matches page. */
+export default function UpcomingFixtureCard({ fixture }: { fixture: MatchFixture }) {
   return (
     <article className={matchCardClass}>
       <p className={matchLabelClass}>
@@ -17,7 +17,7 @@ export default function UpcomingFixtureCard({ fixture, status }: { fixture: Matc
       </h2>
 
       <p className="mt-3 text-sm leading-6 text-muted">
-        {fixture.competition} · {formatRound(fixture)} · {status ?? fixture.status}
+        {fixture.competition} · {formatRound(fixture)} · {fixture.status}
       </p>
 
       <p className={`${matchLabelClass} mt-5`}>Representing</p>
