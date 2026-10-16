@@ -5,20 +5,22 @@ import logo from "../resources/Logo.png";
 import { useClubAdminUnreadCount } from "../data/club-admin-notification-reads";
 import { RoleSessionContext } from "../context/RoleSession";
 
-// Hardcoded until the club admin API returns the administrator's name. Glen Waverley's club
-// administrator in competition_data.xlsx: UserRole UR101 (CLUB_ADMIN, CLB01) → User USR101
-// margaret.hayes@admin.example.
-const MOCK_ADMIN = {
-  displayName: "Margaret Hayes",
-  initials: "MH",
-  role: "Club Administrator",
-  clubName: "Glen Waverley TC",
-};
+const ROLE_LABEL = "Club Administrator";
+
+/** "MH" from "Margaret Hayes"; "CA" when the login did not return a name. */
+function initialsOf(name: string | null) {
+  if (!name) return "CA";
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0].toUpperCase()).join("");
+}
 
 export default function ClubAdminLayout() {
   const { pathname } = useLocation();
   const unreadCount = useClubAdminUnreadCount();
-  const { signOut } = useContext(RoleSessionContext);
+  // The administrator's name and club come from the login response (POST /auth/login).
+  const { signedIn, signOut } = useContext(RoleSessionContext);
+  const displayName = signedIn?.displayName ?? null;
+  const clubName = signedIn?.clubName ?? null;
+  const initials = initialsOf(displayName);
 
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const drawerRef = useRef<HTMLDialogElement>(null);
@@ -106,11 +108,11 @@ export default function ClubAdminLayout() {
         {/* Mobile: the admin's initials with "Club Admin" underneath, beside the centred logo. */}
         <div
           role="img"
-          aria-label={`${MOCK_ADMIN.displayName}, ${MOCK_ADMIN.role}`}
+          aria-label={`${displayName ?? ROLE_LABEL}, ${ROLE_LABEL}`}
           className="relative z-10 ml-auto flex shrink-0 flex-col items-center gap-0.5 min-[768px]:hidden"
         >
           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-xs font-semibold text-[#1a3049]">
-            {MOCK_ADMIN.initials}
+            {initials}
           </span>
           <span className="whitespace-nowrap text-[11px] font-semibold text-white">Club Admin</span>
         </div>
@@ -120,16 +122,17 @@ export default function ClubAdminLayout() {
             aria-hidden="true"
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-sm font-semibold text-[#1a3049]"
           >
-            {MOCK_ADMIN.initials}
+            {initials}
           </span>
 
           <div>
             <p className="text-sm font-semibold text-white">
-              {MOCK_ADMIN.displayName}
+              {displayName ?? ROLE_LABEL}
             </p>
 
             <p className="text-xs leading-5 text-[#d3e0ee]">
-              {MOCK_ADMIN.role} · {MOCK_ADMIN.clubName}
+              {ROLE_LABEL}
+              {clubName ? ` · ${clubName}` : ""}
             </p>
           </div>
         </div>
