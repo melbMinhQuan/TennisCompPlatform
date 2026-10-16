@@ -1,5 +1,6 @@
 import { mockMemberships } from "../data/mock-memberships";
 import { getPlayerData } from "./client";
+import type { SeasonStatus } from "../types/season";
 
 export type Membership = {
   id: string;
@@ -14,7 +15,7 @@ export type MembershipTeam = {
   clubId: string;
   competitionName: string;
   seasonLabel: string; // Season type + year, e.g. "Winter 2026"
-  seasonStatus: "ACTIVE" | "COMPLETED" | "ARCHIVED"; // Season.status: ACTIVE = current season
+  seasonStatus: SeasonStatus; // Season.status: ACTIVE = current season
   sectionName: string;
 };
 export type PlayerMemberships = {

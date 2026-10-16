@@ -1,15 +1,16 @@
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { Link, Outlet, useLocation } from "react-router";
 import ClubAdminNavigation from "./layout/ClubAdminNavigation";
 import logo from "../resources/Logo.png";
 import { useClubAdminUnreadCount } from "../data/club-admin-notification-reads";
+import { RoleSessionContext } from "../context/RoleSession";
 
-// Hardcoded until login returns the role and club (US-18). Glen Waverley's club administrator in
-// competition_data.xlsx: UserRole UR003 (CLUB_ADMIN, CLB01) → Player PLR006 Ethan Wright
-// (ethan.wright006@players.example).
+// Hardcoded until the club admin API returns the administrator's name. Glen Waverley's club
+// administrator in competition_data.xlsx: UserRole UR101 (CLUB_ADMIN, CLB01) → User USR101
+// margaret.hayes@admin.example.
 const MOCK_ADMIN = {
-  displayName: "Ethan Wright",
-  initials: "EW",
+  displayName: "Margaret Hayes",
+  initials: "MH",
   role: "Club Administrator",
   clubName: "Glen Waverley TC",
 };
@@ -17,6 +18,7 @@ const MOCK_ADMIN = {
 export default function ClubAdminLayout() {
   const { pathname } = useLocation();
   const unreadCount = useClubAdminUnreadCount();
+  const { signOut } = useContext(RoleSessionContext);
 
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const drawerRef = useRef<HTMLDialogElement>(null);
@@ -167,6 +169,7 @@ export default function ClubAdminLayout() {
             mobile
             unreadCount={unreadCount}
             onNavigate={() => setIsMobileMenuOpen(false)}
+            onLogOut={signOut}
           />
         </div>
       </dialog>
@@ -183,6 +186,7 @@ export default function ClubAdminLayout() {
 
           <ClubAdminNavigation
             unreadCount={unreadCount}
+            onLogOut={signOut}
           />
         </aside>
 

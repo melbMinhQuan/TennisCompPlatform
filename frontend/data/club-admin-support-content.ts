@@ -47,7 +47,7 @@ export const CLUB_ADMIN_HELP_FAQS = [
     steps: [
       "Check the spelling, and search again using the player’s date of birth or email.",
       "If no result matches the player, select Create new player.",
-      "Complete the required details. For a player under 18, a parent or guardian email is required, and the login invitation is sent to that address.",
+      "Complete the required details: first name, last name, date of birth and gender.",
       "If a possible duplicate is shown before saving, go back to the results and review it.",
     ],
   },
@@ -118,17 +118,29 @@ export const CLUB_ADMIN_HELP_FAQS = [
     steps: [
       "Go to Teams and select ＋ Create team.",
       "Choose the competition, the season and a section with available places.",
-      "Check the suggested team name. It must be unique within the section.",
+      "Check the suggested team name. It must be unique within the season.",
       "Select Create team, then use ＋ Add players and Assign team manager.",
     ],
     points: ["If the season or section you need is not available, please contact the association."],
   },
   {
+    id: "new-team-each-season",
+    topic: "teams",
+    title: "Why do I create a new team each season?",
+    content: "A team belongs to one competition, one season and one section.",
+    points: [
+      "Keeping each season’s team separate means past results, ladders and squads stay correct.",
+      "Club memberships carry over to the new season, so your players do not need to be added to the club again.",
+      "For the new season, create the team, then add players to its squad and assign a team manager.",
+    ],
+  },
+  {
     id: "blocked-player",
     topic: "teams",
     title: "Why can’t I add a player to a team?",
-    content: "Only your club’s players are listed. A player who can’t be added is greyed out with the reason, for example:",
+    content: "A player who can’t be added is greyed out with the reason, for example:",
     points: [
+      "They are not an active member of your club.",
       "They are under the competition’s minimum age.",
       "Their membership is inactive.",
       "They are already in this squad.",
@@ -154,6 +166,7 @@ export const CLUB_ADMIN_HELP_FAQS = [
     ],
     points: [
       "To remove a manager, select Remove manager and confirm. Their access ends straight away, and the team and squad are kept.",
+      "A manager needs a login account, can manage only one current team at a time, and can’t hold another role such as club administrator.",
       "If a new manager can’t see the team, check their login email and contact the association.",
     ],
   },
@@ -173,9 +186,9 @@ export const CLUB_ADMIN_HELP_FAQS = [
     title: "A player can’t log in. How can I help?",
     content: "Please check the following:",
     points: [
-      "They are using the email your club registered for them, or their parent’s email for a junior player.",
+      "They are using the email address on their login account.",
       "That email belongs to the right player.",
-      "Players don’t sign themselves up. They receive an invitation from their club.",
+      "A login account is set up separately from the player record. If the player doesn’t have one yet, please contact the association.",
       "Online password reset isn’t available yet, so ask the association to help reset their access.",
       "Never ask a player for their password.",
     ],

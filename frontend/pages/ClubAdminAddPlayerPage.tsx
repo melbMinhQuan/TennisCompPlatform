@@ -8,10 +8,13 @@ import {
   matchLightButtonClass,
   pageTitleClass,
 } from "../components/MatchesUI";
+import { clubAdminClubId } from "../data/club-admin-dashboard";
+import CreatePlayerForm, { type NewPlayerDetails } from "../components/club-admin/players/CreatePlayerForm";
 
-type Stage = "search" | "choose" | "done";
+type Stage = "search" | "choose" | "create" | "done";
 type Result = { player: ClubAdminPlayer; score: number };
-const CLUB_ID = "CLB01";
+// The signed-in administrator's club (sample until the login returns it).
+const CLUB_ID = clubAdminClubId;
 const clubName = mockClubs.find((club) => club.id === CLUB_ID)?.name ?? "Glen Waverley Tennis Club";
 const button = matchButtonClass;
 const secondary = matchLightButtonClass;
@@ -92,20 +95,22 @@ export default function ClubAdminAddPlayerPage() {
     setStage("done");
   }
 
-  function createNew() {
-    const parts = fullName.trim().split(/\s+/);
-    const newPlayer: ClubAdminPlayer = {
-      id: `DEMO-${Date.now()}`,
-      firstName: parts[0] ?? "",
-      lastName: parts.slice(1).join(" "),
-      dateOfBirth: toISODate(dateOfBirth),
-      email: email || null,
-      phone: null,
-      status: "ACTIVE",
-    };
-    setSelected(newPlayer);
+  /**
+   * Same checks as POST /api/v1/club-admin/players: a player with the same name (ignoring case) and
+   * date of birth is a possible duplicate, so the admin is asked to add that player instead.
+   */
+  function createPlayer(details: NewPlayerDetails) {
+    const name = normalize(`${details.firstName} ${details.lastName}`);
+    const duplicate = mockPlayers.find(
+      (player) => normalize(`${player.firstName} ${player.lastName}`) === name && player.dateOfBirth === details.dateOfBirth,
+    );
+    if (duplicate) {
+      return `${duplicate.firstName} ${duplicate.lastName} (${duplicate.id}) already has a record with this date of birth. Go back to the results and add that player instead.`;
+    }
+    setSelected({ id: `DEMO-${Date.now()}`, ...details, email: null, phone: null, status: "ACTIVE" });
     setCreated(true);
     setStage("done");
+    return "";
   }
 
   const alreadyInClub = (playerId: string) => mockClubMemberships.some(
@@ -125,20 +130,22 @@ export default function ClubAdminAddPlayerPage() {
     <section className="text-white md:text-[#1a3049]">
       <p className="text-xs font-semibold uppercase tracking-wide text-[#d2dfed] md:text-muted">Players / Add a player</p>
       {stage !== "done" && (
-        <button type="button" onClick={() => stage === "choose" ? setStage("search") : window.history.back()}
+        <button type="button" onClick={() => stage === "choose" ? setStage("search") : stage === "create" ? setStage("choose") : window.history.back()}
           className={`${secondary} mt-5`}>
-          ‹ {stage === "choose" ? "Change search" : "Players"}
+          ‹ {stage === "choose" ? "Change search" : stage === "create" ? "Back to results" : "Players"}
         </button>
       )}
       <h1 className={`mt-5 ${pageTitleClass}`}>Add a player</h1>
       <p className="mt-4 text-sm text-[#d2dfed] md:text-muted">
         {stage === "search" ? "First we check if this person is already in the system, so nobody is entered twice."
           : stage === "choose" ? "Pick the person you mean. Each result tells you what will happen."
+          : stage === "create" ? "Nobody in the results is this person, so enter their details to create a new player record."
           : "All done. Here's what happened and what you can do next."}
       </p>
       <ol className="mt-5 flex flex-wrap items-center gap-2 text-sm" aria-label="Add player progress">
         {(["Search", "Choose", "Done"] as const).map((label, index) => {
-          const current = ["search", "choose", "done"].indexOf(stage);
+          // Creating a new player is part of the Choose step.
+          const current = ["search", "choose", "done"].indexOf(stage === "create" ? "choose" : stage);
           return (
             <li key={label} className="flex items-center gap-2">
               {index > 0 && <span className="mr-1 text-[#a9bdd4]">—</span>}
@@ -190,7 +197,7 @@ export default function ClubAdminAddPlayerPage() {
             </label>
             <label className="text-sm font-semibold">Email
               <input className={inputStyle} type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Email address" />
-              <span className="mt-1 block text-xs font-normal text-muted">Optional</span>
+              <span className="mt-1 block text-xs font-normal text-muted">Optional. Only used to find a match</span>
             </label>
           </div>
           <p className="mt-4 text-sm text-muted">This demo searches a small sample from across Waverley Tennis. The live registry will search all clubs. Results never show date of birth or contact details.</p>
@@ -215,7 +222,7 @@ export default function ClubAdminAddPlayerPage() {
                       {member ? "Already in your club" : exact ? "In another club / Not a member" : "Possible match"}
                     </span>
                   </div>
-                  <p className="mt-2 text-sm font-medium">Name {exact ? "✓" : "similar"} {dateOfBirth && ` · Date of birth ${dateOfBirth === player.dateOfBirth ? "✓" : "×"}`} {email && ` · Email ${normalize(email) === normalize(player.email ?? "") ? "✓" : "×"}`}</p>
+                  <p className="mt-2 text-sm font-medium">Name {exact ? "✓" : "similar"} {dateOfBirth && ` · Date of birth ${toISODate(dateOfBirth) === player.dateOfBirth ? "✓" : "×"}`} {email && ` · Email ${normalize(email) === normalize(player.email ?? "") ? "✓" : "×"}`}</p>
                   <p className="mt-2 text-sm text-muted">{member ? "Already a Glen Waverley member. There is nothing to add." : clubs.length ? `Plays for ${clubs.join(", ")}. Adding them keeps the same Player ID and history.` : "No active club membership found in the mock data."}</p>
                   {member ? (
                     <Link to={`/club-admin/players/${player.id}`} className={`${secondary} mt-3 w-full md:w-auto`}>View player</Link>
@@ -229,9 +236,20 @@ export default function ClubAdminAddPlayerPage() {
           <div className="mt-4 rounded-2xl border-2 border-dashed border-[#b7cce3] bg-[#f4f8fc] p-5 text-[#1a3049] md:p-6">
             <h3 className="font-bold">Not in the list?</h3>
             <p className="mt-2 text-sm text-muted">Only create a new player if none of the results above is this person.</p>
-            <button type="button" className={`${secondary} mt-3 w-full md:w-auto`} onClick={createNew}>Create new player</button>
+            <button type="button" className={`${secondary} mt-3 w-full md:w-auto`} onClick={() => setStage("create")}>Create new player</button>
           </div>
         </div>
+      )}
+
+      {stage === "create" && (
+        <CreatePlayerForm
+          initialFirstName={fullName.trim().split(/\s+/)[0] ?? ""}
+          initialLastName={fullName.trim().split(/\s+/).slice(1).join(" ")}
+          initialDateOfBirth={dateOfBirth}
+          toISODate={toISODate}
+          onCreate={createPlayer}
+          onCancel={() => setStage("choose")}
+        />
       )}
 
       {stage === "done" && selected && (

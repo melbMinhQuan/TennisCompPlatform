@@ -3,6 +3,27 @@ import sample from "../data/mock-club-admin-fixtures.json";
 
 type FixtureTeam = { id: string; name: string; clubId: string };
 
+export type FixtureStatus = "SCHEDULED" | "COMPLETED" | "CANCELLED" | "POSTPONED";
+export type ResultStatus = "DRAFT" | "PENDING_CONFIRMATION" | "FINALISED" | "UNDER_CORRECTION";
+export type RubberType = "SINGLES" | "DOUBLES";
+export type RubberOutcome = "COMPLETED" | "RETIRED" | "WALKOVER" | "FORFEIT" | "ABANDONED";
+
+function isFixtureStatus(status: string): status is FixtureStatus {
+  return ["SCHEDULED", "COMPLETED", "CANCELLED", "POSTPONED"].includes(status);
+}
+
+function isResultStatus(status: string): status is ResultStatus {
+  return ["DRAFT", "PENDING_CONFIRMATION", "FINALISED", "UNDER_CORRECTION"].includes(status);
+}
+
+function isRubberType(type: string): type is RubberType {
+  return type === "SINGLES" || type === "DOUBLES";
+}
+
+function isRubberOutcome(outcome: string): outcome is RubberOutcome {
+  return ["COMPLETED", "RETIRED", "WALKOVER", "FORFEIT", "ABANDONED"].includes(outcome);
+}
+
 /** One set in a rubber; null games mean the score was not recorded. */
 type RubberSet = { number: number; home: number | null; away: number | null };
 
@@ -10,10 +31,8 @@ type RubberSet = { number: number; home: number | null; away: number | null };
 export type FixtureRubber = {
   id: string;
   number: number;
-  /** DOUBLES or SINGLES. */
-  type: string;
-  /** COMPLETED, FORFEIT or WALKOVER. */
-  outcome: string;
+  type: RubberType;
+  outcome: RubberOutcome | null;
   homePlayers: string[];
   awayPlayers: string[];
   sets: RubberSet[];
@@ -21,8 +40,7 @@ export type FixtureRubber = {
 
 /** Recorded result for a fixture (MatchResult). */
 export type FixtureResult = {
-  /** FINALISED, PENDING_CONFIRMATION or UNDER_CORRECTION. */
-  status: string;
+  status: ResultStatus;
   homeRubbers: number | null;
   awayRubbers: number | null;
   rubbers: FixtureRubber[];
@@ -42,8 +60,7 @@ export type ClubAdminFixture = {
   /** YYYY-MM-DD and HH:mm, local to the venue; null while postponed. */
   date: string | null;
   time: string | null;
-  /** SCHEDULED, POSTPONED, CANCELLED or COMPLETED. */
-  status: string;
+  status: FixtureStatus;
   /** True when a FixtureScheduleChange exists for this fixture. */
   changed: boolean;
   venue: { name: string; address: string | null } | null;
@@ -54,6 +71,32 @@ export type FixtureView = "fixtures" | "results";
 
 export type FixtureFilter = { view: FixtureView; season: string; team: string; search: string };
 
+const fixtures: ClubAdminFixture[] = sample.map(fixture => {
+  if (!isFixtureStatus(fixture.status)) {
+    throw new Error(`Unsupported fixture status in club-admin mock: ${fixture.status}`);
+  }
+  if (!fixture.result) return { ...fixture, status: fixture.status, result: null };
+  if (!isResultStatus(fixture.result.status)) {
+    throw new Error(`Unsupported result status in club-admin mock: ${fixture.result.status}`);
+  }
+
+  const rubbers = fixture.result.rubbers.map(rubber => {
+    if (!isRubberType(rubber.type)) {
+      throw new Error(`Unsupported rubber type in club-admin mock: ${rubber.type}`);
+    }
+    if (rubber.outcome !== null && !isRubberOutcome(rubber.outcome)) {
+      throw new Error(`Unsupported rubber outcome in club-admin mock: ${rubber.outcome}`);
+    }
+    return { ...rubber, type: rubber.type, outcome: rubber.outcome };
+  });
+
+  return {
+    ...fixture,
+    status: fixture.status,
+    result: { ...fixture.result, status: fixture.result.status, rubbers },
+  };
+});
+
 /**
  * Workbook snapshot for the administrator's club.
  *
@@ -63,7 +106,7 @@ export type FixtureFilter = { view: FixtureView; season: string; team: string; s
  */
 export async function getClubAdminFixtures(signal: AbortSignal): Promise<ClubAdminFixture[]> {
   signal.throwIfAborted();
-  return structuredClone(sample);
+  return structuredClone(fixtures);
 }
 
 /** True when the fixture belongs to the administrator's club and one of its teams plays in it. */

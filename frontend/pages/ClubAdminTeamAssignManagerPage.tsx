@@ -20,8 +20,18 @@ import {
   matchLightButtonClass,
   pageTitleClass,
 } from "../components/MatchesUI";
+import { clubAdminClubId } from "../data/club-admin-dashboard";
+import { seasonOf } from "../data/club-admin-sections";
 
-const CLUB_ID = "CLB01";
+// A user has one role. These players already hold an association role in the seed data
+// (UserRole UR001 and UR002), so the backend refuses them as managers (HOLDS_ANOTHER_ROLE).
+const OTHER_ROLES: Record<string, string> = {
+  PLR001: "Association administrator",
+  PLR002: "Records secretary",
+};
+
+// The signed-in administrator's club (sample until the login returns it).
+const CLUB_ID = clubAdminClubId;
 
 export default function ClubAdminTeamAssignManagerPage() {
   const { teamId } = useParams<{ teamId: string }>();
@@ -35,6 +45,25 @@ export default function ClubAdminTeamAssignManagerPage() {
   const team = mockTeams.find(
     (item) => item.id === teamId && item.clubId === CLUB_ID
   );
+
+  /**
+   * Why a player can't manage this team, matching the backend's rules: one role per user, and
+   * one team at a time while that team's season is upcoming or active. "" means they can.
+   */
+  function blockedReason(playerId: string) {
+    if (OTHER_ROLES[playerId]) return `Holds another role (${OTHER_ROLES[playerId]})`;
+    const otherTeam = Object.entries(managers).find(([managedTeamId, managerId]) => {
+      if (managerId !== playerId || managedTeamId === teamId) return false;
+      const managed = mockTeams.find((item) => item.id === managedTeamId);
+      const status = managed ? seasonOf(managed.seasonId)?.status : undefined;
+      return status === "ACTIVE" || status === "UPCOMING";
+    });
+    if (otherTeam) {
+      const managed = mockTeams.find((item) => item.id === otherTeam[0]);
+      return `Already manages ${managed?.name ?? "another team"}`;
+    }
+    return "";
+  }
 
   const currentManagerId = teamId
     ? managers[teamId]
@@ -97,7 +126,7 @@ export default function ClubAdminTeamAssignManagerPage() {
   function handleAssign() {
     const isEligible = candidates.some(
       (player) => player.id === selectedManagerId
-    );
+    ) && !blockedReason(selectedManagerId);
 
     if (!isEligible) return;
 
@@ -125,10 +154,9 @@ export default function ClubAdminTeamAssignManagerPage() {
       </h1>
 
       <p className="mt-3 text-sm text-[#d2dfed] md:text-muted">
-        Select an active player who is an active member of
-        this club. Eligible indicates basic demo criteria;
-        manager role and permission rules may differ in the
-        future.
+        Choose an active member of your club. A manager needs a
+        login account, can manage one current team at a time, and
+        can’t hold another role such as club administrator.
       </p>
 
       <div className={`mt-5 text-[#1a3049] ${matchCardClass}`}>
@@ -160,14 +188,17 @@ export default function ClubAdminTeamAssignManagerPage() {
               No eligible players found.
             </p>
           ) : (
-            candidates.map((player) => (
+            candidates.map((player) => {
+              const reason = blockedReason(player.id);
+              return (
               <label
                 key={player.id}
-                className="flex cursor-pointer items-center gap-3 border-b border-[#e4eaf2] py-4 last:border-0"
+                className={`flex items-center gap-3 border-b border-[#e4eaf2] py-4 last:border-0 ${reason ? "opacity-65" : "cursor-pointer"}`}
               >
                 <input
                   type="radio"
                   name="team-manager"
+                  disabled={Boolean(reason)}
                   value={player.id}
                   checked={selectedManagerId === player.id}
                   onChange={() => setSelectedId(player.id)}
@@ -180,9 +211,10 @@ export default function ClubAdminTeamAssignManagerPage() {
                   </p>
                   <p className="text-xs text-muted">
                     {player.id} ·{" "}
-                    {squadPlayerIds.has(player.id)
-                      ? "In this squad"
-                      : "Club member"}
+                    {reason ||
+                      (squadPlayerIds.has(player.id)
+                        ? "In this squad"
+                        : "Club member")}
                   </p>
                 </div>
 
@@ -192,7 +224,8 @@ export default function ClubAdminTeamAssignManagerPage() {
                   </span>
                 )}
               </label>
-            ))
+              );
+            })
           )}
         </div>
 
@@ -210,7 +243,8 @@ export default function ClubAdminTeamAssignManagerPage() {
               !selectedManagerId ||
               !candidates.some(
                 (player) => player.id === selectedManagerId
-              )
+              ) ||
+              Boolean(blockedReason(selectedManagerId))
             }
             onClick={handleAssign}
             className={`${matchButtonClass} disabled:cursor-not-allowed disabled:opacity-50`}

@@ -3,8 +3,8 @@ import { useSyncExternalStore } from "react";
 type ManagerAssignments = Record<string, string>;
 
 let assignments: ManagerAssignments = {
-  TEAM017: "PLR100",
-  TEAM029: "PLR074",
+  "TEAM017": "PLR100",
+  "TEAM029": "PLR074",
 };
 const listeners = new Set<() => void>();
 

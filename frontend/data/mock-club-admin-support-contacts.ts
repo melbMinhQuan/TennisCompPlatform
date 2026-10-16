@@ -1,6 +1,6 @@
 import type { ClubAdminSupportContactsData } from "../api/club-admin-support";
 
-// Hardcoded until the club admin API exists. Ethan Wright's (PLR006, UserRole UR003 CLUB_ADMIN for CLB01)
+// Hardcoded until the club admin API exists. Margaret Hayes's (UserRole UR101 CLUB_ADMIN for CLB01)
 // contacts, joined from backend/prisma/competition_data.xlsx:
 // - club: CLB01 Glen Waverley Tennis Club (Club sheet) – the contact details players see on their Help page
 // - association: ASSOC01 Waverley Tennis (Association sheet)

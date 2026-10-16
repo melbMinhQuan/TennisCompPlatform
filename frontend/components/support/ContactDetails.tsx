@@ -23,7 +23,15 @@ export default function ContactDetails({ rows }: { rows: ContactRow[] }) {
                   className={LINK_CLASS}
                   href={link === "phone" ? `tel:${value!.replace(/\s+/g, "")}` : `mailto:${value}`}
                 >
-                  {value}
+                  {/* Lets a long email wrap after the @ instead of in the middle of a word. */}
+                  {link === "email" && value!.includes("@") ? (
+                    <>
+                      {value!.split("@")[0]}@<wbr />
+                      {value!.split("@")[1]}
+                    </>
+                  ) : (
+                    value
+                  )}
                 </a>
               ) : (
                 value

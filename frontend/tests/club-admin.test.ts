@@ -24,7 +24,7 @@ function fixture(changes: Partial<ClubAdminFixture> = {}): ClubAdminFixture {
     ...changes,
   };
 }
-const recorded = { status: "FINALISED", homeRubbers: 5, awayRubbers: 3, rubbers: [] };
+const recorded = { status: "FINALISED" as const, homeRubbers: 5, awayRubbers: 3, rubbers: [] };
 const ids = (fixtures: ClubAdminFixture[], changes: Partial<FixtureFilter> = {}) =>
   filterClubFixtures(fixtures, { view: "fixtures", season: "all", team: "all", search: "", ...changes }).map((f) => f.id);
 

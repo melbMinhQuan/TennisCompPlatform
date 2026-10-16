@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useSearchParams } from "react-router";
 import { CLUB_ADMIN_HELP_FAQS, CLUB_ADMIN_HELP_TOPICS } from "../data/club-admin-support-content";
 import { pageClass, pageTitleClass } from "../components/MatchesUI";
 import ClubAdminContacts from "../components/support/ClubAdminContacts";
@@ -12,7 +13,12 @@ import HelpTopics from "../components/support/HelpTopics";
 export default function ClubAdminSupportPage() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [selectedTopic, setSelectedTopic] = useState("all");
+  // Other club admin pages link here with ?topic=players or ?topic=teams to open that topic.
+  const [params] = useSearchParams();
+  const [selectedTopic, setSelectedTopic] = useState(() => {
+    const topic = params.get("topic");
+    return CLUB_ADMIN_HELP_TOPICS.some((item) => item.id === topic) ? topic! : "all";
+  });
   const searchToggleRef = useRef<HTMLButtonElement>(null);
   const faqHeadingRef = useRef<HTMLHeadingElement>(null);
   const topicsHeadingRef = useRef<HTMLHeadingElement>(null);

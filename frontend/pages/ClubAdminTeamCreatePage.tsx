@@ -1,16 +1,20 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router";
-import { createClubTeam, useClubTeams } from "../data/teamStore";
+import { createClubTeam, hasTeamNameInSeason, useClubTeams } from "../data/teamStore";
+import { clubAdminClubId } from "../data/club-admin-dashboard";
+import { mockSections, upcomingSeason } from "../data/club-admin-sections";
 
-const CLUB_ID = "CLB01";
+// The signed-in administrator's club (sample until the login returns it).
+const CLUB_ID = clubAdminClubId;
 const primary = "inline-flex min-h-11 items-center justify-center rounded-lg bg-[#4278b7] px-5 text-sm font-semibold text-white hover:bg-[#35699f]";
 const secondary = "inline-flex min-h-11 items-center justify-center rounded-lg bg-[#e5effa] px-5 text-sm font-semibold text-[#263d58] hover:bg-[#d8e6f5]";
 const input = "mt-1 min-h-11 w-full rounded-lg border border-[#c6d6e8] bg-white px-4 text-sm text-[#263d58] outline-none focus:ring-2 focus:ring-[#4278b7]";
 
-// Figma demo choices only: the provided team mock data has no competition/season records.
-const COMPETITION = "Weekend Senior";
-const SEASON = "Summer 2026/27";
-const sections = [1, 2, 3, 4, 5, 6];
+// New teams are entered into the next season (UPCOMING), using its sections from the seed data.
+const COMPETITION = upcomingSeason?.competition ?? "Weekend Senior";
+const SEASON = upcomingSeason?.label ?? "Summer 2026/27";
+const SEASON_ID = upcomingSeason?.id ?? "SEA05";
+const sections = mockSections.filter((section) => section.seasonId === SEASON_ID);
 
 type CreatedTeam = { id: string; name: string; section: string; competition: string; season: string };
 
@@ -18,7 +22,7 @@ export default function ClubAdminTeamCreatePage() {
   const teams = useClubTeams();
   const [competition, setCompetition] = useState(COMPETITION);
   const [season, setSeason] = useState(SEASON);
-  const [section, setSection] = useState("SEC02");
+  const [section, setSection] = useState(sections[0].id);
   const [name, setName] = useState("Glen Waverley C");
   const [created, setCreated] = useState<CreatedTeam | null>(null);
   const [error, setError] = useState("");
@@ -27,14 +31,27 @@ export default function ClubAdminTeamCreatePage() {
     event.preventDefault();
     setError("");
     try {
-      const team = createClubTeam({ clubId: CLUB_ID, name, sectionId: section });
-      setCreated({ id: team.id, name: team.name, section, competition, season });
+      const team = createClubTeam({
+        clubId: CLUB_ID,
+        name,
+        sectionId: section,
+        seasonId: SEASON_ID,
+        contactUserId: null,
+        homeVenueId: null,
+      });
+      setCreated({
+        id: team.id,
+        name: team.name,
+        section: sections.find(item => item.id === team.sectionId)?.name ?? "Section",
+        competition,
+        season,
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to create team.");
     }
   }
 
-  const duplicate = teams.some(t => t.clubId === CLUB_ID && t.sectionId.toUpperCase() === section && t.name.trim().toLowerCase() === name.trim().toLowerCase());
+  const duplicate = hasTeamNameInSeason(SEASON_ID, name);
 
   return (
     <section className="text-white md:text-[#1a3049]">
@@ -57,7 +74,7 @@ export default function ClubAdminTeamCreatePage() {
           <div role="status" className="mt-5 rounded-2xl bg-[#e2f4eb] p-6 text-[#185c47]">
             <p className="text-xs font-semibold">Team registered</p>
             <h2 className="mt-3 text-xl font-bold">{created.name} is entered in {created.competition}</h2>
-            <p className="mt-2 text-sm">{created.season} · Section {Number(created.section.replace("SEC", ""))}. It now appears in the section’s team list.</p>
+            <p className="mt-2 text-sm">{created.season} · {created.section}. It now appears in the section’s team list.</p>
           </div>
           <div className="mt-4 rounded-2xl bg-white p-6 text-[#1a3049]">
             <h2 className="text-lg font-bold">What next?</h2>
@@ -75,7 +92,7 @@ export default function ClubAdminTeamCreatePage() {
             <div className="mt-4 grid gap-4 md:grid-cols-3">
               <label className="text-sm font-semibold">Competition *
                 <select required className={input} value={competition} onChange={e => setCompetition(e.target.value)}><option value={COMPETITION}>{COMPETITION}</option></select>
-                <span className="mt-2 block text-xs font-normal text-[#60758d]">Run by Waverley &amp; District TA</span>
+                <span className="mt-2 block text-xs font-normal text-[#60758d]">Run by Waverley Tennis</span>
               </label>
               <label className="text-sm font-semibold">Season *
                 <select required className={input} value={season} onChange={e => setSeason(e.target.value)}><option value={SEASON}>{SEASON}</option></select>
@@ -83,9 +100,9 @@ export default function ClubAdminTeamCreatePage() {
               </label>
               <label className="text-sm font-semibold">Section *
                 <select required className={input} value={section} onChange={e => setSection(e.target.value)}>
-                  {sections.map(n => <option key={n} value={`SEC${String(n).padStart(2, "0")}`}>Section {n}</option>)}
+                  {sections.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
                 </select>
-                <span className="mt-2 block text-xs font-normal text-[#60758d]">Demo sections — availability not verified</span>
+                <span className="mt-2 block text-xs font-normal text-[#60758d]">Sections for this season</span>
               </label>
             </div>
           </div>
@@ -93,10 +110,10 @@ export default function ClubAdminTeamCreatePage() {
             <h2 className="text-lg font-bold">Team name</h2>
             <label className="mt-4 block text-sm font-semibold">Name *
               <input required maxLength={80} value={name} onChange={e => setName(e.target.value)} className={input} placeholder="Glen Waverley C" />
-              <span className="mt-2 block text-xs font-normal text-[#60758d]">Suggested from your club name – must be unique in this section</span>
+              <span className="mt-2 block text-xs font-normal text-[#60758d]">Suggested from your club name. It must be unique in this season.</span>
             </label>
           </div>
-          {duplicate && <p className="mt-3 text-sm text-[#b53b3b]">A team with this name already exists in this section.</p>}
+          {duplicate && <p className="mt-3 text-sm text-[#b53b3b]">A team with this name already exists in this season.</p>}
           {error && <p role="alert" className="mt-3 text-sm text-[#b53b3b]">{error}</p>}
           <div className="mt-4 flex flex-wrap gap-3">
             <button type="submit" disabled={!name.trim() || duplicate} className={`${primary} disabled:cursor-not-allowed disabled:opacity-50`}>Create team</button>

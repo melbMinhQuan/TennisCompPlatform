@@ -1,4 +1,6 @@
 import PlayerSession from "./context/PlayerSession";
+import RoleSession from "./context/RoleSession";
+import RequireClubAdmin from "./components/RequireClubAdmin";
 import MyClubsPage from "./pages/MyClubsPage";
 import StandingsPage from "./pages/StandingsPage";
 import TeamDetailsPage from "./pages/TeamDetailsPage";
@@ -37,7 +39,7 @@ import ClubAdminTeamAddPlayersPage from "./pages/ClubAdminTeamAddPlayersPage";
 import ClubAdminTeamAssignManagerPage from "./pages/ClubAdminTeamAssignManagerPage";
 
 function App() {
-  return <PlayerSession><BrowserRouter>
+  return <RoleSession><PlayerSession><BrowserRouter>
     <Routes>
       <Route path="/" element={<LoginPage />} />
       <Route path="/login" element={<LoginPage />} />
@@ -96,7 +98,7 @@ function App() {
         <Route path="*" element={<section className="rounded-2xl bg-white p-6"><h1 className="text-2xl font-semibold">Page not found</h1><Link className="mt-4 inline-block text-brand underline" to="/dashboard">Return to your profile</Link></section>} />
       </Route>
 
-      <Route path="/club-admin" element={<ClubAdminLayout />}>
+      <Route path="/club-admin" element={<RequireClubAdmin><ClubAdminLayout /></RequireClubAdmin>}>
         <Route
           index
           element={<ClubAdminDashboardPage />}
@@ -170,7 +172,7 @@ function App() {
 
       <Route path="*" element={<main className="p-8"><h1 className="text-2xl font-semibold">Page not found</h1><Link className="mt-4 inline-block text-brand underline" to="/login">Return to login</Link></main>} />
     </Routes>
-  </BrowserRouter></PlayerSession>
+  </BrowserRouter></PlayerSession></RoleSession>
 }
 
 createRoot(document.getElementById('root')!).render(<App />)

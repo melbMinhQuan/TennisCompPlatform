@@ -1,3 +1,5 @@
+import type { SeasonStatus } from "./season";
+
 export type CompetitionEntry = {
   id: string;
   competitionId: string;
@@ -7,7 +9,7 @@ export type CompetitionEntry = {
   season: string;
   section: string;
 
-  seasonStatus: "ACTIVE" | "COMPLETED" | "ARCHIVED";
+  seasonStatus: SeasonStatus;
 
   player: {
     id: string;

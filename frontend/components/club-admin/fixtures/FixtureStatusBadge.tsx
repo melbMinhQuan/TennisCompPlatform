@@ -1,4 +1,4 @@
-import type { ClubAdminFixture } from "../../../api/club-admin-fixtures";
+import type { ClubAdminFixture, FixtureStatus, ResultStatus } from "../../../api/club-admin-fixtures";
 import { isOverdue } from "./fixture-labels";
 
 type Badge = { label: string; className: string };
@@ -10,14 +10,15 @@ const RED = "bg-[#fbe9ea] text-[#a12f2f]";
 const GREY = "bg-slate-100 text-slate-600";
 
 // Plain-language labels for the database statuses.
-const FIXTURE_BADGES: Record<string, Badge> = {
+const FIXTURE_BADGES: Record<FixtureStatus, Badge> = {
   SCHEDULED: { label: "Scheduled", className: BLUE },
   POSTPONED: { label: "Postponed", className: RED },
   CANCELLED: { label: "Cancelled", className: GREY },
   COMPLETED: { label: "Completed", className: GREEN },
 };
 
-const RESULT_BADGES: Record<string, Badge> = {
+const RESULT_BADGES: Record<ResultStatus, Badge> = {
+  DRAFT: { label: "Draft", className: GREY },
   FINALISED: { label: "Final", className: GREEN },
   PENDING_CONFIRMATION: { label: "Awaiting confirmation", className: AMBER },
   UNDER_CORRECTION: { label: "Under correction", className: RED },
@@ -25,10 +26,10 @@ const RESULT_BADGES: Record<string, Badge> = {
 
 function badgeFor(fixture: ClubAdminFixture, showResult: boolean): Badge {
   if (showResult && fixture.result) {
-    return RESULT_BADGES[fixture.result.status] ?? { label: fixture.result.status, className: GREY };
+    return RESULT_BADGES[fixture.result.status];
   }
   if (isOverdue(fixture)) return { label: "Result not entered", className: AMBER };
-  return FIXTURE_BADGES[fixture.status] ?? { label: fixture.status, className: GREY };
+  return FIXTURE_BADGES[fixture.status];
 }
 
 type Props = { fixture: ClubAdminFixture; showResult?: boolean };

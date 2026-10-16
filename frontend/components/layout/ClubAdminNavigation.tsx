@@ -24,12 +24,15 @@ type ClubAdminNavigationProps = {
   mobile?: boolean;
   unreadCount: number;
   onNavigate?: () => void;
+  /** Clears the signed-in role before going back to the login page. */
+  onLogOut?: () => void;
 };
 
 export default function ClubAdminNavigation({
   mobile = false,
   unreadCount,
   onNavigate,
+  onLogOut,
 }: ClubAdminNavigationProps) {
   const gap = mobile ? "gap-2.5" : "gap-2";
 
@@ -68,7 +71,10 @@ export default function ClubAdminNavigation({
 
         <Link
           to="/login"
-          onClick={onNavigate}
+          onClick={() => {
+            onLogOut?.();
+            onNavigate?.();
+          }}
           className="flex min-h-12 items-center justify-center rounded-lg text-sm text-white hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-white"
         >
           Log out
