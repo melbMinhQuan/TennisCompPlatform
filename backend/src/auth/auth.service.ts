@@ -13,6 +13,8 @@ export interface LoginResponse {
   clubId?: string | null
   /** That club's name, for the club admin header. */
   clubName?: string | null
+  /** "First Last" from the account's profile; null when the account has no profile. */
+  displayName?: string | null
 }
 
 @Injectable()
@@ -23,9 +25,9 @@ export class AuthService {
 
   /**
    * Checks an email and password against the user table.
-   * Returns { result: 'login_success', role, clubId, clubName } when they match, where
-   * role is the account's unrevoked RoleType or null and clubId/clubName are that
-   * role's club (or null), and { result: 'login_failed' } when the
+   * Returns { result: 'login_success', role, clubId, clubName, displayName } when they
+   * match, where role is the account's unrevoked RoleType or null, clubId/clubName are
+   * that role's club (or null) and displayName is the profile's name (or null), and { result: 'login_failed' } when the
    * email is unknown or the password is wrong.
    *
    * The stored value is a bcrypt hash, so the password is compared with
@@ -35,6 +37,7 @@ export class AuthService {
     try {
       const user = await this.prisma.user.findUnique({
         where: { email: email.trim().toLowerCase() },
+        include: { profile: { select: { firstName: true, lastName: true } } },
       })
 
       if (!user) return { result: 'login_failed' }
@@ -50,7 +53,8 @@ export class AuthService {
       const club = clubId
         ? await this.prisma.club.findUnique({ where: { id: clubId }, select: { name: true } })
         : null
-      return { result: 'login_success', role: role?.roleType ?? null, clubId, clubName: club?.name ?? null }
+      const displayName = user.profile ? `${user.profile.firstName} ${user.profile.lastName}`.trim() || null : null
+      return { result: 'login_success', role: role?.roleType ?? null, clubId, clubName: club?.name ?? null, displayName }
     } catch (error) {
       this.logger.error('Could not verify the login credentials', error)
       throw new InternalServerErrorException('Login is unavailable right now')
