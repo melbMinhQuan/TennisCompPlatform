@@ -23,6 +23,6 @@ taken from `competition_data.xlsx` for Margaret Hayes (UR101, CLUB_ADMIN for CLB
   records secretary Mia Coleman (UR002). Volunteers are named only, no personal phone or email.
 
 ## For the API team
-Planned endpoint: `GET /api/v1/clubs/:clubId/support-contacts` → `{ data: ClubAdminSupportContactsData }`
+Planned endpoint: `GET /api/v1/club-admin/support-contacts` → `{ data: ClubAdminSupportContactsData }`
 (type in `frontend/api/club-admin-support.ts`), for the logged-in club administrator's own club only.
-Connect it after login returns the role and clubId (US-18). Errors must not fall back to the sample.
+Connect it after login returns the role (US-18). Errors must not fall back to the sample.

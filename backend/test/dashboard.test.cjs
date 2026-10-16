@@ -19,9 +19,9 @@ function player(person, teamId) {
   }
 }
 const users = {
-  'alice@example.test': { email: 'alice@example.test', player: player(alice, 'team-a') },
-  'bob@example.test': { email: 'bob@example.test', player: player(bob, 'team-b') },
-  'unlinked@example.test': { email: 'unlinked@example.test', player: null },
+  'alice@example.test': { email: 'alice@example.test', profile: player(alice, 'team-a') },
+  'bob@example.test': { email: 'bob@example.test', profile: player(bob, 'team-b') },
+  'unlinked@example.test': { email: 'unlinked@example.test', profile: null },
 }
 function fixture(id, team, date, status = 'SCHEDULED') {
   return { id, homeTeamId: team, awayTeamId: 'visitors', homeTeam: { id: team, name: team }, awayTeam: { id: 'visitors', name: 'Visitors' },
@@ -86,7 +86,7 @@ test('I-DASH-001: HTTP dashboard resolves normalized email and selects only nece
   assert.equal(body.data.profile.primaryClub.name, 'Alice club')
   assert.equal(body.data.utr.rating, 7.85)
   assert.equal(body.data.utr.discipline, null)
-  assert.deepEqual(Object.keys(calls.at(-1).select).sort(), ['email', 'player'])
+  assert.deepEqual(Object.keys(calls.at(-1).select).sort(), ['email', 'profile'])
   assert.equal(body.data.upcomingMatches.items.length, 3)
   assert.equal(body.data.careerSummary.matchesPlayed, 1)
   assert.equal(body.data.careerSummary.matchesWon, 1)

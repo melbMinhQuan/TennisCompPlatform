@@ -13,7 +13,7 @@ The existing [login API](authapi.md) stays unchanged.
 - Local base URL: `http://localhost:3000/api/v1`.
 - For the local MVP, all `/player-dashboard` requests include the submitted login
   `email` as a query parameter, trimmed/lowercased by the server. Resolve
-  `User.email → User.player`; do not guess the player from their name.
+  `User.email → User.profile`; do not guess the player from their name.
 - Email is a lookup key, **not proof of login**. It provides no access control.
   Writes below are future contracts and must use trusted caller identity before
   enabling them. No login implementation change is included in this document.

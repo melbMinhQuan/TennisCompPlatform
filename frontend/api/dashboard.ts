@@ -11,11 +11,12 @@ export async function getNotifications(email: string, signal: AbortSignal) {
 }
 
 /**
- * Checks the email and password. `role` and `clubId` are optional until the backend adds them to
- * the login response (UserRole.roleType and UserRole.clubId); see api/user-role.ts.
+ * Checks the email and password. On success /auth/login also returns the account's unrevoked
+ * RoleType (e.g. 'CLUB_ADMIN', 'PLAYER') as `role`, or null. `clubId` is optional until the
+ * backend adds it; see api/user-role.ts.
  */
 export async function login(email: string, password: string, signal: AbortSignal) {
-  const response = await request<{ result: 'login_success' | 'login_failed'; role?: string; clubId?: string | null }>('/auth/login', signal, { email, password })
+  const response = await request<{ result: 'login_success' | 'login_failed'; role?: string | null; clubId?: string | null }>('/auth/login', signal, { email, password })
   if (response.result !== 'login_success' && response.result !== 'login_failed') throw new Error('The login server returned an unexpected response.')
   return response
 }
