@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { DashboardData } from "../api/dashboard";
 import type { MatchFixture } from "../api/matches";
 import { toPlayerProfile, toUpcomingCompetitions } from "../components/profile/profile-mappers";
@@ -30,6 +30,15 @@ describe("FE-005: profile card mapping", () => {
 });
 
 describe("FE-006: upcoming fixtures card", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-01T12:00:00+10:00"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   test("drops completed and cancelled fixtures, puts undated ones last, and labels finals", () => {
     const items = toUpcomingCompetitions([
       fixture({ id: "done", status: "Completed" }),
@@ -43,5 +52,53 @@ describe("FE-006: upcoming fixtures card", () => {
     expect(items[1].event).toBe("Home A vs Away A · Grand Final");
     expect(items[1].location).toBe("Regional Centre");
     expect(items[2].status).toBe("Postponed");
+  });
+
+  test("excludes past fixtures from upcoming competitions", () => {
+    vi.setSystemTime(new Date("2026-10-16T12:00:00+11:00"));
+
+    const items = toUpcomingCompetitions([
+      fixture({
+        id: "past-scheduled",
+        date: "2026-10-03",
+        status: "Scheduled",
+      }),
+      fixture({
+        id: "past-postponed",
+        date: "2026-10-10",
+        status: "Postponed",
+      }),
+      fixture({
+        id: "today",
+        date: "2026-10-16",
+        status: "Scheduled",
+      }),
+      fixture({
+        id: "future",
+        date: "2026-10-20",
+        status: "Scheduled",
+      }),
+      fixture({
+        id: "undated",
+        date: null,
+        status: "Postponed",
+      }),
+      fixture({
+        id: "completed",
+        date: "2026-10-20",
+        status: "Completed",
+      }),
+      fixture({
+        id: "cancelled",
+        date: "2026-10-20",
+        status: "Cancelled",
+      }),
+    ]);
+
+    expect(items.map((item) => item.id)).toEqual([
+      "today",
+      "future",
+      "undated",
+    ]);
   });
 });
