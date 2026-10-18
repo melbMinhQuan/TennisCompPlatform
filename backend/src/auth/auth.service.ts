@@ -28,7 +28,8 @@ export class AuthService {
    * Returns { result: 'login_success', role, clubId, clubName, displayName } when they
    * match, where role is the account's unrevoked RoleType or null, clubId/clubName are
    * that role's club (or null) and displayName is the profile's name (or null), and { result: 'login_failed' } when the
-   * email is unknown or the password is wrong.
+   * email is unknown, the password is wrong, or the account is not ACTIVE (PENDING or SUSPENDED).
+   * The status is checked only after the password, so a wrong guess never learns it.
    *
    * The stored value is a bcrypt hash, so the password is compared with
    * bcrypt.compare rather than a plain equality check.
@@ -43,7 +44,7 @@ export class AuthService {
       if (!user) return { result: 'login_failed' }
 
       const passwordMatches = await bcrypt.compare(password, user.passwordHash)
-      if (!passwordMatches) return { result: 'login_failed' }
+      if (!passwordMatches || user.status !== 'ACTIVE') return { result: 'login_failed' }
 
       const role = await this.prisma.userRole.findFirst({
         where: { userId: user.id, revokedAt: null },

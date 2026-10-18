@@ -39,11 +39,13 @@ before(async () => {
   Logger.overrideLogger(false) // the outage test logs an expected error
   const passwordHash = await bcrypt.hash(PASSWORD, 4)
   accounts = {
-    'player@club.example': { id: 'user-player', email: 'player@club.example', passwordHash, profile: null },
+    'player@club.example': { id: 'user-player', email: 'player@club.example', passwordHash, status: 'ACTIVE', profile: null },
     'admin@admin.example': {
-      id: 'user-admin', email: 'admin@admin.example', passwordHash, profile: { firstName: 'Margaret', lastName: 'Hayes' },
+      id: 'user-admin', email: 'admin@admin.example', passwordHash, status: 'ACTIVE', profile: { firstName: 'Margaret', lastName: 'Hayes' },
     },
-    'revoked@admin.example': { id: 'user-revoked', email: 'revoked@admin.example', passwordHash },
+    'revoked@admin.example': { id: 'user-revoked', email: 'revoked@admin.example', passwordHash, status: 'ACTIVE' },
+    'suspended@club.example': { id: 'user-suspended', email: 'suspended@club.example', passwordHash, status: 'SUSPENDED', profile: null },
+    'pending@club.example': { id: 'user-pending', email: 'pending@club.example', passwordHash, status: 'PENDING', profile: null },
   }
   roles = {
     'user-player': { roleType: 'PLAYER', revokedAt: null },
@@ -76,6 +78,12 @@ test('AUTH-006: a club admin login reports the CLUB_ADMIN role, their club and t
 
 test('AUTH-007: a revoked role is not reported', async () => {
   assert.deepEqual(await auth.login('revoked@admin.example', PASSWORD), bare(null))
+})
+
+test('AUTH-008: a suspended or pending account cannot log in, even with the right password', async () => {
+  for (const email of ['suspended@club.example', 'pending@club.example']) {
+    assert.deepEqual(await auth.login(email, PASSWORD), { result: 'login_failed' }, email)
+  }
 })
 
 test('AUTH-005: a database outage is a server error, never "wrong password"', async () => {
@@ -114,4 +122,12 @@ test('I-AUTH-001: POST /auth/login answers 200 for both success and failure', as
 
 test('I-AUTH-002: POST /auth/login with an empty body is a failed login, not a crash', async () => {
   assert.deepEqual(await post({}), { status: 200, body: { result: 'login_failed' } })
+})
+
+test('I-AUTH-003: an email or password that is not text is a 400, not a server error', async () => {
+  for (const body of [{ email: 42, password: PASSWORD }, { email: 'player@club.example', password: ['x'] }, { email: { $ne: '' }, password: PASSWORD }]) {
+    const { status, body: answer } = await post(body)
+    assert.equal(status, 400, JSON.stringify(body))
+    assert.equal(answer.message, 'Email and password must be text')
+  }
 })

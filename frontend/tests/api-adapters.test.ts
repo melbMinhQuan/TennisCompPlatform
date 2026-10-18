@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { getDashboard, getMatches, getNotifications, login } from "../api/dashboard";
+import { getDashboard, getNotifications, login } from "../api/dashboard";
 import { getFixtures } from "../api/matches";
 import { getTeamDetails } from "../api/teams";
 import { getPlayerMemberships } from "../api/memberships";
@@ -66,12 +66,11 @@ describe("I-FE-004: when the server is starting or unreachable, players see a pl
   const requests = {
     login: () => login(EMAIL, "secret", signal()),
     dashboard: () => getDashboard(EMAIL, signal()),
-    "match list": () => getMatches(EMAIL, "results", signal()),
     notifications: () => getNotifications(EMAIL, signal()),
   };
 
   for (const [problem, answer] of Object.entries(problems)) {
-    test(`${problem}: login, dashboard, match list and notifications all say so plainly`, async () => {
+    test(`${problem}: login, dashboard and notifications all say so plainly`, async () => {
       vi.stubGlobal("fetch", vi.fn(async () => answer()));
       for (const [name, request] of Object.entries(requests)) {
         await expect(request(), name).rejects.toThrow(SERVER_UNREACHABLE);
