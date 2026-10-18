@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { Link } from "react-router";
-import { dashboardSeasonSummary, type ClubAdminDashboardData } from "../../data/club-admin-dashboard";
-import { useClubAdminUnreadCount } from "../../data/club-admin-notification-reads";
+import { dashboardSeasonSummary, defaultSeasonId, type ClubAdminDashboardData } from "../../api/club-admin-dashboard";
+import { ClubAdminNotificationsContext } from "../../context/ClubAdminNotifications";
 import { matchButtonClass, matchCardClass, matchLightButtonClass } from "../MatchesUI";
 import ClubSummaryCard from "./ClubSummaryCard";
 import DashboardRecentActivity from "./DashboardRecentActivity";
@@ -31,12 +31,11 @@ const actions = [
 
 /** Everything below the page title: club summary, quick actions, to-do list, teams and recent activity. */
 export default function ClubAdminDashboardContent({ data }: { data: ClubAdminDashboardData }) {
-  const [seasonId, setSeasonId] = useState(
-    data.seasons.find((season) => season.status === "ACTIVE")?.id ?? data.seasons[0]?.id ?? "",
-  );
+  const [seasonId, setSeasonId] = useState(() => defaultSeasonId(data));
   const season = data.seasons.find((item) => item.id === seasonId);
   const { teams, attention } = dashboardSeasonSummary(data, seasonId);
-  const unreadCount = useClubAdminUnreadCount();
+  // The shared list, so marking a notice read updates this tile too; the dashboard's own count until it loads.
+  const unreadCount = useContext(ClubAdminNotificationsContext).unreadCount ?? data.unreadCount;
 
   return (
     <>

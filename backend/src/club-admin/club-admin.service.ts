@@ -1,16 +1,19 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
-import { Prisma } from '@prisma/client'
+import { Prisma, type SeasonStatus } from '@prisma/client'
 import { readOrUnavailable } from '../common/data-unavailable'
-import { roleHolderName } from '../common/role-holder'
+import { roleHolderName, teamManagerNames } from '../common/role-holder'
 import { calendarDate, fullName, seasonLabel } from '../player/player-mappers'
 import { nameFit, normalizeName, parseWrittenName } from '../player-matching/names'
 import { PrismaService } from '../prisma/prisma.service'
 import type { RegistrySearchDto } from './club-admin.dto'
 import type {
   ClubAdminSupportContacts, ClubCompetition, ClubPlayer, ClubPlayerDetail, ClubPlayerMembership, ClubSection, ClubTeam, ClubTeamDetail,
-  OpenSection, RegistryMatch,
+  ClubTeamSummary, OpenSection, RegistryMatch,
 } from './club-admin.types'
 import { isCurrentMembership, localToday } from './membership'
+
+/** A season that has finished: its teams' squads and managers no longer change. */
+export const CLOSED_SEASONS: readonly SeasonStatus[] = ['COMPLETED', 'ARCHIVED']
 
 const seasonInclude = Prisma.validator<Prisma.SeasonInclude>()({ competition: true })
 type SeasonWithCompetition = Prisma.SeasonGetPayload<{ include: typeof seasonInclude }>
@@ -69,14 +72,18 @@ export class ClubAdminService {
     }, 'Sections are unavailable right now')
   }
 
-  async teams(clubId: string): Promise<ClubTeam[]> {
+  /** The club's teams, newest season first, each with its active squad size and current manager. */
+  async teams(clubId: string): Promise<ClubTeamSummary[]> {
     return readOrUnavailable(async () => {
       const teams = await this.prisma.team.findMany({
         where: { clubId },
-        include: teamInclude,
+        include: { ...teamInclude, _count: { select: { teamPlayers: { where: { status: 'ACTIVE' } } } } },
         orderBy: [...newestSeason.map(season => ({ section: { season } })), { section: { name: 'asc' } }, { name: 'asc' }, { id: 'asc' }],
       })
-      return teams.map(team => this.clubTeam(team))
+      const managers = await teamManagerNames(this.prisma, teams.map(team => team.id))
+      return teams.map(team => ({
+        ...this.clubTeam(team), squadCount: team._count.teamPlayers, managerName: managers.get(team.id) ?? null,
+      }))
     }, 'Teams are unavailable right now')
   }
 
@@ -88,10 +95,17 @@ export class ClubAdminService {
         include: { ...teamInclude, teamPlayers: { include: { player: { select: { id: true, firstName: true, lastName: true } } } } },
       })
       if (!team) throw new NotFoundException({ statusCode: 404, code: 'TEAM_NOT_FOUND', message: 'Team not found' })
-      const managerName = await roleHolderName(this.prisma, 'TEAM_MANAGER', { teamId: team.id })
+      const role = await this.prisma.userRole.findFirst({
+        where: { teamId: team.id, roleType: 'TEAM_MANAGER', revokedAt: null },
+        include: { user: { select: { email: true, profile: { select: { id: true, firstName: true, lastName: true } } } } },
+        // The longest-serving manager wins if a team somehow has two, as roleHolderName does.
+        orderBy: [{ grantedAt: 'asc' }, { id: 'asc' }],
+      })
+      const profile = role?.user.profile ?? null
       return {
         ...this.clubTeam(team),
-        managerName,
+        managerName: profile ? fullName(profile) : null,
+        manager: role ? { playerId: profile?.id ?? null, name: profile ? fullName(profile) : role.user.email, email: role.user.email } : null,
         players: team.teamPlayers
           .map(entry => ({
             id: entry.player.id, firstName: entry.player.firstName, lastName: entry.player.lastName,
@@ -113,21 +127,43 @@ export class ClubAdminService {
         include: {
           player: {
             include: {
-              ...playerRole,
+              user: { select: { userRole: { select: { roleType: true, revokedAt: true, teamId: true } } } },
               teamPlayers: { where: { status: 'ACTIVE', team: { clubId } }, include: { team: { select: { name: true } } } },
             },
           },
         },
       })
-      return memberships
-        .filter(membership => !isClubAdmin(membership.player))
-        .map(membership => ({
-          id: membership.player.id, firstName: membership.player.firstName, lastName: membership.player.lastName,
-          membership: this.membership(membership),
-          teamNames: [...new Set(membership.player.teamPlayers.map(entry => entry.team.name))].sort(),
-        }))
+      const members = memberships.filter(membership => !isClubAdmin(membership.player))
+      const roleOf = (player: (typeof members)[number]['player']) =>
+        player.user?.userRole?.revokedAt === null ? player.user.userRole : null
+      const managedTeams = await this.unfinishedTeams(members.flatMap(({ player }) => {
+        const role = roleOf(player)
+        return role?.roleType === 'TEAM_MANAGER' && role.teamId ? [role.teamId] : []
+      }))
+      return members
+        .map(({ player, ...membership }) => {
+          const role = roleOf(player)
+          return {
+            id: player.id, firstName: player.firstName, lastName: player.lastName, status: player.status,
+            membership: this.membership(membership),
+            teamNames: [...new Set(player.teamPlayers.map(entry => entry.team.name))].sort(),
+            hasLogin: player.user !== null,
+            role: role?.roleType ?? null,
+            managedTeam: role?.roleType === 'TEAM_MANAGER' && role.teamId ? managedTeams.get(role.teamId) ?? null : null,
+          }
+        })
         .sort(byName)
     }, 'Players are unavailable right now')
+  }
+
+  /** The teams among these whose season has not finished, by ID. */
+  private async unfinishedTeams(teamIds: string[]): Promise<Map<string, { id: string; name: string }>> {
+    if (!teamIds.length) return new Map()
+    const teams = await this.prisma.team.findMany({
+      where: { id: { in: teamIds }, section: { season: { status: { notIn: [...CLOSED_SEASONS] } } } },
+      select: { id: true, name: true },
+    })
+    return new Map(teams.map(team => [team.id, { id: team.id, name: team.name }]))
   }
 
   /** A member of the club, with all their memberships and this club's teams only. Anyone else is a 404. */

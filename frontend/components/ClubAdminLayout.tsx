@@ -2,7 +2,7 @@ import { useContext, useEffect, useRef, useState } from "react";
 import { Link, Outlet, useLocation } from "react-router";
 import ClubAdminNavigation from "./layout/ClubAdminNavigation";
 import logo from "../resources/Logo.png";
-import { useClubAdminUnreadCount } from "../data/club-admin-notification-reads";
+import { ClubAdminNotificationsContext } from "../context/ClubAdminNotifications";
 import { RoleSessionContext } from "../context/RoleSession";
 
 const ROLE_LABEL = "Club Administrator";
@@ -15,7 +15,7 @@ function initialsOf(name: string | null) {
 
 export default function ClubAdminLayout() {
   const { pathname } = useLocation();
-  const unreadCount = useClubAdminUnreadCount();
+  const unreadCount = useContext(ClubAdminNotificationsContext).unreadCount ?? 0;
   // The administrator's name and club come from the login response (POST /auth/login).
   const { signedIn, signOut } = useContext(RoleSessionContext);
   const displayName = signedIn?.displayName ?? null;

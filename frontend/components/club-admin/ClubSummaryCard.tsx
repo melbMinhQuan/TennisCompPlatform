@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import type { ClubAdminDashboardData } from "../../data/club-admin-dashboard";
+import type { ClubAdminDashboardData } from "../../api/club-admin-dashboard";
 import { darkCardClass } from "../MatchesUI";
 
 type ClubSummaryCardProps = {
@@ -55,7 +55,7 @@ export default function ClubSummaryCard({ data, seasonId, onSeasonChange, teamCo
             {data.seasons.map((item) => (
               <option key={item.id} value={item.id}>
                 {item.competition} · {item.label}
-                {item.status === "ACTIVE" ? " · Current" : " · Past"}
+                {item.status === "ACTIVE" ? " · Current" : item.status === "UPCOMING" ? " · Upcoming" : " · Past"}
               </option>
             ))}
           </select>

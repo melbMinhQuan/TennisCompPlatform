@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import type { ClubAdminDashboardData } from "../../data/club-admin-dashboard";
+import type { ClubAdminDashboardData } from "../../api/club-admin-dashboard";
 import { matchCardClass, matchLightButtonClass } from "../MatchesUI";
 
 type Team = ClubAdminDashboardData["teams"][number];

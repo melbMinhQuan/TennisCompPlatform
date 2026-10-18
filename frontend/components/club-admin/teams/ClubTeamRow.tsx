@@ -1,25 +1,16 @@
 import { Link } from "react-router";
-import { teamPlacement } from "../../../data/club-admin-sections";
-
-export type ClubTeamSummary = {
-  id: string;
-  name: string;
-  seasonId: string;
-  sectionId: string;
-  playerCount: number;
-  managerName: string | null;
-};
+import type { ClubTeamSummary } from "../../../api/club-admin-teams";
 
 /** One team on the Teams page: name, competition, season, section, squad size and manager. */
 export default function ClubTeamRow({ team }: { team: ClubTeamSummary }) {
-  const hasPlayers = team.playerCount > 0;
+  const hasPlayers = team.squadCount > 0;
 
   return (
     <div className="border-b border-[#dbe4ef] py-4 last:border-b-0 md:flex md:items-center md:justify-between md:gap-4">
       <div className="min-w-0">
         <p className="font-semibold">{team.name}</p>
         <p className="mt-0.5 text-sm text-muted">
-          {teamPlacement(team)} · {team.playerCount} {team.playerCount === 1 ? "player" : "players"}
+          {team.competitionName} · {team.seasonLabel} · {team.sectionName} · {team.squadCount} {team.squadCount === 1 ? "player" : "players"}
         </p>
         <p className="mt-1 text-xs text-muted">
           {team.managerName ? `Manager: ${team.managerName}` : "No manager"}
@@ -32,7 +23,7 @@ export default function ClubTeamRow({ team }: { team: ClubTeamSummary }) {
             hasPlayers ? "bg-[#e5f4ec] text-[#197354]" : "bg-[#fff1df] text-[#a45a15]"
           }`}
         >
-          {hasPlayers ? `${team.playerCount} in squad` : "No players"}
+          {hasPlayers ? `${team.squadCount} in squad` : "No players"}
         </span>
         <Link
           to={`/club-admin/teams/${team.id}`}

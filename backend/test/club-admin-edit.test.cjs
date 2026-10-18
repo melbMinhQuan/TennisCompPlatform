@@ -151,7 +151,7 @@ const prisma = {
         && (where.associationId === undefined || r.associationId === where.associationId))
       if (!role) return null
       const profile = people.find(p => p.userId === role.userId) ?? null
-      return { ...role, user: { profile } }
+      return { ...role, user: { email: userById(role.userId).email, profile } }
     },
     updateMany: async ({ where, data }) => {
       const matched = roles.filter(r => r.roleType === where.roleType && r.teamId === where.teamId && r.revokedAt === null)
@@ -374,6 +374,8 @@ test('I-CLUBEDIT-008: assigning a manager replaces the old one, who becomes a pl
   const { status, body } = await call('PUT', `teams/${GLEN_A}/manager`, { body: { playerId: DAN } })
   assert.equal(status, 200)
   assert.equal(body.data.managerName, 'Dan Evans')
+  // The answer names the new manager's Player ID, which the page uses to mark them in the squad.
+  assert.deepEqual(body.data.manager, { playerId: DAN, name: 'Dan Evans', email: 'dan@club.example' })
   const { id: _dan, grantedAt: danGranted, ...dan } = roleOf('user-dan')
   assert.deepEqual(dan, { userId: 'user-dan', roleType: 'TEAM_MANAGER', contextType: 'TEAM', associationId: null, clubId: 'club-glen', teamId: GLEN_A, competitionId: null, revokedAt: null })
   assert.ok(danGranted > new Date('2026-01-01'))
@@ -414,6 +416,7 @@ test('I-CLUBEDIT-011: removing the manager turns them back into a player; a team
   const { status, body } = await call('DELETE', `teams/${GLEN_A}/manager`)
   assert.equal(status, 200)
   assert.equal(body.data.managerName, null)
+  assert.equal(body.data.manager, null)
   assert.equal(roleOf('user-ava').roleType, 'PLAYER')
   assert.deepEqual(audit.map(a => a.action), ['REMOVE_MANAGER'])
   const again = await call('DELETE', `teams/${GLEN_A}/manager`)

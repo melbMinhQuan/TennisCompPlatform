@@ -1,28 +1,11 @@
-import { clubAdminClubId } from "../data/club-admin-dashboard";
-import sample from "../data/mock-club-admin-fixtures.json";
+import { clubAdminRecord, clubAdminRequest } from "./client";
 
 type FixtureTeam = { id: string; name: string; clubId: string };
 
 export type FixtureStatus = "SCHEDULED" | "COMPLETED" | "CANCELLED" | "POSTPONED";
-export type ResultStatus = "DRAFT" | "PENDING_CONFIRMATION" | "FINALISED" | "UNDER_CORRECTION";
+export type ResultStatus = "PENDING_CONFIRMATION" | "FINALISED" | "UNDER_CORRECTION";
 export type RubberType = "SINGLES" | "DOUBLES";
 export type RubberOutcome = "COMPLETED" | "RETIRED" | "WALKOVER" | "FORFEIT" | "ABANDONED";
-
-function isFixtureStatus(status: string): status is FixtureStatus {
-  return ["SCHEDULED", "COMPLETED", "CANCELLED", "POSTPONED"].includes(status);
-}
-
-function isResultStatus(status: string): status is ResultStatus {
-  return ["DRAFT", "PENDING_CONFIRMATION", "FINALISED", "UNDER_CORRECTION"].includes(status);
-}
-
-function isRubberType(type: string): type is RubberType {
-  return type === "SINGLES" || type === "DOUBLES";
-}
-
-function isRubberOutcome(outcome: string): outcome is RubberOutcome {
-  return ["COMPLETED", "RETIRED", "WALKOVER", "FORFEIT", "ABANDONED"].includes(outcome);
-}
 
 /** One set in a rubber; null games mean the score was not recorded. */
 type RubberSet = { number: number; home: number | null; away: number | null };
@@ -32,13 +15,14 @@ export type FixtureRubber = {
   id: string;
   number: number;
   type: RubberType;
+  /** Null while the rubber's outcome is not recorded. */
   outcome: RubberOutcome | null;
   homePlayers: string[];
   awayPlayers: string[];
   sets: RubberSet[];
 };
 
-/** Recorded result for a fixture (MatchResult). */
+/** Recorded result for a fixture (MatchResult). A DRAFT is never sent: it has not been submitted. */
 export type FixtureResult = {
   status: ResultStatus;
   homeRubbers: number | null;
@@ -46,9 +30,13 @@ export type FixtureResult = {
   rubbers: FixtureRubber[];
 };
 
-/** One fixture involving the administrator's club, with its result if one is recorded. */
+/**
+ * One fixture involving the administrator's club, with its result if one is recorded
+ * (ClubAdminFixture in backend/src/club-admin/club-admin.types.ts).
+ */
 export type ClubAdminFixture = {
   id: string;
+  /** The administrator's club, which tells its own teams from opponents. */
   clubId: string;
   homeTeam: FixtureTeam;
   awayTeam: FixtureTeam;
@@ -56,6 +44,7 @@ export type ClubAdminFixture = {
   seasonId: string;
   seasonLabel: string;
   section: string;
+  /** "Round 13", the finals label ("Grand Final"), or "Round to be confirmed". */
   round: string;
   /** YYYY-MM-DD and HH:mm, local to the venue; null while postponed. */
   date: string | null;
@@ -71,57 +60,29 @@ export type FixtureView = "fixtures" | "results";
 
 export type FixtureFilter = { view: FixtureView; season: string; team: string; search: string };
 
-const fixtures: ClubAdminFixture[] = sample.map(fixture => {
-  if (!isFixtureStatus(fixture.status)) {
-    throw new Error(`Unsupported fixture status in club-admin mock: ${fixture.status}`);
-  }
-  if (!fixture.result) return { ...fixture, status: fixture.status, result: null };
-  if (!isResultStatus(fixture.result.status)) {
-    throw new Error(`Unsupported result status in club-admin mock: ${fixture.result.status}`);
-  }
-
-  const rubbers = fixture.result.rubbers.map(rubber => {
-    if (!isRubberType(rubber.type)) {
-      throw new Error(`Unsupported rubber type in club-admin mock: ${rubber.type}`);
-    }
-    if (rubber.outcome !== null && !isRubberOutcome(rubber.outcome)) {
-      throw new Error(`Unsupported rubber outcome in club-admin mock: ${rubber.outcome}`);
-    }
-    return { ...rubber, type: rubber.type, outcome: rubber.outcome };
-  });
-
-  return {
-    ...fixture,
-    status: fixture.status,
-    result: { ...fixture.result, status: fixture.result.status, rubbers },
-  };
-});
-
 /**
- * Workbook snapshot for the administrator's club.
- *
- * Planned endpoint for the API team: GET /api/v1/club-admin/fixtures (plus a detail endpoint).
- * The backend must authorise the club from the login, including detail requests.
- * A live API failure must never fall back to this snapshot.
+ * GET /api/v1/club-admin/fixtures: every fixture one of the club's teams plays in, all seasons.
+ * The backend works out the club from the login; an error is shown, never a sample.
  */
-export async function getClubAdminFixtures(signal: AbortSignal): Promise<ClubAdminFixture[]> {
-  signal.throwIfAborted();
-  return structuredClone(fixtures);
+export function getClubAdminFixtures(signal: AbortSignal, identity?: string): Promise<ClubAdminFixture[]> {
+  return clubAdminRequest("fixtures", identity, signal, "We couldn’t load your club’s fixtures. Please try again.");
 }
 
-/** True when the fixture belongs to the administrator's club and one of its teams plays in it. */
+/** GET /api/v1/club-admin/fixtures/:id. Null when the club does not play in it, or there is no such fixture. */
+export function getClubAdminFixture(fixtureId: string, signal: AbortSignal, identity?: string): Promise<ClubAdminFixture | null> {
+  return clubAdminRecord(`fixtures/${encodeURIComponent(fixtureId)}`, identity, signal, "We couldn’t load this fixture. Please try again.");
+}
+
+/** True when one of the administrator's club's teams plays in the fixture, home or away. */
 export function isClubFixture(fixture: ClubAdminFixture) {
-  return (
-    fixture.clubId === clubAdminClubId &&
-    (fixture.homeTeam.clubId === clubAdminClubId || fixture.awayTeam.clubId === clubAdminClubId)
-  );
+  return fixture.homeTeam.clubId === fixture.clubId || fixture.awayTeam.clubId === fixture.clubId;
 }
 
 /** The administrator's own teams that play in at least one fixture, as [id, name] pairs. */
 export function clubTeamsOf(fixtures: ClubAdminFixture[]) {
-  const teams = fixtures
-    .flatMap((fixture) => [fixture.homeTeam, fixture.awayTeam])
-    .filter((team) => team.clubId === clubAdminClubId);
+  const teams = fixtures.flatMap((fixture) =>
+    [fixture.homeTeam, fixture.awayTeam].filter((team) => team.clubId === fixture.clubId),
+  );
   return [...new Map(teams.map((team) => [team.id, team.name])).entries()];
 }
 

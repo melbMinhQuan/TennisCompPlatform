@@ -1,11 +1,11 @@
 import { getClubAdminSupportContacts } from "../../api/club-admin-support";
-import { useApiData } from "../../api/useApiData";
+import { useClubAdminData } from "../../api/useApiData";
 import ContactCard from "./ContactCard";
 import ContactDetails from "./ContactDetails";
 
 /** "Who should I contact?" for club administrators: the association, team managers and their own club. */
 export default function ClubAdminContacts() {
-  const { data, error, loading, retry } = useApiData(getClubAdminSupportContacts);
+  const { data, error, loading, retry } = useClubAdminData(getClubAdminSupportContacts);
   const { club, association } = data ?? { club: null, association: null };
 
   return (

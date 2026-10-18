@@ -78,12 +78,15 @@ against the live site. It keeps trying for up to 5 minutes, because the backend 
 | After | Check | Fails when |
 | --- | --- | --- |
 | Backend deploy | `POST /auth/login` with an unknown email answers `login_failed` and allows the frontend's address (CORS) | The app did not start, cannot reach the database, or `CORS_ORIGIN` is wrong |
+| Backend deploy | `GET /api/v1/club-admin/dashboard` with an unknown email answers `401`, and CORS lets the frontend send `PUT`, `PATCH` and `DELETE` (only the club admin pages send them) | The club admin routes are missing, `NODE_ENV=production` was added (`403 DEMO_DISABLED`), or something in front of the app blocks those methods |
 | Frontend deploy | `/` and `/dashboard` both load the React app | The upload failed, or `staticwebapp.config.json` is missing |
 | Frontend deploy | LIVE-001: `charlotte.reed004@players.example` logs in and her whole dashboard loads | Anything between the page and the database: the backend address baked into the bundle, CORS, the API, the data |
+| Frontend deploy | LIVE-002: `margaret.hayes@admin.example` logs in, and her club's dashboard, Players, Teams and Fixtures & Results pages load without an error | The same chain for the club admin pages and routes |
 
 The browser check logs in as Charlotte rather than Chloe because the logged-out sample profile
-is also "Chloe Cooper", so only real data can show Charlotte's name. **Keep that account in the
-live database**, or change the email in the spec.
+is also "Chloe Cooper", so only real data can show Charlotte's name. The club admin pages have no
+sample data at all. Both checks only read: they never change the live database. **Keep both
+accounts in the live database**, or change the emails in the spec.
 
 A failed check turns the run red, but the new version is already live by then. The
 step's log says which check failed (a failed browser check also attaches a
@@ -140,8 +143,8 @@ tells Static Web Apps to serve `index.html` for any unknown path, so refreshing
 | `UTR_PROVIDER` | `disabled` |
 
 `PORT` is set by App Service and must not be added. **Do not add
-`NODE_ENV=production`**: `DemoEmailGuard` then refuses every player route with
-`403 DEMO_DISABLED`, and the site loads with no data.
+`NODE_ENV=production`**: the demo email lookup then refuses every player and club admin route
+with `403 DEMO_DISABLED`, and the site loads with no data.
 
 Other backend settings that must stay as they are:
 
@@ -214,7 +217,7 @@ all with the development password in the [README](../README.md). For example
 | --- | --- | --- |
 | Site slow or `503` on the first visit | Free F1 backend was asleep or is restarting | Wait up to a few minutes; it is fast afterwards |
 | Login fails with a network or CORS error in the browser console | `CORS_ORIGIN` does not exactly match the frontend address | Fix it in the backend's environment variables (`https`, no trailing `/`) |
-| Every player page shows `403 DEMO_DISABLED` | `NODE_ENV=production` was added | Remove it |
+| Every player or club admin page shows `403 DEMO_DISABLED` | `NODE_ENV=production` was added | Remove it |
 | Backend shows "Application Error" | The app crashed on start | Backend → **Log stream**, then read the last error |
 | `P1000 Authentication failed` in the log | Wrong `DATABASE_URL` password, or not URL-encoded | Re-enter it in the environment variables |
 | Deploy backend fails at the upload step | Publish profile was reset, or basic auth was turned off | Turn SCM Basic Auth back on, download a new profile, update the secret |
@@ -222,7 +225,9 @@ all with the development password in the [README](../README.md). For example
 | `backend-package` fails at **Check the package answers** | The packaged backend cannot start on its own: usually a package used in `backend/src` that is missing from `dependencies` in `backend/package.json` | Read **Show the backend's log** in the same job, add the missing dependency |
 | `end-to-end` fails at **Check every schema.prisma change has a migration** | `schema.prisma` was changed without a migration | In `backend/`, run `npx prisma migrate dev --name <what-changed>` and commit the new migration folder |
 | Every release fails at **Check the live backend** with `answered 500` | The database is stopped (see [Cost](#cost)) | Start it from its Overview page, then **Re-run all jobs** |
-| **Check the whole live site in a browser** fails, the checks before it passed | Something between the page and the data, or the Charlotte account is missing from the live database | Download `live-site-report` from the run for a screenshot; re-seed the live database if the account is gone |
+| **Check the whole live site in a browser** fails, the checks before it passed | Something between the page and the data, or the Charlotte or Margaret account is missing from the live database | Download `live-site-report` from the run for a screenshot; re-seed the live database if the account is gone |
+| **Check the live backend** fails with `club-admin/dashboard answered 404` | The deployed backend is older than the frontend expects, or the club admin module failed to load | Read the backend's **Log stream**; **Re-run all jobs** to redeploy |
+| **Check the live backend** fails with `CORS does not let … send PUT` (or `PATCH`, `DELETE`) | App Service's own CORS setting (backend → **API → CORS**) is answering the browser's preflight instead of the app; when it is set, the app's own CORS rules are ignored | Remove every origin there and leave it off: the app sets CORS itself from `CORS_ORIGIN` |
 | Pages slower than locally | Backend (New Zealand) and database (Canada) are in different regions, so every query crosses the Pacific | Expected; recreate them in one region to fix |
 
 ---

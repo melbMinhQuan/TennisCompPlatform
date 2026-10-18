@@ -15,3 +15,19 @@ export async function roleHolderName(
   })
   return role?.user.profile ? fullName(role.user.profile) : null
 }
+
+/** Team ID -> its current manager's name, or their account email when they have no profile. */
+export async function teamManagerNames(prisma: PrismaService, teamIds: string[]): Promise<Map<string, string>> {
+  if (!teamIds.length) return new Map()
+  const roles = await prisma.userRole.findMany({
+    where: { roleType: 'TEAM_MANAGER', revokedAt: null, teamId: { in: teamIds } },
+    include: { user: { select: { email: true, profile: { select: { firstName: true, lastName: true } } } } },
+    // The longest-serving manager wins if a team somehow has two, as roleHolderName does.
+    orderBy: [{ grantedAt: 'asc' }, { id: 'asc' }],
+  })
+  const names = new Map<string, string>()
+  for (const role of roles) {
+    if (!names.has(role.teamId!)) names.set(role.teamId!, role.user.profile ? fullName(role.user.profile) : role.user.email)
+  }
+  return names
+}

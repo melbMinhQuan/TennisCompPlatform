@@ -37,7 +37,7 @@ export default function ClubAdminNotificationRow({ notification, onOpen }: RowPr
   const change = changeLine(notification);
   const link =
     notification.targetType === "FIXTURE"
-      ? { to: "/club-admin/fixtures", label: "View fixture ›" }
+      ? { to: notification.targetId ? `/club-admin/fixtures/${notification.targetId}` : "/club-admin/fixtures", label: "View fixture ›" }
       : notification.targetType === "COMPETITION"
         ? { to: "/club-admin/teams", label: "Go to Teams ›" }
         : null;

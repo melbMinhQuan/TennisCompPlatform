@@ -4,12 +4,13 @@ import type { SignedInRole } from "../api/user-role";
 const STORAGE_KEY = "waverley-signed-in-role";
 
 // Kept in sessionStorage so a page reload does not log a club administrator out; it is cleared on
-// log out and when the tab closes. A frontend role only chooses what to show: the backend must
-// still check the role on every club admin request.
+// log out and when the tab closes. A frontend role only chooses what to show: the backend checks
+// the role on every club admin request.
 function readStoredRole(): SignedInRole | null {
   try {
-    const stored = sessionStorage.getItem(STORAGE_KEY);
-    return stored ? (JSON.parse(stored) as SignedInRole) : null;
+    const stored = JSON.parse(sessionStorage.getItem(STORAGE_KEY) ?? "null") as Partial<SignedInRole> | null;
+    // Saved before the email was kept: the pages cannot load without it, so log in again.
+    return typeof stored?.email === "string" && typeof stored.role === "string" ? (stored as SignedInRole) : null;
   } catch {
     return null;
   }

@@ -25,6 +25,30 @@ const checks = {
     if (allowedOrigin !== FRONTEND_URL) {
       throw new Error(`CORS allows ${allowedOrigin}, not ${FRONTEND_URL}: check CORS_ORIGIN in Azure`)
     }
+
+    // The club admin routes are deployed and check who is asking: an unknown email is refused
+    // with 401 (a 404 would mean the routes are missing, a 403 DEMO_DISABLED that NODE_ENV is
+    // production). Then the browser's preflight for the PUT, PATCH and DELETE requests that only
+    // the club admin pages send: without them allowed, every change fails while every page loads.
+    const clubAdmin = await fetch(`${BACKEND_URL}/api/v1/club-admin/dashboard?email=smoke-test%40ci.invalid`, {
+      headers: { Origin: FRONTEND_URL },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    })
+    if (clubAdmin.status !== 401) {
+      const { code } = await clubAdmin.json().catch(() => ({}))
+      throw new Error(`GET /api/v1/club-admin/dashboard answered ${clubAdmin.status}${code ? ` ${code}` : ''}, not 401`)
+    }
+    for (const method of ['PUT', 'PATCH', 'DELETE']) {
+      const preflight = await fetch(`${BACKEND_URL}/api/v1/club-admin/teams/smoke-test/manager`, {
+        method: 'OPTIONS',
+        headers: { Origin: FRONTEND_URL, 'Access-Control-Request-Method': method, 'Access-Control-Request-Headers': 'content-type' },
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      })
+      const allowed = (preflight.headers.get('access-control-allow-methods') ?? '').split(',').map(name => name.trim())
+      if (!preflight.ok || !allowed.includes(method) || preflight.headers.get('access-control-allow-origin') !== FRONTEND_URL) {
+        throw new Error(`CORS does not let ${FRONTEND_URL} send ${method} (allowed: ${allowed.join(', ') || 'none'})`)
+      }
+    }
   },
 
   // The home page, and a deep link that only loads through staticwebapp.config.json.

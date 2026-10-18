@@ -1,5 +1,6 @@
 import type {
-  FixtureStatus, MembershipStatus, NotificationTargetType, NotificationType, PlayerStatus, ResultStatus, RubberOutcome, RubberType, TeamPlayerStatus,
+  FixtureStatus, MembershipStatus, NotificationTargetType, NotificationType, PlayerStatus, ResultStatus, RoleType, RubberOutcome, RubberType,
+  TeamPlayerStatus,
 } from '@prisma/client'
 import type { SeasonStatus } from '../player/player.types'
 
@@ -33,6 +34,14 @@ export interface ClubTeam extends SeasonContext {
   sectionName: string
 }
 
+/** One row of the club's Teams list. */
+export interface ClubTeamSummary extends ClubTeam {
+  // ACTIVE squad places.
+  squadCount: number
+  // The current team manager, or their account email when they have no profile; null when there is none.
+  managerName: string | null
+}
+
 /** A player's membership of a club, dates as YYYY-MM-DD. */
 export interface ClubPlayerMembership {
   status: MembershipStatus
@@ -46,9 +55,17 @@ export interface ClubPlayer {
   id: string
   firstName: string
   lastName: string
+  // The player record's own status: only an ACTIVE player can join a squad or manage a team.
+  status: PlayerStatus
   membership: ClubPlayerMembership
   // Names of the club's teams the player is ACTIVE on.
   teamNames: string[]
+  // What the Assign manager page needs to say who cannot manage a team, before anyone is picked.
+  // A manager needs a login account; a user holds one role (null when they hold none).
+  hasLogin: boolean
+  role: RoleType | null
+  // The team they manage in a season still to finish, which stops them managing another; null when none.
+  managedTeam: { id: string; name: string } | null
 }
 
 export interface ClubPlayerDetail {
@@ -67,7 +84,11 @@ export interface ClubPlayerDetail {
 }
 
 export interface ClubTeamDetail extends ClubTeam {
+  // The manager's profile name; null when the team has no manager or the manager has no profile.
   managerName: string | null
+  // The current manager: their Player ID (null without a profile), name (their email without a
+  // profile) and account email, so the page can show them and mark them in the squad.
+  manager: { playerId: string | null; name: string; email: string } | null
   players: { id: string; firstName: string; lastName: string; status: TeamPlayerStatus; registeredAt: string | null }[]
 }
 

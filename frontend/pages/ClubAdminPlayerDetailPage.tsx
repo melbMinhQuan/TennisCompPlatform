@@ -1,22 +1,15 @@
 
-import { useMemo, useState } from "react";
+import { useCallback, useContext, useState } from "react";
 import { Link, useParams } from "react-router";
-import {
-  mockPlayers,
-  mockClubs,
-  mockClubMemberships,
-  mockTeams,
-  mockTeamPlayers,
-} from "../data/mock-club-admin-players";
+import { getClubPlayer } from "../api/club-admin-players";
+import { useClubAdminData } from "../api/useApiData";
+import { RoleSessionContext } from "../context/RoleSession";
+import MatchLoadState from "../components/MatchLoadState";
 import {
   matchLightButtonClass,
   pageTitleClass,
 } from "../components/MatchesUI";
-import { clubAdminClubId } from "../data/club-admin-dashboard";
-import { seasonOf, teamPlacement } from "../data/club-admin-sections";
-
-// The signed-in administrator's club (sample until the login returns it).
-const CLUB_ID = clubAdminClubId;
+import { shortClubName } from "../utils/formatters";
 
 const secondaryButton = matchLightButtonClass;
 
@@ -36,46 +29,32 @@ function formatDate(value: string | null | undefined) {
 }
 
 export default function ClubAdminPlayerDetailPage() {
-  const { playerId } = useParams<{ playerId: string }>();
+  const { playerId = "" } = useParams<{ playerId: string }>();
   const [ended, setEnded] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const { signedIn } = useContext(RoleSessionContext);
+  const clubId = signedIn?.clubId;
+  const clubName = shortClubName(signedIn?.clubName ?? "Your club");
 
-  const player = mockPlayers.find((p) => p.id === playerId);
-
-  const memberships = useMemo(
-    () =>
-      mockClubMemberships.filter(
-        (membership) => membership.playerId === playerId
-      ),
-    [playerId]
+  // Every club the player belongs to, and this club's teams only; null when they are not a member.
+  const load = useCallback(
+    (signal: AbortSignal, identity?: string) => getClubPlayer(playerId, signal, identity),
+    [playerId],
   );
+  const { data: player, error, retry } = useClubAdminData(load);
 
+  if (player === undefined) return <MatchLoadState error={error} retry={retry} />;
+
+  const memberships = player?.memberships ?? [];
   const currentMembership = memberships.find(
-    (membership) => membership.clubId === CLUB_ID
+    (membership) => membership.clubId === clubId
   );
 
-  const playerTeams = useMemo(() => {
-    const clubTeams = new Map(
-      mockTeams
-        .filter((team) => team.clubId === CLUB_ID)
-        .map((team) => [team.id, team])
-    );
-
-    return mockTeamPlayers
-      .filter(
-        (tp) =>
-          tp.playerId === playerId &&
-          tp.status === "ACTIVE" &&
-          clubTeams.has(tp.teamId)
-      )
-      .flatMap((tp) => {
-        const team = clubTeams.get(tp.teamId);
-        return team ? [team] : [];
-      });
-  }, [playerId]);
+  // Teams the player is in the squad of, active or past season.
+  const playerTeams = (player?.teams ?? []).filter((team) => team.status === "ACTIVE");
 
   // Only teams in the season being played now count as "this season".
-  const currentTeamCount = playerTeams.filter((team) => seasonOf(team.seasonId)?.status === "ACTIVE").length;
+  const currentTeamCount = playerTeams.filter((team) => team.seasonStatus === "ACTIVE").length;
 
   if (!player || !currentMembership) {
     return (
@@ -103,9 +82,7 @@ export default function ClubAdminPlayerDetailPage() {
     (membership) => membership.isPrimary
   );
 
-  const primaryClubName = mockClubs.find(
-    (club) => club.id === primaryClub?.clubId
-  )?.name;
+  const primaryClubName = primaryClub?.clubName;
 
   const isPrimary = currentMembership.isPrimary;
 
@@ -133,7 +110,7 @@ export default function ClubAdminPlayerDetailPage() {
     {/* Membership Summary */}
     <div className="mt-5 rounded-2xl bg-[#1c334e] p-5 text-white md:p-6">
         <h2 className="text-lg font-bold">
-            Glen Waverley membership
+            {clubName} membership
         </h2>
 
         <div className="mt-4 grid grid-cols-2 gap-x-5 gap-y-5 md:grid-cols-[100px_190px_130px_1fr] md:gap-x-5">
@@ -185,26 +162,22 @@ export default function ClubAdminPlayerDetailPage() {
         </h2>
 
         {memberships.map((membership) => {
-          const club = mockClubs.find(
-            (c) => c.id === membership.clubId
-          );
-
           const status =
-            ended && membership.clubId === CLUB_ID
+            ended && membership.clubId === clubId
               ? "INACTIVE"
               : membership.status;
 
           return (
             <div
-              key={membership.id}
+              key={membership.clubId}
               className="border-b border-[#dbe4ef] py-4 last:border-b-0"
             >
               <p className="font-semibold">
-                {club?.name ?? membership.clubId}
+                {membership.clubName}
               </p>
 
               <p className="mt-1 text-sm text-muted">
-                {membership.clubId === CLUB_ID
+                {membership.clubId === clubId
                   ? `Joined ${formatDate(membership.startDate)}`
                   : "Managed by that club"}
               </p>
@@ -236,7 +209,7 @@ export default function ClubAdminPlayerDetailPage() {
             onClick={() => setShowConfirm(true)}
             className={`${secondaryButton} mt-4 w-full md:w-auto`}
           >
-            End Glen Waverley membership
+            End {clubName} membership
           </button>
         )}
       </div>
@@ -254,16 +227,16 @@ export default function ClubAdminPlayerDetailPage() {
         ) : (
           playerTeams.map((team) => (
             <div
-              key={team.id}
+              key={team.teamId}
               className="border-b border-[#dbe4ef] py-4 last:border-b-0"
             >
-              <p className="font-semibold">{team.name}</p>
+              <p className="font-semibold">{team.teamName}</p>
               <p className="mt-1 text-sm text-muted">
-                {teamPlacement(team)}
+                {team.competitionName} · {team.seasonLabel} · {team.sectionName}
               </p>
 
               <div className="mt-2 flex flex-wrap items-center gap-3">
-                {seasonOf(team.seasonId)?.status === "ACTIVE" ? (
+                {team.seasonStatus === "ACTIVE" || team.seasonStatus === "UPCOMING" ? (
                   <span className="rounded-md bg-[#e4f5ec] px-3 py-1 text-xs font-semibold text-[#187650]">
                     In squad
                   </span>
@@ -274,7 +247,7 @@ export default function ClubAdminPlayerDetailPage() {
                 )}
 
                 <Link
-                  to={`/club-admin/teams/${team.id}`}
+                  to={`/club-admin/teams/${team.teamId}`}
                   className="text-sm font-semibold text-[#3f72af] hover:underline focus-visible:outline-2 focus-visible:outline-[#3f72af]"
                 >
                   View team ›
@@ -309,8 +282,8 @@ export default function ClubAdminPlayerDetailPage() {
             </h2>
 
             <p className="mt-3 text-sm text-muted">
-              This will mark the Glen Waverley membership as
-              inactive in this page's demo state.
+              This will mark the {clubName} membership as
+              inactive on this page only.
               No database changes will be made.
             </p>
 

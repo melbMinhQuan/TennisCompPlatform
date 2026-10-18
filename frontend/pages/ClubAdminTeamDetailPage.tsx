@@ -1,37 +1,35 @@
 
-import { useMemo, useState } from "react";
+import { useCallback, useContext, useState } from "react";
 import { Link, useLocation, useParams } from "react-router";
-import {
-  mockTeams,
-  mockPlayers,
-} from "../data/mock-club-admin-players";
-import {
-  removePlayerFromTeam,
-  useTeamPlayers,
-} from "../data/teamSquadStore";
-import {
-  useTeamManagers,
-  removeTeamManager,
-} from "../data/teamManagerStore";
+import { getClubTeam, removeTeamManager, removeTeamPlayer } from "../api/club-admin-teams";
+import { useClubAdminData } from "../api/useApiData";
+import { useClubAdminAction } from "../api/useClubAdminAction";
+import { RoleSessionContext } from "../context/RoleSession";
+import MatchLoadState from "../components/MatchLoadState";
 import {
   matchButtonClass,
   matchLightButtonClass,
   pageTitleClass,
 } from "../components/MatchesUI";
-import { clubAdminClubId } from "../data/club-admin-dashboard";
-import { seasonOf, teamPlacement } from "../data/club-admin-sections";
-
-// The signed-in administrator's club (sample until the login returns it).
-const CLUB_ID = clubAdminClubId;
 
 const button = matchButtonClass;
 const secondary = matchLightButtonClass;
 
 export default function ClubAdminTeamDetailPage() {
-  const { teamId } = useParams<{ teamId: string }>();
+  const { teamId = "" } = useParams<{ teamId: string }>();
   const [showAll, setShowAll] = useState(false);
-  const managers = useTeamManagers();
   const location = useLocation();
+  const clubName = useContext(RoleSessionContext).signedIn?.clubName ?? "your club";
+
+  // The team with its roster and manager. Each change answers with the team as it now is.
+  const load = useCallback(
+    (signal: AbortSignal, identity?: string) => getClubTeam(teamId, signal, identity),
+    [teamId],
+  );
+  const { data: team, error, retry, setData } = useClubAdminData(load);
+  const action = useClubAdminAction();
+  // Which card a failed change belongs to, so its message shows there.
+  const [failedIn, setFailedIn] = useState<"squad" | "manager" | null>(null);
 
   const [showRemoveConfirm, setShowRemoveConfirm] =
     useState(false);
@@ -43,60 +41,12 @@ export default function ClubAdminTeamDetailPage() {
   const [removedPlayerName, setRemovedPlayerName] =
     useState<string | null>(null);
 
-  const managerId = teamId
-    ? managers[teamId]
-    : undefined;
-
-  const manager = mockPlayers.find(
-    (player) => player.id === managerId
-  );
-
-  const managerName = manager
-    ? `${manager.firstName} ${manager.lastName}`
-    : null;
-
   const managerUpdated = Boolean(
     (location.state as { managerUpdated?: boolean } | null)
       ?.managerUpdated
   );
 
-  const teamPlayers = useTeamPlayers();
-
-  const team = mockTeams.find(
-    (item) => item.id === teamId && item.clubId === CLUB_ID
-  );
-
-  const squad = useMemo(() => {
-    if (!team) return [];
-
-    const playerById = new Map(
-      mockPlayers.map((player) => [player.id, player])
-    );
-
-    const activePlayerIds = [
-      ...new Set(
-        teamPlayers
-          .filter(
-            (item) =>
-              item.teamId === team.id &&
-              item.status === "ACTIVE"
-          )
-          .map((item) => item.playerId)
-      ),
-    ];
-
-    return activePlayerIds
-      .map((id) => playerById.get(id))
-      .filter((player) => player !== undefined)
-      .sort((a, b) =>
-        `${a.firstName} ${a.lastName}`.localeCompare(
-          `${b.firstName} ${b.lastName}`
-        )
-      );
-  }, [team, teamPlayers]);
-  const playerPendingRemoval = squad.find(
-    (player) => player.id === playerToRemove
-  );
+  if (team === undefined) return <MatchLoadState error={error} retry={retry} />;
 
   if (!team) {
     return (
@@ -106,7 +56,7 @@ export default function ClubAdminTeamDetailPage() {
         </h1>
         <p className="mt-3 text-sm">
           This team does not exist or does not belong
-          to Glen Waverley Tennis Club.
+          to {clubName}.
         </p>
         <Link
           to="/club-admin/teams"
@@ -118,8 +68,41 @@ export default function ClubAdminTeamDetailPage() {
     );
   }
 
+  // The squad is the ACTIVE players, by name; the manager is marked in it by Player ID.
+  const squad = team.players.filter((player) => player.status === "ACTIVE");
+  const manager = team.manager;
+  const managerName = manager?.name ?? null;
+  const managerId = manager?.playerId ?? null;
+  const playerPendingRemoval = squad.find(
+    (player) => player.id === playerToRemove
+  );
+
   const visibleSquad = showAll ? squad : squad.slice(0, 3);
   const remaining = squad.length - visibleSquad.length;
+
+  const removePlayer = async () => {
+    const player = playerPendingRemoval;
+    if (!player) {
+      setPlayerToRemove(null);
+      return;
+    }
+    setFailedIn("squad");
+    setRemovedPlayerName(null);
+    const updated = await action.run((email, signal) => removeTeamPlayer(team.id, player.id, email, signal));
+    setPlayerToRemove(null);
+    if (!updated) return;
+    setData(() => updated);
+    setRemovedPlayerName(`${player.firstName} ${player.lastName}`);
+  };
+
+  const removeManager = async () => {
+    setFailedIn("manager");
+    const updated = await action.run((email, signal) => removeTeamManager(team.id, email, signal));
+    setShowRemoveConfirm(false);
+    if (!updated) return;
+    setData(() => updated);
+    setManagerRemoved(true);
+  };
 
   return (
     <section className="text-white md:text-[#1a3049]">
@@ -142,7 +125,7 @@ export default function ClubAdminTeamDetailPage() {
       </h1>
 
       <p className="mt-4 text-sm text-[#d2dfed] md:text-base md:text-muted">
-        {teamPlacement(team)}
+        {team.competitionName} · {team.seasonLabel} · {team.sectionName}
         {" · "}
         Team ID {team.id}
       </p>
@@ -176,7 +159,7 @@ export default function ClubAdminTeamDetailPage() {
 
           <div>
             <p className="text-xl font-bold">
-              {seasonOf(team.seasonId)?.label ?? "Not recorded"}
+              {team.seasonLabel}
             </p>
             <p className="text-sm text-[#b8c9dc]">
               Season
@@ -264,6 +247,12 @@ export default function ClubAdminTeamDetailPage() {
             {removedPlayerName} was removed from the squad.
           </p>
         )}
+
+        {action.error && failedIn === "squad" && (
+          <p role="alert" className="mt-4 rounded-lg bg-[#fff1f1] p-3 text-sm text-[#b53b3b]">
+            {action.error}
+          </p>
+        )}
       </div>
 
       {playerToRemove && (
@@ -307,19 +296,8 @@ export default function ClubAdminTeamDetailPage() {
 
               <button
                 type="button"
-                onClick={() => {
-                  const player = playerPendingRemoval;
-                  if (!player) {
-                    setPlayerToRemove(null);
-                    return;
-                  }
-
-                  removePlayerFromTeam(team.id, player.id);
-                  setRemovedPlayerName(
-                    `${player.firstName} ${player.lastName}`
-                  );
-                  setPlayerToRemove(null);
-                }}
+                disabled={action.busy}
+                onClick={() => void removePlayer()}
                 className="min-h-11 rounded-lg bg-[#b53b3b] px-5 text-sm font-medium text-white hover:bg-[#963030]"
               >
                 Remove player
@@ -339,10 +317,10 @@ export default function ClubAdminTeamDetailPage() {
           <>
             <div className="mt-4 rounded-xl bg-[#f2f6fb] p-4">
               <p className="text-lg font-semibold">
-                {manager.firstName} {manager.lastName}
+                {manager.name}
               </p>
               <p className="mt-1 text-sm text-muted">
-                Player ID: {manager.id}
+                Player ID: {manager.playerId ?? "—"}
               </p>
               <p className="mt-1 text-sm text-muted">
                 {manager.email}
@@ -404,6 +382,12 @@ export default function ClubAdminTeamDetailPage() {
             Team manager removed successfully.
           </p>
         )}
+
+        {action.error && failedIn === "manager" && (
+          <p role="alert" className="mt-4 rounded-lg bg-[#fff1f1] p-3 text-sm text-[#b53b3b]">
+            {action.error}
+          </p>
+        )}
       </div>
 
       {/* Remove Manager Confirmation */}
@@ -448,11 +432,8 @@ export default function ClubAdminTeamDetailPage() {
 
               <button
                 type="button"
-                onClick={() => {
-                  removeTeamManager(team.id);
-                  setShowRemoveConfirm(false);
-                  setManagerRemoved(true);
-                }}
+                disabled={action.busy}
+                onClick={() => void removeManager()}
                 className="min-h-11 rounded-lg bg-[#b53b3b] px-5 text-sm font-medium text-white hover:bg-[#963030]"
               >
                 Remove manager

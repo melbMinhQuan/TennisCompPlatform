@@ -1,7 +1,10 @@
-import { mockClubAdminAccounts } from "../data/mock-club-admin-accounts";
-
-/** The signed-in user's role (UserRole.roleType), their club (club roles only) and their name. */
+/**
+ * The signed-in user: their login email, role (UserRole.roleType), club (club roles only) and name.
+ * The email is how the club administrator pages identify them to the backend (a local demo lookup,
+ * like the player pages), so it is kept with the role.
+ */
 export type SignedInRole = {
+  email: string;
   role: string;
   clubId: string | null;
   clubName: string | null;
@@ -10,18 +13,15 @@ export type SignedInRole = {
 
 type LoginDetails = { role?: string | null; clubId?: string | null; clubName?: string | null; displayName?: string | null };
 
-/**
- * The role to use after a successful login. Uses the login response when the backend sends `role`;
- * until then, falls back to the club admin accounts in the seed data, and everyone else is a player.
- */
+/** The signed-in user after a successful login, from what POST /auth/login answered. No role means a player. */
 export function roleFromLogin(email: string, response: LoginDetails): SignedInRole {
-  const clubName = response.clubName ?? null;
-  const displayName = response.displayName ?? null;
-  if (response.role) return { role: response.role, clubId: response.clubId ?? null, clubName, displayName };
-  const clubId = mockClubAdminAccounts[email];
-  return clubId
-    ? { role: "CLUB_ADMIN", clubId, clubName, displayName }
-    : { role: "PLAYER", clubId: null, clubName, displayName };
+  return {
+    email,
+    role: response.role || "PLAYER",
+    clubId: response.clubId ?? null,
+    clubName: response.clubName ?? null,
+    displayName: response.displayName ?? null,
+  };
 }
 
 /** Where each role lands after logging in: club administrators get the club dashboard. */

@@ -1,13 +1,6 @@
 import { useState, type FormEvent } from "react";
+import type { NewPlayerDetails } from "../../../api/club-admin-players";
 import { matchButtonClass, matchCardClass, matchLightButtonClass } from "../../MatchesUI";
-
-/** The details POST /api/v1/club-admin/players needs. Gender matches the database enum. */
-export type NewPlayerDetails = {
-  firstName: string;
-  lastName: string;
-  dateOfBirth: string;
-  gender: "FEMALE" | "MALE" | "OTHER";
-};
 
 type Props = {
   initialFirstName: string;
@@ -16,8 +9,12 @@ type Props = {
   initialDateOfBirth: string;
   /** Converts DD/MM/YYYY to YYYY-MM-DD, or "" when the date is not valid. */
   toISODate: (value: string) => string;
-  /** Returns an error message, or "" when the details can be saved. */
-  onCreate: (details: NewPlayerDetails) => string;
+  /** Saves the checked details; the page shows what happened next. */
+  onCreate: (details: NewPlayerDetails) => void;
+  /** True while the details are being saved. */
+  busy: boolean;
+  /** Why the backend refused the details (e.g. a possible duplicate); "" when it did not. */
+  error: string;
   onCancel: () => void;
 };
 
@@ -42,14 +39,13 @@ export default function CreatePlayerForm(props: Props) {
     if (!isoDate) return setError("Please enter a valid date of birth in DD/MM/YYYY format.");
     if (isoDate > new Date().toISOString().slice(0, 10)) return setError("Date of birth cannot be in the future.");
     if (!gender) return setError("Please choose a gender.");
-    setError(
-      props.onCreate({
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        dateOfBirth: isoDate,
-        gender: gender as NewPlayerDetails["gender"],
-      }),
-    );
+    setError("");
+    props.onCreate({
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      dateOfBirth: isoDate,
+      gender: gender as NewPlayerDetails["gender"],
+    });
   }
 
   return (
@@ -93,15 +89,15 @@ export default function CreatePlayerForm(props: Props) {
         An email address is not saved here. The player’s email belongs to their login account, which is set up
         separately.
       </p>
-      {error && (
+      {(error || props.error) && (
         <p role="alert" className="mt-3 text-sm text-red-700">
-          {error}
+          {error || props.error}
         </p>
       )}
 
       <div className="mt-4 flex flex-col gap-3 md:flex-row">
-        <button type="submit" className={matchButtonClass}>
-          Create player
+        <button type="submit" disabled={props.busy} className={matchButtonClass}>
+          {props.busy ? "Creating…" : "Create player"}
         </button>
         <button type="button" onClick={props.onCancel} className={matchLightButtonClass}>
           Back to results

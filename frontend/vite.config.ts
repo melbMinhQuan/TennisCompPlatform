@@ -16,13 +16,13 @@ export default defineConfig({
       provider: 'v8',
       include: ['api/**', 'components/**', 'context/**', 'pages/**', 'utils/**', 'src.tsx'],
       reporter: ['text', 'json-summary'],
-      // Minimums a few points under the level on 15 Oct 2026, so only a real drop fails CI.
-      // The overall figure is low because pages are tested end to end instead. The club
-      // administrator pages (PR #25) have no end-to-end tests yet: add those, then raise it.
+      // Minimums a few points under the level on 18 Oct 2026, so only a real drop fails CI.
+      // The overall figure is low because the player pages are tested end to end instead; the
+      // club administrator pages are rendered against a fake backend too (club-admin-pages.test.tsx).
       // The logic the unit tests are for (api, context, utils) has its own, higher bar.
       thresholds: {
-        lines: 10, branches: 70, functions: 50, // were 13.6, 75.2, 54.5
-        '{api,context,utils}/**': { lines: 75, branches: 80, functions: 75 }, // were 83.9, 89.7, 86.4
+        lines: 36, branches: 72, functions: 60, // were 40.1, 76.7, 64.9
+        '{api,context,utils}/**': { lines: 75, branches: 80, functions: 75 }, // were 87.3, 88.8, 85.1
       },
     },
   },

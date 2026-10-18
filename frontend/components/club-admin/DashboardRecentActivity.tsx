@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import type { ClubAdminDashboardData } from "../../data/club-admin-dashboard";
+import type { ClubAdminDashboardData } from "../../api/club-admin-dashboard";
 import { formatResultDate, melbourneDate } from "../../utils/date-helpers";
 import { matchCardClass, matchLightButtonClass } from "../MatchesUI";
 

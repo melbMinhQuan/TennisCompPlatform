@@ -17,8 +17,8 @@ const FIXTURE_BADGES: Record<FixtureStatus, Badge> = {
   COMPLETED: { label: "Completed", className: GREEN },
 };
 
+// A DRAFT result is never sent: the club sees no result until it is submitted.
 const RESULT_BADGES: Record<ResultStatus, Badge> = {
-  DRAFT: { label: "Draft", className: GREY },
   FINALISED: { label: "Final", className: GREEN },
   PENDING_CONFIRMATION: { label: "Awaiting confirmation", className: AMBER },
   UNDER_CORRECTION: { label: "Under correction", className: RED },

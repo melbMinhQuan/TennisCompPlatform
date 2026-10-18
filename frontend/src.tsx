@@ -23,6 +23,7 @@ import SiteNavigation from "./components/SiteNavigation";
 
 // Club Admin pages
 import ClubAdminLayout from "./components/ClubAdminLayout";
+import ClubAdminNotifications from "./context/ClubAdminNotifications";
 import ClubAdminPlaceholderPage from "./pages/ClubAdminPlaceholderPage";
 import ClubAdminSupportPage from "./pages/ClubAdminSupportPage";
 import ClubAdminNotificationsPage from "./pages/ClubAdminNotificationsPage";
@@ -98,7 +99,7 @@ function App() {
         <Route path="*" element={<section className="rounded-2xl bg-white p-6"><h1 className="text-2xl font-semibold">Page not found</h1><Link className="mt-4 inline-block text-brand underline" to="/dashboard">Return to your profile</Link></section>} />
       </Route>
 
-      <Route path="/club-admin" element={<RequireClubAdmin><ClubAdminLayout /></RequireClubAdmin>}>
+      <Route path="/club-admin" element={<RequireClubAdmin><ClubAdminNotifications><ClubAdminLayout /></ClubAdminNotifications></RequireClubAdmin>}>
         <Route
           index
           element={<ClubAdminDashboardPage />}

@@ -1,12 +1,12 @@
-# Club Admin dashboard — display-only Sprint 2 implementation
+# Club Admin dashboard
 
-Route: `/club-admin`. `ClubAdminDashboardPage.tsx` loads the sample through `api/club-admin-dashboard.ts` (same adapter pattern as the player pages) and renders `components/club-admin/ClubAdminDashboardContent.tsx` with the Sprint 1 page, card and button styles. No writes or live API calls are made. Quick actions open the existing Players and Teams routes, which remain placeholders.
+Route: `/club-admin`. `ClubAdminDashboardPage.tsx` loads `GET /api/v1/club-admin/dashboard` through `api/club-admin-dashboard.ts` as the signed-in administrator (same adapter pattern as the player pages) and renders `components/club-admin/ClubAdminDashboardContent.tsx` with the Sprint 1 page, card and button styles. A failed request shows an error and a retry button; there is no sample data to fall back to. Quick actions open the Players and Teams pages.
 
 Reference: [Figma dashboard](https://www.figma.com/design/A2NqehyeuwSK4AH0EOTRQh?node-id=1-191), [Sprint 2 plan](https://itprojectvibecoding.atlassian.net/wiki/pages/17170500), [User Stories v2.1](https://itprojectvibecoding.atlassian.net/wiki/pages/17793533), [client Sprint 1 feedback](https://itprojectvibecoding.atlassian.net/wiki/pages/12222465).
 
 ## What the current schema supports
 
-The hardcoded JSON is a snapshot of `backend/prisma/competition_data.xlsx` inspected on 10 October 2026, not a query of the running database. Schema support does not prove that migrations or these rows have been applied to a local/deployed database.
+Every value below is read from the running database by the backend when the page opens.
 
 | Display | Existing source / later API calculation |
 | --- | --- |
@@ -19,18 +19,18 @@ The hardcoded JSON is a snapshot of `backend/prisma/competition_data.xlsx` inspe
 | Teams needing attention | Distinct active-season teams without a manager OR with no active squad; not a stored counter, not proof of competition eligibility |
 | Unread notices | Recipient's IN_APP `Notification` rows with null `readAt`, filtered to authorised club context; EMAIL rows never count |
 | Recent result activity | `AuditLog` → own-club `MatchResult` → `Fixture` → home/away `Team`; most recent across seasons |
-| Fixtures, venue and results | `Fixture`, `Venue`, `MatchResult`; available schema, but no scheduled fixture on/after the sample date for this club in this workbook |
+| Fixtures, venue and results | `Fixture`, `Venue`, `MatchResult`; available schema, but no scheduled fixture after 3 Oct 2026 for this club in this workbook |
 
-The sample shows 26 active club memberships, two Winter 2026 teams, six active squad players in each, assigned managers and zero current setup tasks. The unread count comes from the Notifications sample (see `club-admin-notifications.md`), so the dashboard, sidebar and Notifications page show the same number. Historical teams do not create current setup tasks. Counts and selected team rows share one data source, as does the sidebar unread badge. There is no separate notices card: the unread count is shown in the summary card and the sidebar, which link to Notifications (US-22 is a Should).
+The seeded database shows Glen Waverley with 26 active club memberships, two Winter 2026 teams, six active squad players in each, assigned managers and zero current setup tasks (checked by E2E-011). The unread tile, the sidebar badge and the Notifications page count the same list, loaded once per visit by `context/ClubAdminNotifications.tsx` (see `club-admin-notifications.md`), so marking a notice read updates all three. Historical teams do not create current setup tasks. Counts and selected team rows share one data source, as does the sidebar unread badge. There is no separate notices card: the unread count is shown in the summary card and the sidebar, which link to Notifications (US-22 is a Should).
 
-The Figma numbers (128 members, eight teams, two tasks, three notices), CL-004 identifier and “Summer 2026/27 entries are open” are illustrative. This implementation uses the workbook's CLB01 identifier and actual sample counts instead. The team selector demonstrates current and past seasons. The sample's Summer 2025 label reflects `seasonType` + `year`; a cross-year season label should later be formatted from its dates or a deliberate display label.
+The Figma numbers (128 members, eight teams, two tasks, three notices), CL-004 identifier and “Summer 2026/27 entries are open” are illustrative. The page shows the real counts, and the club's database ID as its Club ID (an open decision, see [hardcoded-values.md](hardcoded-values.md) §4). The team selector lists every season the club has a team in. The backend labels a season that crosses the new year from its dates ("Summer 2025/26").
 
 ## Backend API
 
 `GET /api/v1/club-admin/dashboard` → `{ data: ClubAdminDashboard }`, built in
 [`club-admin-dashboard.service.ts`](../backend/src/club-admin/club-admin-dashboard.service.ts),
 tests in [`club-admin-dashboard.test.cjs`](../backend/test/club-admin-dashboard.test.cjs) (I-CLUBDASH-*).
-The frontend still uses the snapshot; connect it to this. As on the other club admin routes, the
+The page uses it. As on the other club admin routes, the
 club comes from the admin's CLUB_ADMIN role (403 `NOT_CLUB_ADMIN` otherwise), and a database
 failure is a 503 `DATA_UNAVAILABLE`.
 
@@ -40,21 +40,20 @@ above, with these choices:
 | Field | How it is worked out |
 | --- | --- |
 | `asOf` | Today in Melbourne; the day the counts are for. |
-| `club` | `Club` and its association's name. `id` is the club's UUID; use it for `clubAdminClubId`. |
+| `club` | `Club` and its association's name. `id` is the club's UUID. |
 | `adminName` | The admin's profile first name ("Welcome, Margaret"), or their account email when they have no profile. Never null. |
 | `activeMembers` | Distinct players with a current membership (ACTIVE, started, not ended). Club admins' own profiles are not counted, as on the Players page. |
 | `seasons` | Seasons the club has a team in, oldest first. Cross-year seasons are labelled "Summer 2025/26". |
 | `teams` | Every club team in every season; the page filters by `seasonId`. `squadCount` counts ACTIVE squad places. `managerName` is the current TEAM_MANAGER's name, or their email without a profile. "Needs attention" is still worked out on the page by `dashboardSeasonSummary`. |
-| `unreadCount` | **New.** The admin's unread IN_APP notifications, as `GET notifications` counts them. Use it instead of the in-memory count. |
+| `unreadCount` | The admin's unread IN_APP notifications, as `GET notifications` counts them. The tile shows it until the shared notification list has loaded. |
 | `activity` | **Up to 5** newest `AuditLog` events about the results of fixtures the club plays in: `MatchResult` events, and `CorrectionRequest` reviews traced to their result. `match` is "Round 12 · Forest Hill B vs Glen Waverley B". Team and player changes made through the club admin routes are not listed. |
 
 **Not returned:** `notices` and `fixtures`. The page never reads them: unread notices are counted
-in `unreadCount`, and fixtures come from `GET fixtures`. Remove them from the
-`ClubAdminDashboardData` type when it stops being derived from the snapshot JSON.
+in `unreadCount`, and fixtures come from `GET fixtures`.
 
 Checked against a database seeded with `seed:competition`: Glen Waverley shows 26 active members,
 Winter 2026 teams with 6 squad players each and managers Diego Brooks and Ethan Campbell, and the
-same three newest activity items as the snapshot.
+same newest activity items as the workbook (Round 12 · Forest Hill B vs Glen Waverley B first).
 
 ## Database changes / additions to discuss
 
@@ -69,8 +68,11 @@ No database migration is required for the summary, team rows, manager checks or 
 
 Membership end status is INACTIVE plus `endDate`, shown as “Inactive” on screen. A new enum is not required. Primary-club transfer rules and effects of ending membership on current squads still require the client decision recorded as A07.
 
-## API connection later
+## API connection
 
-A proposed read endpoint is `GET /api/v1/club-admin/dashboard?seasonId=...`. Derive club access from the authenticated role, reject other clubs (US-18), validate the selected season against the club's data and return a typed view matching the display snapshot. Do not accept client-provided actor/user IDs as authority. Include member counts, seasonal teams and attention, scoped notices and activity; use explicit empty/null values for unavailable information. A failed live request must show an error/retry state, never silently fall back to sample values.
+Connected. The club comes from the administrator's role, never from the request (US-18), and the
+page picks the season itself: the one being played, else the next one open for entries, else the
+latest. Season names in the picker say Current, Upcoming or Past. A failed request shows an
+error and a retry button, never sample values.
 
 Registry search before creation (US-19), active eligible squad assignment (US-21) and team manager access (US-45) remain the priority workflow. Club administrators do not correct confirmed scores or resolve disputes; those are association responsibilities under v2.1. Junior DOB/contact details are deliberately absent from the dashboard.

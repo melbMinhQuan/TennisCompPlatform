@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { useSearchParams } from "react-router";
 import { filterClubFixtures, getClubAdminFixtures, type FixtureFilter } from "../api/club-admin-fixtures";
-import { useApiData } from "../api/useApiData";
+import { useClubAdminData } from "../api/useApiData";
+import { RoleSessionContext } from "../context/RoleSession";
 import FixtureFilters from "../components/club-admin/fixtures/FixtureFilters";
 import FixtureListItem from "../components/club-admin/fixtures/FixtureListItem";
 import MatchLoadState from "../components/MatchLoadState";
@@ -15,7 +16,8 @@ const NO_FILTERS = { season: "all", team: "all", search: "" };
  * so the detail page can link back to the right tab.
  */
 export default function ClubAdminFixturesPage() {
-  const { data, error, retry } = useApiData(getClubAdminFixtures);
+  const { data, error, retry } = useClubAdminData(getClubAdminFixtures);
+  const clubName = useContext(RoleSessionContext).signedIn?.clubName ?? "Your club";
   const [params, setParams] = useSearchParams();
   const view = params.get("view") === "results" ? "results" : "fixtures";
   const [filters, setFilters] = useState(NO_FILTERS);
@@ -41,7 +43,7 @@ export default function ClubAdminFixturesPage() {
     <div className={pageClass}>
       <header>
         <h1 className={pageTitleClass}>Fixtures &amp; Results</h1>
-        <p className={pageIntroClass}>Glen Waverley Tennis Club’s team fixtures and recorded results.</p>
+        <p className={pageIntroClass}>{clubName}’s team fixtures and recorded results.</p>
       </header>
 
       {!data ? (

@@ -1,67 +1,58 @@
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import {
-  mockTeams,
-  mockPlayers,
-  mockClubMemberships,
-} from "../data/mock-club-admin-players";
-import {
-  useTeamPlayers,
-  addPlayersToTeam,
-} from "../data/teamSquadStore";
+import { getClubPlayers } from "../api/club-admin-players";
+import { addTeamPlayers, getClubTeam } from "../api/club-admin-teams";
+import { useClubAdminData } from "../api/useApiData";
+import { useClubAdminAction } from "../api/useClubAdminAction";
+import MatchLoadState from "../components/MatchLoadState";
 import {
   matchButtonClass,
   matchCardClass,
   matchLightButtonClass,
   pageTitleClass,
 } from "../components/MatchesUI";
-import { clubAdminClubId } from "../data/club-admin-dashboard";
 
-// The signed-in administrator's club (sample until the login returns it).
-const CLUB_ID = clubAdminClubId;
+// The backend's reasons a player cannot join a squad (422 PLAYERS_NOT_ELIGIBLE).
+const NOT_ELIGIBLE: Record<string, string> = {
+  PLAYER_NOT_FOUND: "not found",
+  INACTIVE_PLAYER: "inactive player",
+  NOT_CLUB_MEMBER: "not a current club member",
+  ALREADY_IN_TEAM: "already in this team",
+};
 
 export default function ClubAdminTeamAddPlayersPage() {
-  const { teamId } = useParams<{ teamId: string }>();
+  const { teamId = "" } = useParams<{ teamId: string }>();
   const navigate = useNavigate();
-  const teamPlayers = useTeamPlayers();
 
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [error, setError] = useState("");
 
-  const team = mockTeams.find(
-    (item) => item.id === teamId && item.clubId === CLUB_ID
+  // The team (for its current squad) and the club's members, who are the only possible players.
+  const loadTeam = useCallback(
+    (signal: AbortSignal, identity?: string) => getClubTeam(teamId, signal, identity),
+    [teamId],
   );
+  const teamData = useClubAdminData(loadTeam);
+  const playersData = useClubAdminData(getClubPlayers);
+  const team = teamData.data;
+  const action = useClubAdminAction();
 
   const existingIds = useMemo(
     () =>
       new Set(
-        teamPlayers
-          .filter(
-            (item) =>
-              item.teamId === teamId &&
-              item.status === "ACTIVE"
-          )
-          .map((item) => item.playerId)
+        (team?.players ?? [])
+          .filter((item) => item.status === "ACTIVE")
+          .map((item) => item.id)
       ),
-    [teamPlayers, teamId]
+    [team]
   );
 
   const members = useMemo(() => {
-    const clubMemberIds = new Set(
-      mockClubMemberships
-        .filter(
-          (item) =>
-            item.clubId === CLUB_ID &&
-            item.status === "ACTIVE"
-        )
-        .map((item) => item.playerId)
-    );
-
     const query = search.trim().toLowerCase();
 
-    return mockPlayers
+    return (playersData.data ?? [])
       .filter(
         (player) =>
           !query ||
@@ -71,7 +62,7 @@ export default function ClubAdminTeamAddPlayersPage() {
           player.id.toLowerCase().includes(query)
       )
       .map((player) => {
-        const isMember = clubMemberIds.has(player.id);
+        const isMember = player.membership.status === "ACTIVE";
         const alreadyAdded = existingIds.has(player.id);
         const eligible =
           isMember &&
@@ -96,7 +87,11 @@ export default function ClubAdminTeamAddPlayersPage() {
               `${b.player.firstName} ${b.player.lastName}`
             )
       );
-  }, [search, existingIds]);
+  }, [search, existingIds, playersData.data]);
+
+  if (team === undefined || !playersData.data) {
+    return <MatchLoadState error={teamData.error ?? playersData.error} retry={() => { teamData.retry(); playersData.retry(); }} />;
+  }
 
   if (!team) {
     return (
@@ -120,7 +115,7 @@ export default function ClubAdminTeamAddPlayersPage() {
     );
   }
 
-  function handleAdd() {
+  async function handleAdd() {
     const eligibleIds = new Set(
       members
         .filter((item) => item.eligible)
@@ -136,7 +131,20 @@ export default function ClubAdminTeamAddPlayersPage() {
       return;
     }
 
-    addPlayersToTeam(targetTeamId, validIds);
+    setError("");
+    const updated = await action.run(
+      (email, signal) => addTeamPlayers(targetTeamId, validIds, email, signal),
+      (refusal) => {
+        // Nobody is added when anyone cannot be: name each one and why.
+        const problems = refusal.body?.players;
+        if (refusal.code !== "PLAYERS_NOT_ELIGIBLE" || !Array.isArray(problems)) return null;
+        const names = new Map(members.map(({ player }) => [player.id, `${player.firstName} ${player.lastName}`]));
+        const listed = problems.map(({ id, reason }: { id: string; reason: string }) =>
+          `${names.get(id) ?? id} (${NOT_ELIGIBLE[reason] ?? reason})`);
+        return `No players were added. These players can’t join this squad: ${listed.join(", ")}.`;
+      },
+    );
+    if (!updated) return;
     navigate(detailPath, {
       state: { addedPlayers: validIds.length },
     });
@@ -233,9 +241,9 @@ export default function ClubAdminTeamAddPlayersPage() {
           )}
         </div>
 
-        {error && (
+        {(error || action.error) && (
           <p role="alert" className="mt-4 text-sm text-red-600">
-            {error}
+            {error || action.error}
           </p>
         )}
 
@@ -249,8 +257,8 @@ export default function ClubAdminTeamAddPlayersPage() {
 
           <button
             type="button"
-            disabled={selected.length === 0}
-            onClick={handleAdd}
+            disabled={selected.length === 0 || action.busy}
+            onClick={() => void handleAdd()}
             className={`${matchButtonClass} disabled:cursor-not-allowed disabled:opacity-50`}
           >
             Add {selected.length}{" "}

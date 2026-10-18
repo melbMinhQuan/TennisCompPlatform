@@ -1,54 +1,36 @@
-import { useMemo, useState } from "react";
+import { useContext, useMemo, useState } from "react";
 import { Link } from "react-router";
-import {
-  mockPlayers,
-  mockClubMemberships,
-  mockTeamPlayers,
-  mockTeams,
-} from "../data/mock-club-admin-players";
+import { getClubPlayers } from "../api/club-admin-players";
+import { useClubAdminData } from "../api/useApiData";
+import { RoleSessionContext } from "../context/RoleSession";
 import {
   matchButtonClass,
   matchCardClass,
   pageTitleClass,
   tabClass,
 } from "../components/MatchesUI";
-import { clubAdminClubId } from "../data/club-admin-dashboard";
 import HelpTopicLink from "../components/club-admin/HelpTopicLink";
+import MatchLoadState from "../components/MatchLoadState";
+import { shortClubName } from "../utils/formatters";
 
 type StatusFilter = "ACTIVE" | "INACTIVE" | "ALL";
-// The signed-in administrator's club (sample until the login returns it).
-const CLUB_ID = clubAdminClubId;
 const PAGE_SIZE = 10;
 
 export default function ClubAdminPlayersPage() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<StatusFilter>("ACTIVE");
   const [page, setPage] = useState(1);
-
-  const clubPlayers = useMemo(() => {
-    const playerById = new Map(mockPlayers.map((player) => [player.id, player]));
-    const clubTeamIds = new Set(mockTeams.filter((team) => team.clubId === CLUB_ID).map((team) => team.id));
-    return mockClubMemberships
-      .filter((membership) => membership.clubId === CLUB_ID)
-      .flatMap((membership) => {
-        const player = playerById.get(membership.playerId);
-        if (!player) return [];
-        const teamNames = [...new Set(mockTeamPlayers
-          .filter((tp) => tp.playerId === player.id && clubTeamIds.has(tp.teamId) && tp.status === "ACTIVE")
-          .map((tp) => mockTeams.find((team) => team.id === tp.teamId)?.name)
-          .filter((name): name is string => Boolean(name)))];
-        return [{ player, membership, teamNames }];
-      })
-      .sort((a, b) => `${a.player.firstName} ${a.player.lastName}`.localeCompare(`${b.player.firstName} ${b.player.lastName}`));
-  }, []);
+  // The club's members, by name, from the backend; the club comes from the administrator's login.
+  const { data, error, retry } = useClubAdminData(getClubPlayers);
+  const clubName = useContext(RoleSessionContext).signedIn?.clubName ?? "your club";
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return clubPlayers.filter(({ player, membership }) =>
-      (filter === "ALL" || membership.status === filter) &&
+    return (data ?? []).filter((player) =>
+      (filter === "ALL" || player.membership.status === filter) &&
       (!query || `${player.firstName} ${player.lastName}`.toLowerCase().includes(query) || player.id.toLowerCase().includes(query))
     );
-  }, [clubPlayers, search, filter]);
+  }, [data, search, filter]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount);
@@ -63,12 +45,12 @@ export default function ClubAdminPlayersPage() {
   return (
     <section className="text-white md:text-[#1a3049]">
       <p className="text-xs font-semibold uppercase tracking-wide text-[#d2dfed] md:text-[#526579]">
-        <span className="md:hidden">Glen Waverley · Club Admin</span>
+        <span className="md:hidden">{shortClubName(clubName)} · Club Admin</span>
         <span className="hidden md:inline">Club administration&nbsp; / &nbsp;Players</span>
       </p>
       <h1 className={`mt-5 md:mt-6 ${pageTitleClass}`}>Players</h1>
       <p className="mt-4 text-sm leading-6 text-[#d2dfed] md:text-base md:text-muted">
-        Members of Glen Waverley Tennis Club. Search by name or Player ID, and open a player to see their membership and teams.
+        Members of {clubName}. Search by name or Player ID, and open a player to see their membership and teams.
       </p>
 
       <div className="mt-5 flex flex-col gap-3 md:mt-4 md:flex-row md:items-end">
@@ -95,32 +77,38 @@ export default function ClubAdminPlayersPage() {
         </div>
       </div>
 
-      <div className={`mt-4 text-[#1a3049] ${matchCardClass}`}>
-        <h2 className="border-b border-[#dbe4ef] pb-1 text-lg font-bold">{label} ({filtered.length})</h2>
-        {visible.length === 0 ? (
-          <p className="py-8 text-sm text-muted">No players match your search.</p>
-        ) : visible.map(({ player, membership, teamNames }) => (
-          <div key={membership.id} className="border-b border-[#dbe4ef] py-3 last:border-b-0 md:flex md:items-center md:justify-between md:gap-4">
-            <div className="min-w-0">
-              <p className="font-semibold">{player.firstName} {player.lastName}</p>
-              <p className="mt-0.5 text-sm text-muted">{player.id} · {teamNames.join(", ") || "No team yet"}</p>
+      {!data ? (
+        <div className="mt-4">
+          <MatchLoadState error={error} retry={retry} />
+        </div>
+      ) : (
+        <div className={`mt-4 text-[#1a3049] ${matchCardClass}`}>
+          <h2 className="border-b border-[#dbe4ef] pb-1 text-lg font-bold">{label} ({filtered.length})</h2>
+          {visible.length === 0 ? (
+            <p className="py-8 text-sm text-muted">No players match your search.</p>
+          ) : visible.map(({ membership, teamNames, ...player }) => (
+            <div key={player.id} className="border-b border-[#dbe4ef] py-3 last:border-b-0 md:flex md:items-center md:justify-between md:gap-4">
+              <div className="min-w-0">
+                <p className="font-semibold">{player.firstName} {player.lastName}</p>
+                <p className="mt-0.5 text-sm text-muted">{player.id} · {teamNames.join(", ") || "No team yet"}</p>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-2 md:mt-0 md:justify-end">
+                <span className={`rounded-md px-2.5 py-1 text-xs font-semibold ${membership.status === "ACTIVE" ? "bg-[#e5f4ec] text-[#197354]" : "bg-[#f0f1f3] text-[#526579]"}`}>
+                  {membership.status === "ACTIVE" ? "Active" : "Inactive"}
+                </span>
+                {!membership.isPrimary && <span className="rounded-md bg-[#e8f0fa] px-2.5 py-1 text-xs font-semibold">Additional club</span>}
+                <Link to={`/club-admin/players/${player.id}`} className="ml-1 text-sm font-medium text-[#3f72af] hover:underline focus-visible:outline-2 focus-visible:outline-[#3f72af]">View ›</Link>
+              </div>
             </div>
-            <div className="mt-2 flex flex-wrap items-center gap-2 md:mt-0 md:justify-end">
-              <span className={`rounded-md px-2.5 py-1 text-xs font-semibold ${membership.status === "ACTIVE" ? "bg-[#e5f4ec] text-[#197354]" : "bg-[#f0f1f3] text-[#526579]"}`}>
-                {membership.status === "ACTIVE" ? "Active" : "Inactive"}
-              </span>
-              {!membership.isPrimary && <span className="rounded-md bg-[#e8f0fa] px-2.5 py-1 text-xs font-semibold">Additional club</span>}
-              <Link to={`/club-admin/players/${player.id}`} className="ml-1 text-sm font-medium text-[#3f72af] hover:underline focus-visible:outline-2 focus-visible:outline-[#3f72af]">View ›</Link>
-            </div>
-          </div>
-        ))}
-        <nav aria-label="Player pages" className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted">
-          <span>Showing {visible.length ? (currentPage - 1) * PAGE_SIZE + 1 : 0}–{Math.min(currentPage * PAGE_SIZE, filtered.length)} of {filtered.length} ·</span>
-          <button type="button" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)} className="disabled:opacity-40 hover:underline">‹ Previous</button>
-          <span>{currentPage} / {pageCount}</span>
-          <button type="button" disabled={currentPage === pageCount} onClick={() => setPage(currentPage + 1)} className="disabled:opacity-40 hover:underline">Next ›</button>
-        </nav>
-      </div>
+          ))}
+          <nav aria-label="Player pages" className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted">
+            <span>Showing {visible.length ? (currentPage - 1) * PAGE_SIZE + 1 : 0}–{Math.min(currentPage * PAGE_SIZE, filtered.length)} of {filtered.length} ·</span>
+            <button type="button" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)} className="disabled:opacity-40 hover:underline">‹ Previous</button>
+            <span>{currentPage} / {pageCount}</span>
+            <button type="button" disabled={currentPage === pageCount} onClick={() => setPage(currentPage + 1)} className="disabled:opacity-40 hover:underline">Next ›</button>
+          </nav>
+        </div>
+      )}
 
       <HelpTopicLink topic="players" label="How to add a player without creating a duplicate" />
     </section>

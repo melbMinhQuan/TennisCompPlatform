@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { readOrUnavailable } from '../common/data-unavailable'
-import { fullName, seasonLabel } from '../player/player-mappers'
+import { teamManagerNames } from '../common/role-holder'
+import { seasonLabel } from '../player/player-mappers'
 import { PrismaService } from '../prisma/prisma.service'
 import { isClubAdmin, playerRole } from './club-admin.service'
 import type { ClubAdminDashboard } from './club-admin.types'
@@ -43,7 +44,7 @@ export class ClubAdminDashboardService {
         this.prisma.notification.count({ where: { userId: adminUserId, channel: 'IN_APP', readAt: null } }),
         this.activity(clubId),
       ])
-      const managers = await this.managerNames(teams.map(team => team.id))
+      const managers = await teamManagerNames(this.prisma, teams.map(team => team.id))
       const today = localToday()
       const seasons = new Map(teams.map(team => [team.section.season.id, team.section.season]))
       return {
@@ -70,22 +71,6 @@ export class ClubAdminDashboardService {
         activity,
       }
     }, 'The dashboard is unavailable right now')
-  }
-
-  /** Team ID -> its current manager's name, or their email when they have no profile. */
-  private async managerNames(teamIds: string[]): Promise<Map<string, string>> {
-    if (!teamIds.length) return new Map()
-    const roles = await this.prisma.userRole.findMany({
-      where: { roleType: 'TEAM_MANAGER', revokedAt: null, teamId: { in: teamIds } },
-      include: { user: { select: { email: true, profile: { select: { firstName: true, lastName: true } } } } },
-      // The longest-serving manager wins if a team somehow has two, as roleHolderName does.
-      orderBy: [{ grantedAt: 'asc' }, { id: 'asc' }],
-    })
-    const names = new Map<string, string>()
-    for (const role of roles) {
-      if (!names.has(role.teamId!)) names.set(role.teamId!, role.user.profile ? fullName(role.user.profile) : role.user.email)
-    }
-    return names
   }
 
   /**

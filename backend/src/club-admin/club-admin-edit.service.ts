@@ -4,14 +4,12 @@ import { readOrUnavailable } from '../common/data-unavailable'
 import { fullName } from '../player/player-mappers'
 import { PrismaService } from '../prisma/prisma.service'
 import type { AddTeamPlayersDto, CreatePlayerDto, CreateTeamDto } from './club-admin.dto'
-import { ClubAdminService, isClubAdmin, playerRole } from './club-admin.service'
+import { CLOSED_SEASONS, ClubAdminService, isClubAdmin, playerRole } from './club-admin.service'
 import type { ClubPlayerDetail, ClubTeamDetail } from './club-admin.types'
 import { isCurrentMembership, localToday } from './membership'
 
 /** Why a player cannot join a squad or manage a team. */
 type Ineligible = 'PLAYER_NOT_FOUND' | 'INACTIVE_PLAYER' | 'NOT_CLUB_MEMBER' | 'ALREADY_IN_TEAM' | 'NO_LOGIN_ACCOUNT'
-
-const CLOSED_SEASONS = new Set(['COMPLETED', 'ARCHIVED'])
 
 // A user holds one role row. Losing a team-manager role turns it back into a
 // plain player role rather than revoking it, so they can still sign in as a player.
@@ -282,7 +280,7 @@ export class ClubAdminEditService {
   /** One of the club's teams whose season has not finished, so its squad and manager can still change. */
   private async openTeam(clubId: string, teamId: string) {
     const team = await this.clubTeam(clubId, teamId)
-    if (CLOSED_SEASONS.has(team.section.season.status)) {
+    if (CLOSED_SEASONS.includes(team.section.season.status)) {
       throw new ConflictException({ statusCode: 409, code: 'SEASON_CLOSED', message: 'This team\'s season has finished' })
     }
     return team
@@ -290,7 +288,7 @@ export class ClubAdminEditService {
 
   private async seasonClosed(teamId: string): Promise<boolean> {
     const team = await this.prisma.team.findUnique({ where: { id: teamId }, include: { section: { include: { season: true } } } })
-    return !team || CLOSED_SEASONS.has(team.section.season.status)
+    return !team || CLOSED_SEASONS.includes(team.section.season.status)
   }
 
   private audit(tx: Prisma.TransactionClient, changedBy: string, entityType: string, entityId: string, action: string, changeSummary: string) {

@@ -1,4 +1,4 @@
-import { mockClubAdminNotifications } from "../data/mock-club-admin-notifications";
+import { clubAdminRequest } from "./client";
 
 /** One notice for the club administrator about their club's teams or competitions (US-22). */
 export type ClubAdminNotification = {
@@ -11,21 +11,28 @@ export type ClubAdminNotification = {
   match: string | null;
   /** Type-specific payload (old/new date, old/new venue, scheduled date and time). */
   details: Record<string, unknown> | null;
-  targetType: "FIXTURE" | "COMPETITION" | null;
+  targetType: "FIXTURE" | "COMPETITION" | "RUBBER" | "MATCH_RESULT" | null;
   targetId: string | null;
   /** Null means unread. */
   readAt: string | null;
   createdAt: string;
 };
 
-/**
- * Sample notices for the display-only Sprint 2 page.
- *
- * Planned endpoints for the API team: GET /api/v1/club-admin/notifications returning
- * { data: ClubAdminNotification[] } (IN_APP rows for the admin's own club only, newest first),
- * and PATCH /api/v1/club-admin/notifications/:id/read. Errors must not fall back to this sample.
- */
-export async function getClubAdminNotifications(signal: AbortSignal): Promise<ClubAdminNotification[]> {
-  signal.throwIfAborted();
-  return structuredClone(mockClubAdminNotifications);
+/** GET /api/v1/club-admin/notifications: the administrator's own in-app notices, newest first. */
+export function getClubAdminNotifications(signal: AbortSignal, identity?: string): Promise<ClubAdminNotification[]> {
+  return clubAdminRequest("notifications", identity, signal, "We couldn’t load your notifications. Please try again.");
+}
+
+/** PATCH /api/v1/club-admin/notifications/:id/read. Answers the notice as now stored. */
+export function markClubAdminNotificationRead(id: string, identity: string | undefined, signal: AbortSignal): Promise<ClubAdminNotification> {
+  return clubAdminRequest(`notifications/${encodeURIComponent(id)}/read`, identity, signal, "We couldn’t mark this notification as read. Please try again.", {
+    method: "PATCH",
+  });
+}
+
+/** PATCH /api/v1/club-admin/notifications/read-all. Answers how many notices changed. */
+export function markAllClubAdminNotificationsRead(identity: string | undefined, signal: AbortSignal): Promise<{ updated: number }> {
+  return clubAdminRequest("notifications/read-all", identity, signal, "We couldn’t mark your notifications as read. Please try again.", {
+    method: "PATCH",
+  });
 }

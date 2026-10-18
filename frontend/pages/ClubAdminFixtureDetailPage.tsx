@@ -1,6 +1,7 @@
+import { useCallback } from "react";
 import { Link, useParams } from "react-router";
-import { getClubAdminFixtures, isClubFixture } from "../api/club-admin-fixtures";
-import { useApiData } from "../api/useApiData";
+import { getClubAdminFixture } from "../api/club-admin-fixtures";
+import { useClubAdminData } from "../api/useApiData";
 import FixtureStatusBadge from "../components/club-admin/fixtures/FixtureStatusBadge";
 import RubberScoreCard from "../components/club-admin/fixtures/RubberScoreCard";
 import MatchLoadState from "../components/MatchLoadState";
@@ -11,11 +12,15 @@ const termClass = "text-xs font-medium uppercase text-muted";
 
 /** One fixture involving the administrator's club, with its scorecard when a result is recorded. */
 export default function ClubAdminFixtureDetailPage() {
-  const { fixtureId } = useParams();
-  const { data, error, retry } = useApiData(getClubAdminFixtures);
-  if (!data) return <MatchLoadState error={error} retry={retry} />;
+  const { fixtureId = "" } = useParams();
+  // Null when the club does not play in it: the backend checks, so another club's fixture never loads.
+  const load = useCallback(
+    (signal: AbortSignal, identity?: string) => getClubAdminFixture(fixtureId, signal, identity),
+    [fixtureId],
+  );
+  const { data: fixture, error, retry } = useClubAdminData(load);
+  if (fixture === undefined) return <MatchLoadState error={error} retry={retry} />;
 
-  const fixture = data.find((item) => item.id === fixtureId && isClubFixture(item));
   if (!fixture) {
     return (
       <section className={matchCardClass}>

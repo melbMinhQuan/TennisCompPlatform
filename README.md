@@ -157,19 +157,25 @@ test's name starts with its ID (e.g. `AUTH-002`), so a failure points straight t
 | Unit | One function or service, with a fake database | `backend/test/`, `frontend/tests/` | `npm test` |
 | Integration | A real HTTP route, or a rendered React component | same folders; `I-` IDs | `npm test` |
 | Database | The seed and player matching against a real Postgres, rolled back afterwards | `backend/test/seed-competition.integration.cjs`, `player-matching.integration.cjs` | `npm run test:database --workspace=backend` |
-| End to end | The whole app in Chrome against the real seeded database | `e2e/` | `npm run test:e2e` |
+| End to end | The whole app in Chrome against the real seeded database, as players and club administrators | `e2e/` | `npm run test:e2e` |
 | Live | The deployed site in a browser, after each release | `e2e/live/`; `LIVE-` IDs | CI only (see below) |
 
 `npm run test:e2e` reuses the backend and frontend if they are already running; otherwise it
 starts them. It uses your installed Google Chrome. When a test fails, a screenshot and a
 step-by-step trace are saved in `test-results/`.
 
+Two end-to-end tests change the database, as a club administrator would: E2E-017 enters a team
+for Wheelers Hill and picks its squad and manager, and E2E-018 registers a new player whom
+Burwood then adds. Each run uses names no other run uses, in clubs no other test reads, so they
+can run again and again. CI's database is thrown away after each run; to clear them from yours,
+run `npm run seed:competition -- --sync` in `backend/`.
+
 **Coverage.** `npm run test:coverage` in either workspace reports which code the tests run, and
 fails if it drops below a minimum set a few points under the October 2026 level (backend:
 `test:coverage` in `backend/package.json`; frontend: `frontend/vite.config.ts`). The frontend
 figure is low on purpose: pages are tested end to end, which coverage does not count, so the
 logic in `api/`, `context/` and `utils/` has a stricter minimum of its own. The club
-administrator pages have no end-to-end tests yet; add them before raising the frontend minimum.
+administrator pages are also rendered against a fake backend (`frontend/tests/club-admin-pages.test.tsx`).
 
 **CI/CD:** GitHub Actions (`.github/workflows/ci.yml`) runs on every push and pull request:
 
@@ -256,7 +262,7 @@ All player routes take `?email=` (the logged-in player's address) and answer `{ 
 
 | Route | Returns | Used by |
 | --- | --- | --- |
-| `POST /auth/login` | `{ "result": "login_success" }` or `"login_failed"` (both status 200) | Login |
+| `POST /auth/login` | `{ "result": "login_success" }` with the account's `role`, `clubId`, `clubName` and `displayName`, or `"login_failed"` (both status 200) | Login |
 | `GET /api/v1/player-dashboard` | Profile, UTR, career summary, 4 newest notifications | Profile |
 | `GET /api/v1/player-dashboard/notifications` | All notifications and the unread count | Notifications → View All |
 | `GET /api/v1/player/competitions` | One entry per active team, with its next fixture | Competitions |
@@ -270,6 +276,11 @@ All player routes take `?email=` (the logged-in player's address) and answer `{ 
 Errors: `400` for a bad email or team ID. `404` with `USER_NOT_FOUND`,
 `PLAYER_PROFILE_NOT_LINKED` or `TEAM_NOT_FOUND`. `503 DATA_UNAVAILABLE` when the database can't be
 read.
+
+The club administrator pages use `/api/v1/club-admin/*`, which also take `?email=` (the
+administrator's) and work out the club from their CLUB_ADMIN role, never from the request. They
+are described in `docs/club-admin-dashboard.md`, `club-admin-edits.md` (players, teams, squads,
+managers), `club-admin-fixtures.md`, `club-admin-notifications.md` and `club-admin-support.md`.
 
 **The email is a demo lookup, not real authentication.** These routes refuse all requests when
 `NODE_ENV=production`, until proper sessions are built.

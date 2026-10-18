@@ -1,21 +1,22 @@
-# Club Admin notifications: display-only Sprint 2 implementation
+# Club Admin notifications
 
-Route: `/club-admin/notifications` (US-22, Should). `ClubAdminNotificationsPage.tsx` loads the sample through `api/club-admin-notifications.ts` and renders one `components/club-admin/ClubAdminNotificationRow.tsx` per notice. No live API calls are made. "Mark as read" and "Mark all as read" update a shared in-memory read state (`data/club-admin-notification-reads.ts`) and reset on reload.
+Route: `/club-admin/notifications` (US-22, Should). `ClubAdminNotificationsPage.tsx` renders one
+`components/club-admin/ClubAdminNotificationRow.tsx` per notice. The notices are loaded once per
+visit by `context/ClubAdminNotifications.tsx`, which wraps every club admin page: the
+Notifications page, the sidebar badge and the dashboard's unread tile all read that one list, so
+they always agree. "Mark as read" and "Mark all as read" are saved with the PATCH routes below,
+and the list is then updated from the answer, so a reload shows the same state. A failed save
+shows an error and leaves the notice unread. "View fixture ›" opens the fixture the notice is about.
 
-The sidebar badge and the dashboard's unread tile read the same state (`useClubAdminUnreadCount`), so all three update together.
-
-## Sample data
-
-`data/mock-club-admin-notifications.ts` holds five unread notices:
-
-1. Four IN_APP notices from `backend/prisma/competition_data.xlsx` for fixtures involving Glen Waverley Tennis Club (CLB01): Match Reminder (Round 13), Venue Changed (Round 14), Match Postponed (Round 12) and Match Date Changed (Round 13). Type, details, fixture and date match the workbook. Titles and messages are reworded for the club administrator, because the workbook's text is written for a player.
-2. One sample COMPETITION_UPDATE ("Summer 2026/27 Team Entries Open"). The workbook has no rows of this type yet.
+There is no sample data. The seed has no notices for club administrators yet (gap 2 below), so a
+seeded club admin sees "You're all caught up" (E2E-015); the page's behaviour with notices is
+tested against a fake backend (I-UI-007).
 
 ## Backend API
 
 Built in [`club-admin-notification.service.ts`](../backend/src/club-admin/club-admin-notification.service.ts),
 tests in [`club-admin-notification.test.cjs`](../backend/test/club-admin-notification.test.cjs) (I-CLUBNOTE-*).
-The frontend still uses the sample and the in-memory read state; connect it to these.
+The frontend uses all three.
 
 | Method | Endpoint | Notes |
 | --- | --- | --- |
@@ -31,12 +32,10 @@ The response matches the `ClubAdminNotification` type in `api/club-admin-notific
 `match` is built from `targetType`/`targetId` → `Fixture` → home and away `Team`: "Round 13 ·
 Syndal A vs Glen Waverley A", or the round label for finals ("Grand Final · …"). It is null for
 other targets, or when the fixture no longer exists. `targetType` can also be `RUBBER` or
-`MATCH_RESULT`, which the frontend type does not list yet. IDs are database UUIDs, not the
-sample's `GW-REMINDER-R13`.
+`MATCH_RESULT`. IDs are database UUIDs.
 
-The frontend can then drop the in-memory read state: after a PATCH, update the row from the
-response. The unread count for the sidebar badge and the dashboard tile is the number of rows
-with `readAt` null.
+The unread count for the sidebar badge and the dashboard tile is the number of rows with
+`readAt` null.
 
 ## Database gaps to discuss
 

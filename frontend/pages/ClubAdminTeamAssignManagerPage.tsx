@@ -1,91 +1,67 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   Link,
   useNavigate,
   useParams,
 } from "react-router";
-import {
-  mockTeams,
-  mockPlayers,
-  mockClubMemberships,
-} from "../data/mock-club-admin-players";
-import {
-  assignTeamManager,
-  useTeamManagers,
-} from "../data/teamManagerStore";
-import { useTeamPlayers } from "../data/teamSquadStore";
+import { getClubPlayers, type ClubPlayer } from "../api/club-admin-players";
+import { assignTeamManager, getClubTeam } from "../api/club-admin-teams";
+import { useClubAdminData } from "../api/useApiData";
+import { useClubAdminAction } from "../api/useClubAdminAction";
+import MatchLoadState from "../components/MatchLoadState";
 import {
   matchButtonClass,
   matchCardClass,
   matchLightButtonClass,
   pageTitleClass,
 } from "../components/MatchesUI";
-import { clubAdminClubId } from "../data/club-admin-dashboard";
-import { seasonOf } from "../data/club-admin-sections";
 
-// A user has one role. These players already hold an association role in the seed data
-// (UserRole UR001 and UR002), so the backend refuses them as managers (HOLDS_ANOTHER_ROLE).
+// A user has one role, so holding any of these rules them out (HOLDS_ANOTHER_ROLE).
 const OTHER_ROLES: Record<string, string> = {
-  PLR001: "Association administrator",
-  PLR002: "Records secretary",
+  ADMINISTRATOR: "Association administrator",
+  RECORDS_SECRETARY: "Records secretary",
+  CLUB_ADMIN: "Club administrator",
+  PUBLIC: "Public account",
 };
 
-// The signed-in administrator's club (sample until the login returns it).
-const CLUB_ID = clubAdminClubId;
-
 export default function ClubAdminTeamAssignManagerPage() {
-  const { teamId } = useParams<{ teamId: string }>();
+  const { teamId = "" } = useParams<{ teamId: string }>();
   const navigate = useNavigate();
-  const managers = useTeamManagers();
-  const teamPlayers = useTeamPlayers();
 
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState("");
 
-  const team = mockTeams.find(
-    (item) => item.id === teamId && item.clubId === CLUB_ID
+  // The team (current manager and squad) and the club's members, who are the only candidates.
+  const loadTeam = useCallback(
+    (signal: AbortSignal, identity?: string) => getClubTeam(teamId, signal, identity),
+    [teamId],
   );
+  const teamData = useClubAdminData(loadTeam);
+  const playersData = useClubAdminData(getClubPlayers);
+  const team = teamData.data;
+  const action = useClubAdminAction();
 
   /**
-   * Why a player can't manage this team, matching the backend's rules: one role per user, and
-   * one team at a time while that team's season is upcoming or active. "" means they can.
+   * Why a player can't manage this team, matching the backend's rules: a login account, one role
+   * per user, and one team at a time while that team's season is upcoming or active. "" means they can.
    */
-  function blockedReason(playerId: string) {
-    if (OTHER_ROLES[playerId]) return `Holds another role (${OTHER_ROLES[playerId]})`;
-    const otherTeam = Object.entries(managers).find(([managedTeamId, managerId]) => {
-      if (managerId !== playerId || managedTeamId === teamId) return false;
-      const managed = mockTeams.find((item) => item.id === managedTeamId);
-      const status = managed ? seasonOf(managed.seasonId)?.status : undefined;
-      return status === "ACTIVE" || status === "UPCOMING";
-    });
-    if (otherTeam) {
-      const managed = mockTeams.find((item) => item.id === otherTeam[0]);
-      return `Already manages ${managed?.name ?? "another team"}`;
-    }
+  function blockedReason(player: ClubPlayer) {
+    if (!player.hasLogin) return "No login account";
+    if (player.role && OTHER_ROLES[player.role]) return `Holds another role (${OTHER_ROLES[player.role]})`;
+    if (player.managedTeam && player.managedTeam.id !== teamId) return `Already manages ${player.managedTeam.name}`;
     return "";
   }
 
-  const currentManagerId = teamId
-    ? managers[teamId]
-    : undefined;
+  const currentManagerId = team?.manager?.playerId ?? undefined;
 
   const candidates = useMemo(() => {
-    const activeClubPlayerIds = new Set(
-      mockClubMemberships
-        .filter(
-          (membership) =>
-            membership.clubId === CLUB_ID &&
-            membership.status === "ACTIVE"
-        )
-        .map((membership) => membership.playerId)
-    );
     const query = search.trim().toLowerCase();
 
-    return mockPlayers
+    return (playersData.data ?? [])
       .filter(
         (player) =>
           player.status === "ACTIVE" &&
-          activeClubPlayerIds.has(player.id) &&
+          player.membership.status === "ACTIVE" &&
           (!query ||
             `${player.firstName} ${player.lastName}`
               .toLowerCase()
@@ -97,7 +73,11 @@ export default function ClubAdminTeamAssignManagerPage() {
           `${b.firstName} ${b.lastName}`
         )
       );
-  }, [search]);
+  }, [search, playersData.data]);
+
+  if (team === undefined || !playersData.data) {
+    return <MatchLoadState error={teamData.error ?? playersData.error} retry={() => { teamData.retry(); playersData.retry(); }} />;
+  }
 
   if (!team) {
     return (
@@ -114,23 +94,17 @@ export default function ClubAdminTeamAssignManagerPage() {
   const detailPath = `/club-admin/teams/${targetTeamId}`;
   const selectedManagerId = selectedId || currentManagerId || "";
   const squadPlayerIds = new Set(
-    teamPlayers
-      .filter(
-        (teamPlayer) =>
-          teamPlayer.teamId === targetTeamId &&
-          teamPlayer.status === "ACTIVE"
-      )
-      .map((teamPlayer) => teamPlayer.playerId)
+    team.players
+      .filter((teamPlayer) => teamPlayer.status === "ACTIVE")
+      .map((teamPlayer) => teamPlayer.id)
   );
+  const selectedPlayer = candidates.find((player) => player.id === selectedManagerId);
 
-  function handleAssign() {
-    const isEligible = candidates.some(
-      (player) => player.id === selectedManagerId
-    ) && !blockedReason(selectedManagerId);
+  async function handleAssign() {
+    if (!selectedPlayer || blockedReason(selectedPlayer)) return;
 
-    if (!isEligible) return;
-
-    assignTeamManager(targetTeamId, selectedManagerId);
+    const updated = await action.run((email, signal) => assignTeamManager(targetTeamId, selectedPlayer.id, email, signal));
+    if (!updated) return;
     navigate(detailPath, {
       state: { managerUpdated: true },
     });
@@ -189,7 +163,7 @@ export default function ClubAdminTeamAssignManagerPage() {
             </p>
           ) : (
             candidates.map((player) => {
-              const reason = blockedReason(player.id);
+              const reason = blockedReason(player);
               return (
               <label
                 key={player.id}
@@ -229,6 +203,12 @@ export default function ClubAdminTeamAssignManagerPage() {
           )}
         </div>
 
+        {action.error && (
+          <p role="alert" className="mt-4 text-sm text-red-600">
+            {action.error}
+          </p>
+        )}
+
         <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <Link
             to={detailPath}
@@ -240,13 +220,11 @@ export default function ClubAdminTeamAssignManagerPage() {
           <button
             type="button"
             disabled={
-              !selectedManagerId ||
-              !candidates.some(
-                (player) => player.id === selectedManagerId
-              ) ||
-              Boolean(blockedReason(selectedManagerId))
+              !selectedPlayer ||
+              Boolean(blockedReason(selectedPlayer)) ||
+              action.busy
             }
-            onClick={handleAssign}
+            onClick={() => void handleAssign()}
             className={`${matchButtonClass} disabled:cursor-not-allowed disabled:opacity-50`}
           >
             Assign manager

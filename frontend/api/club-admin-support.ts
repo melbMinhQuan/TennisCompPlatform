@@ -1,4 +1,4 @@
-import { mockClubAdminSupportContacts } from "../data/mock-club-admin-support-contacts";
+import { clubAdminRequest } from "./client";
 
 /** Who a club administrator contacts for help. Any part can be null when it isn't known. */
 export type ClubAdminSupportContactsData = {
@@ -19,15 +19,7 @@ export type ClubAdminSupportContactsData = {
   } | null;
 };
 
-/**
- * Sample contacts for the display-only Sprint 2 page.
- *
- * Planned endpoint for the API team: GET /api/v1/club-admin/support-contacts,
- * returning { data: ClubAdminSupportContactsData } for the logged-in club administrator's
- * club only (US-18). Connect it once login returns the role; errors must not
- * fall back to this sample.
- */
-export async function getClubAdminSupportContacts(signal: AbortSignal): Promise<ClubAdminSupportContactsData> {
-  signal.throwIfAborted();
-  return structuredClone(mockClubAdminSupportContacts);
+/** GET /api/v1/club-admin/support-contacts, for the signed-in administrator's own club (US-18). */
+export function getClubAdminSupportContacts(signal: AbortSignal, identity?: string): Promise<ClubAdminSupportContactsData> {
+  return clubAdminRequest("support-contacts", identity, signal, "Could not load your contacts.");
 }

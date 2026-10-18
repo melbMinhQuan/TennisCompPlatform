@@ -1,21 +1,25 @@
-import { useMemo, useState } from "react";
+import { useContext, useState } from "react";
 import { Link } from "react-router";
-import { mockPlayers, mockClubs, mockClubMemberships } from "../data/mock-club-admin-players";
-import type { ClubAdminPlayer } from "../types/clubAdminPlayer";
+import {
+  addClubMember,
+  createClubPlayer,
+  searchRegistry,
+  type ClubPlayerDetail,
+  type NewPlayerDetails,
+  type RegistryMatch,
+} from "../api/club-admin-players";
+import { useClubAdminAction } from "../api/useClubAdminAction";
+import { RoleSessionContext } from "../context/RoleSession";
 import {
   matchButtonClass,
   matchCardClass,
   matchLightButtonClass,
   pageTitleClass,
 } from "../components/MatchesUI";
-import { clubAdminClubId } from "../data/club-admin-dashboard";
-import CreatePlayerForm, { type NewPlayerDetails } from "../components/club-admin/players/CreatePlayerForm";
+import CreatePlayerForm from "../components/club-admin/players/CreatePlayerForm";
+import { shortClubName } from "../utils/formatters";
 
 type Stage = "search" | "choose" | "create" | "done";
-type Result = { player: ClubAdminPlayer; score: number };
-// The signed-in administrator's club (sample until the login returns it).
-const CLUB_ID = clubAdminClubId;
-const clubName = mockClubs.find((club) => club.id === CLUB_ID)?.name ?? "Glen Waverley Tennis Club";
 const button = matchButtonClass;
 const secondary = matchLightButtonClass;
 const inputStyle = "mt-1 min-h-11 w-full rounded-lg border border-[#c8d8e9] bg-white px-4 text-[#1a3049] outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3f72af]";
@@ -47,30 +51,15 @@ export default function ClubAdminAddPlayerPage() {
   const [fullName, setFullName] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [email, setEmail] = useState("");
-  const [selected, setSelected] = useState<ClubAdminPlayer | null>(null);
+  const [results, setResults] = useState<RegistryMatch[]>([]);
+  const [selected, setSelected] = useState<ClubPlayerDetail | null>(null);
   const [created, setCreated] = useState(false);
   const [error, setError] = useState("");
+  // The registry search, "Add to my club" and "Create new player" all go to the backend.
+  const action = useClubAdminAction();
+  const clubName = useContext(RoleSessionContext).signedIn?.clubName ?? "your club";
 
-  const results = useMemo<Result[]>(() => {
-    const name = normalize(fullName);
-    const dob = toISODate(dateOfBirth);
-    const mail = normalize(email);
-    if (!name) return [];
-    return mockPlayers.flatMap((player) => {
-      const candidate = normalize(`${player.firstName} ${player.lastName}`);
-      const exact = candidate === name;
-      const similar = candidate.includes(name) || name.includes(candidate) ||
-        candidate.split(" ").some((part) => part.length > 2 && name.split(" ").includes(part));
-      if (!exact && !similar) return [];
-      let score = exact ? 100 : 20;
-      if (dob && player.dateOfBirth === dob) score += 30;
-      if (mail && normalize(player.email ?? "") === mail) score += 30;
-      return [{ player, score }];
-    }).sort((a, b) => b.score - a.score).slice(0, 20);
-  }, [fullName, dateOfBirth, email]);
-
-  
-  function search(event: React.FormEvent<HTMLFormElement>) {
+  async function search(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (!fullName.trim()) {
@@ -84,53 +73,50 @@ export default function ClubAdminAddPlayerPage() {
     }
 
     setError("");
+    const found = await action.run((admin, signal) =>
+      searchRegistry({ name: fullName.trim(), dateOfBirth: toISODate(dateOfBirth), playerEmail: normalize(email) }, admin, signal),
+    );
+    if (!found) return;
+    setResults(found);
     setStage("choose");
   }
 
-
-  function choose(player: ClubAdminPlayer) {
-    // Frontend-only prototype: no database mutation occurs here.
-    setSelected(player);
+  /** Makes a registered player a member of the club from today, keeping their Player ID. */
+  async function choose(player: RegistryMatch) {
+    const member = await action.run((admin, signal) => addClubMember(player.id, admin, signal));
+    if (!member) return;
+    setSelected(member);
     setCreated(false);
     setStage("done");
   }
 
   /**
-   * Same checks as POST /api/v1/club-admin/players: a player with the same name (ignoring case) and
-   * date of birth is a possible duplicate, so the admin is asked to add that player instead.
+   * Registers someone new (POST /api/v1/club-admin/players). A player with the same name (ignoring
+   * case) and date of birth is a possible duplicate, so the admin is asked to add that player instead.
    */
-  function createPlayer(details: NewPlayerDetails) {
-    const name = normalize(`${details.firstName} ${details.lastName}`);
-    const duplicate = mockPlayers.find(
-      (player) => normalize(`${player.firstName} ${player.lastName}`) === name && player.dateOfBirth === details.dateOfBirth,
+  async function createPlayer(details: NewPlayerDetails) {
+    const player = await action.run(
+      (admin, signal) => createClubPlayer(details, admin, signal),
+      (refusal) => refusal.code === "POSSIBLE_DUPLICATE"
+        ? `${details.firstName} ${details.lastName} (${String(refusal.body?.playerId ?? "")}) already has a record with this date of birth. Go back to the results and add that player instead.`
+        : null,
     );
-    if (duplicate) {
-      return `${duplicate.firstName} ${duplicate.lastName} (${duplicate.id}) already has a record with this date of birth. Go back to the results and add that player instead.`;
-    }
-    setSelected({ id: `DEMO-${Date.now()}`, ...details, email: null, phone: null, status: "ACTIVE" });
+    if (!player) return;
+    setSelected(player);
     setCreated(true);
     setStage("done");
-    return "";
   }
-
-  const alreadyInClub = (playerId: string) => mockClubMemberships.some(
-    (membership) => membership.playerId === playerId && membership.clubId === CLUB_ID && membership.status === "ACTIVE"
-  );
-  const otherClubs = (playerId: string) => mockClubMemberships
-    .filter((membership) => membership.playerId === playerId && membership.clubId !== CLUB_ID && membership.status === "ACTIVE")
-    .map((membership) => mockClubs.find((club) => club.id === membership.clubId)?.name)
-    .filter((name): name is string => Boolean(name));
 
   function reset() {
     setStage("search"); setFullName(""); setDateOfBirth(""); setEmail("");
-    setSelected(null); setCreated(false); setError("");
+    setResults([]); setSelected(null); setCreated(false); setError(""); action.clearError();
   }
 
   return (
     <section className="text-white md:text-[#1a3049]">
       <p className="text-xs font-semibold uppercase tracking-wide text-[#d2dfed] md:text-muted">Players / Add a player</p>
       {stage !== "done" && (
-        <button type="button" onClick={() => stage === "choose" ? setStage("search") : stage === "create" ? setStage("choose") : window.history.back()}
+        <button type="button" onClick={() => { action.clearError(); if (stage === "choose") setStage("search"); else if (stage === "create") setStage("choose"); else window.history.back(); }}
           className={`${secondary} mt-5`}>
           ‹ {stage === "choose" ? "Change search" : stage === "create" ? "Back to results" : "Players"}
         </button>
@@ -200,20 +186,21 @@ export default function ClubAdminAddPlayerPage() {
               <span className="mt-1 block text-xs font-normal text-muted">Optional. Only used to find a match</span>
             </label>
           </div>
-          <p className="mt-4 text-sm text-muted">This demo searches a small sample from across Waverley Tennis. The live registry will search all clubs. Results never show date of birth or contact details.</p>
-          {error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
-          <button className={`${button} mt-4 w-full md:w-auto`} type="submit">Search</button>
+          <p className="mt-4 text-sm text-muted">Searches every registered player, in every club. Results never show date of birth or contact details.</p>
+          {(error || action.error) && <p role="alert" className="mt-2 text-sm text-red-700">{error || action.error}</p>}
+          <button className={`${button} mt-4 w-full md:w-auto`} type="submit" disabled={action.busy}>{action.busy ? "Searching…" : "Search"}</button>
         </form>
       )}
 
       {stage === "choose" && (
         <div className="mt-5">
           <h2 className="mb-4 text-lg font-bold">{results.length} results for “{fullName.trim()}”</h2>
+          {action.error && <p role="alert" className="mb-4 rounded-lg bg-white p-3 text-sm text-red-700">{action.error}</p>}
           <div className="space-y-4">
-            {results.map(({ player }) => {
-              const member = alreadyInClub(player.id);
-              const clubs = otherClubs(player.id);
-              const exact = normalize(`${player.firstName} ${player.lastName}`) === normalize(fullName);
+            {results.map((player) => {
+              const member = player.inThisClub;
+              const clubs = player.otherClubs;
+              const exact = player.match.name === "exact";
               return (
                 <article key={player.id} className="rounded-2xl bg-white p-5 text-[#1a3049] md:p-6">
                   <div className="flex flex-col-reverse items-start justify-between gap-2 md:flex-row">
@@ -222,12 +209,12 @@ export default function ClubAdminAddPlayerPage() {
                       {member ? "Already in your club" : exact ? "In another club / Not a member" : "Possible match"}
                     </span>
                   </div>
-                  <p className="mt-2 text-sm font-medium">Name {exact ? "✓" : "similar"} {dateOfBirth && ` · Date of birth ${toISODate(dateOfBirth) === player.dateOfBirth ? "✓" : "×"}`} {email && ` · Email ${normalize(email) === normalize(player.email ?? "") ? "✓" : "×"}`}</p>
-                  <p className="mt-2 text-sm text-muted">{member ? "Already a Glen Waverley member. There is nothing to add." : clubs.length ? `Plays for ${clubs.join(", ")}. Adding them keeps the same Player ID and history.` : "No active club membership found in the mock data."}</p>
+                  <p className="mt-2 text-sm font-medium">Name {exact ? "✓" : "similar"} {player.match.dateOfBirth !== null && ` · Date of birth ${player.match.dateOfBirth ? "✓" : "×"}`} {player.match.email !== null && ` · Email ${player.match.email ? "✓" : "×"}`}</p>
+                  <p className="mt-2 text-sm text-muted">{member ? `Already a ${shortClubName(clubName)} member. There is nothing to add.` : clubs.length ? `Plays for ${clubs.join(", ")}. Adding them keeps the same Player ID and history.` : "No current club membership."}</p>
                   {member ? (
                     <Link to={`/club-admin/players/${player.id}`} className={`${secondary} mt-3 w-full md:w-auto`}>View player</Link>
                   ) : (
-                    <button type="button" onClick={() => choose(player)} className={`${exact ? button : secondary} mt-3 w-full md:w-auto`}>Add to my club</button>
+                    <button type="button" disabled={action.busy} onClick={() => void choose(player)} className={`${exact ? button : secondary} mt-3 w-full md:w-auto`}>Add to my club</button>
                   )}
                 </article>
               );
@@ -248,16 +235,18 @@ export default function ClubAdminAddPlayerPage() {
           initialDateOfBirth={dateOfBirth}
           toISODate={toISODate}
           onCreate={createPlayer}
-          onCancel={() => setStage("choose")}
+          busy={action.busy}
+          error={action.error}
+          onCancel={() => { action.clearError(); setStage("choose"); }}
         />
       )}
 
       {stage === "done" && selected && (
         <div className="mt-5">
           <div role="status" className="rounded-2xl bg-[#e3f5eb] p-6 text-[#175e48]">
-            <p className="text-xs font-semibold">✓ {created ? "New player created (demo)" : "Added to your club (demo)"}</p>
+            <p className="text-xs font-semibold">✓ {created ? "New player created" : "Added to your club"}</p>
             <h2 className="mt-3 text-xl font-bold">{selected.firstName} {selected.lastName} is now in {clubName}</h2>
-            <p className="mt-2 text-sm">Player ID {selected.id}. {created ? "This is a temporary demo record." : "Their existing Player ID and history stay the same."} No changes have been saved to the database.</p>
+            <p className="mt-2 text-sm">Player ID {selected.id}. {created ? "They are a member of your club from today." : "Their existing Player ID and history stay the same."}</p>
           </div>
           <div className="mt-4 rounded-2xl bg-white p-5 text-[#1a3049] md:p-6">
             <h3 className="mb-4 text-lg font-bold">What next?</h3>

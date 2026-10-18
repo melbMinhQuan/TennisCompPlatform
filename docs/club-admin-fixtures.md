@@ -2,17 +2,17 @@
 
 Routes: `/club-admin/fixtures`, `?view=results`, and `/club-admin/fixtures/:fixtureId`.
 
-Display-only Sprint 2 page (components in `frontend/components/club-admin/fixtures/`) using the shared Player/Club Admin colours, cards, buttons and responsive shell. The API adapter returns a hardcoded snapshot of the current `competition_data.xlsx` for CLB01; it does not query the running database. Existing workbook fixture codes are used as sample route IDs; live API IDs may be UUIDs.
+View-only page (components in `frontend/components/club-admin/fixtures/`) using the shared Player/Club Admin colours, cards, buttons and responsive shell. `api/club-admin-fixtures.ts` loads the two routes below as the signed-in administrator: the list for the Fixtures and Results tabs, and one fixture for the detail page. Route IDs are database UUIDs. A failed request shows an error and a retry button; there is no sample data.
 
-72 fixtures: 28 Weekend Senior Winter 2026, 14 Weekend Senior Winter 2025, 14 Weekend Senior Summer 2025 and 16 Night Tennis Autumn 2026. The fixture view includes four SCHEDULED rows with past dates and one POSTPONED row with no date/time. Results come from MatchResult and include status, rubber players and home–away set scores. Missing values display unavailable/TBC rather than zero. Dates are date-only and clock times are local to the venue.
+Glen Waverley's seeded data has 72 fixtures: 28 Weekend Senior Winter 2026, 14 Weekend Senior Winter 2025, 14 Weekend Senior Summer 2025/26 and 16 Night Tennis Autumn 2026, 67 of them with a result (E2E-014 opens the newest). The fixture view includes SCHEDULED rows with past dates and one POSTPONED row with no date/time. Results come from MatchResult and include status, rubber players and home–away set scores. Missing values display unavailable/TBC rather than zero. Dates are date-only and clock times are local to the venue.
 
-Filters support competition/season, own-club team and text search, with eight rows per page. Opponent teams are visible in matches but not selectable as the administrator's club teams. Details reject unknown/out-of-scope fixture IDs. There are no result entry, correction, dispute or scheduling actions: those are outside Club Administrator Sprint 2 scope under User Stories v2.1. The page links to Help for escalation.
+Filters support competition/season, own-club team and text search, with eight rows per page. Opponent teams are visible in matches but not selectable as the administrator's club teams: a team is the club's when its `clubId` is the fixture's `clubId`. The detail page shows "Fixture not found" when the backend answers 404 (another club's or an unknown fixture) or 400 (not an ID). There are no result entry, correction, dispute or scheduling actions: those are outside Club Administrator Sprint 2 scope under User Stories v2.1. The page links to Help for escalation.
 
 ## Backend API
 
 Built in [`club-admin-fixture.service.ts`](../backend/src/club-admin/club-admin-fixture.service.ts),
 tests in [`club-admin-fixture.test.cjs`](../backend/test/club-admin-fixture.test.cjs) (I-CLUBFIX-*).
-The frontend still uses the snapshot; connect it to these.
+The frontend uses both.
 
 | Method | Endpoint | Notes |
 | --- | --- | --- |
@@ -26,13 +26,11 @@ players. A database failure is a 503 `DATA_UNAVAILABLE`.
 The shape matches `ClubAdminFixture` in `api/club-admin-fixtures.ts`, with these details:
 
 - IDs are database UUIDs, not the workbook codes (`FIX0001`, `TEAM001`, `SEA01`). `clubId` is
-  the club's UUID, so `isClubFixture` and `clubTeamsOf` should compare with it instead of the
-  hardcoded `clubAdminClubId`.
+  the club's UUID, which `isClubFixture` and `clubTeamsOf` compare each side's `clubId` with.
 - `round` is "Round 13", the finals label ("Grand Final"), or "Round to be confirmed".
 - `changed` is true when the fixture has any `FixtureScheduleChange` row.
 - `result` is null until a result is submitted: a DRAFT `MatchResult` is not shown. Rubbers are
   in rubber order, with players by `playerOrder` and sets home first. A rubber's `outcome` is
-  null when it is not recorded; it can also be `RETIRED` or `ABANDONED`, which the frontend
-  comment does not list.
+  null when it is not recorded; it can also be `RETIRED` or `ABANDONED`.
 
-No schema changes are required for the shown fields: Fixture joins Team, SectionGrade, Season, Competition, Venue, FixtureScheduleChange and MatchResult → Rubber/RubberPlayer/RubberSet. Current seed has no dated future fixtures for Glen Waverley. Rounds 13 and 14 (26 Sep to 3 Oct 2026) are still SCHEDULED in the past, the postponed Round 12 fixture has no new date, and there are no later rounds or finals although Winter 2026 runs until 24 Oct. The page labels past SCHEDULED fixtures without a result as “Result not entered”. Re-date or complete these rows and add the remaining rounds so the Fixtures tab can show upcoming matches. The local workbook on this branch does not yet include Summer 2026/27 (SEA05) from `develop`. Tiebreak-point detail can be added to the view model later if required; this page shows set game scores only.
+No schema changes are required for the shown fields: Fixture joins Team, SectionGrade, Season, Competition, Venue, FixtureScheduleChange and MatchResult → Rubber/RubberPlayer/RubberSet. Current seed has no dated future fixtures for Glen Waverley. Rounds 13 and 14 (26 Sep to 3 Oct 2026) are still SCHEDULED in the past, the postponed Round 12 fixture has no new date, and there are no later rounds or finals although Winter 2026 runs until 24 Oct. The page labels past SCHEDULED fixtures without a result as “Result not entered”. Re-date or complete these rows and add the remaining rounds so the Fixtures tab can show upcoming matches. Tiebreak-point detail can be added to the view model later if required; this page shows set game scores only.

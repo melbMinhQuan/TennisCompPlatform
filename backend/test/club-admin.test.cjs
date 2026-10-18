@@ -46,7 +46,7 @@ const roles = [
   { userId: 'user-old-sec', roleType: 'RECORDS_SECRETARY', clubId: null, associationId: 'assoc-waverley', revokedAt: new Date(), player: { firstName: 'Old', lastName: 'Secretary' } },
   { userId: 'user-mia', roleType: 'RECORDS_SECRETARY', clubId: null, associationId: 'assoc-waverley', revokedAt: null, player: { firstName: 'Mia', lastName: 'Coleman' } },
   { userId: 'user-other-admin', roleType: 'ADMINISTRATOR', clubId: null, associationId: 'assoc-other', revokedAt: null, player: { firstName: 'Other', lastName: 'Admin' } },
-  { userId: 'user-ava', roleType: 'TEAM_MANAGER', clubId: 'club-glen', associationId: null, teamId: GLEN_TEAM, revokedAt: null, player: { firstName: 'Ava', lastName: 'Clark' } },
+  { userId: 'user-ava', roleType: 'TEAM_MANAGER', clubId: 'club-glen', associationId: null, teamId: GLEN_TEAM, revokedAt: null, email: 'ava@club.example', player: { id: AVA, firstName: 'Ava', lastName: 'Clark' } },
 ]
 const waverley = { id: 'assoc-waverley', name: 'Waverley Tennis', phone: '03 9000 0000', email: 'info@waverleytennis.example' }
 const clubs = {
@@ -58,7 +58,7 @@ const person = (id, firstName, lastName, extra = {}) => ({
   id, firstName, lastName, dateOfBirth: new Date('1990-01-01'), isJunior: false, phone: null, status: 'ACTIVE', user: null, ...extra,
 })
 const people = [
-  person(AVA, 'Ava', 'Clark', { phone: '0400 000 001', user: { email: 'ava@club.example', userRole: { roleType: 'TEAM_MANAGER', revokedAt: null } } }),
+  person(AVA, 'Ava', 'Clark', { phone: '0400 000 001', user: { email: 'ava@club.example', userRole: { roleType: 'TEAM_MANAGER', revokedAt: null, teamId: GLEN_TEAM } } }),
   person(BEN, 'Ben', 'Adams'),
   person(CARA, 'Cara', 'Brown'),
   person(MARGARET, 'Margaret', 'Hayes', { user: { email: 'admin.glen@admin.example', userRole: { roleType: 'CLUB_ADMIN', revokedAt: null } } }),
@@ -103,8 +103,12 @@ const prisma = {
         && (where.clubId === undefined || r.clubId !== null)
         && (where.associationId === undefined || r.associationId === where.associationId)
         && (where.teamId === undefined || r.teamId === where.teamId))
-      return role ? { ...role, user: { profile: role.player ?? null } } : null
+      return role ? { ...role, user: { email: role.email ?? null, profile: role.player ?? null } } : null
     },
+    // The current managers of a set of teams (teamManagerNames).
+    findMany: async ({ where }) => roles
+      .filter(r => r.roleType === where.roleType && r.revokedAt === null && where.teamId.in.includes(r.teamId))
+      .map(r => ({ ...r, user: { email: r.email ?? null, profile: r.player ?? null } })),
   },
   club: { findUnique: async ({ where }) => clubs[where.id] ?? null },
   competition: {
@@ -115,7 +119,14 @@ const prisma = {
   },
   sectionGrade: { findMany: async ({ where }) => unique(teams.filter(t => t.clubId === where?.teams?.some?.clubId).map(t => t.section)) },
   team: {
-    findMany: async ({ where }) => teams.filter(t => t.clubId === where?.clubId),
+    findMany: async ({ where }) => {
+      // The Players list asks which managers' teams are still to finish their season.
+      if (where.id?.in) {
+        return teams.filter(t => where.id.in.includes(t.id) && !where.section.season.status.notIn.includes(t.section.season.status))
+      }
+      return teams.filter(t => t.clubId === where.clubId)
+        .map(t => ({ ...t, _count: { teamPlayers: teamPlayers.filter(tp => tp.teamId === t.id && tp.status === 'ACTIVE').length } }))
+    },
     findFirst: async ({ where }) => {
       const found = teams.find(t => t.id === where.id && t.clubId === where.clubId)
       return found ? { ...found, teamPlayers: teamPlayers.filter(tp => tp.teamId === found.id).map(tp => ({ ...tp, player: personById(tp.playerId) })) } : null
@@ -204,11 +215,43 @@ test('I-CLUBADMIN-010: a role nobody holds is null, not another association\'s v
 test('I-CLUBADMIN-011: players are the club\'s members, active or not, without the club admin and without contact details', async () => {
   const { status, body } = await get('players', ADMIN)
   assert.equal(status, 200)
+  const noLogin = { hasLogin: false, role: null, managedTeam: null }
   assert.deepEqual(body.data, [
-    { id: AVA, firstName: 'Ava', lastName: 'Clark', membership: { status: 'ACTIVE', isPrimary: true, startDate: '2025-05-06', endDate: null }, teamNames: ['Glen Waverley 1'] },
-    { id: BEN, firstName: 'Ben', lastName: 'Adams', membership: { status: 'INACTIVE', isPrimary: true, startDate: '2025-05-06', endDate: '2026-03-01' }, teamNames: [] },
-    { id: CARA, firstName: 'Cara', lastName: 'Brown', membership: { status: 'ACTIVE', isPrimary: false, startDate: '2025-05-06', endDate: null }, teamNames: [] },
+    {
+      id: AVA, firstName: 'Ava', lastName: 'Clark', status: 'ACTIVE', membership: { status: 'ACTIVE', isPrimary: true, startDate: '2025-05-06', endDate: null },
+      teamNames: ['Glen Waverley 1'], hasLogin: true, role: 'TEAM_MANAGER', managedTeam: { id: GLEN_TEAM, name: 'Glen Waverley 1' },
+    },
+    { id: BEN, firstName: 'Ben', lastName: 'Adams', status: 'ACTIVE', membership: { status: 'INACTIVE', isPrimary: true, startDate: '2025-05-06', endDate: '2026-03-01' }, teamNames: [], ...noLogin },
+    { id: CARA, firstName: 'Cara', lastName: 'Brown', status: 'ACTIVE', membership: { status: 'ACTIVE', isPrimary: false, startDate: '2025-05-06', endDate: null }, teamNames: [], ...noLogin },
   ])
+})
+
+test('I-CLUBADMIN-015: each player says whether they can manage a team: login, role, and a team still playing', async () => {
+  const [ben, cara] = [personById(BEN), personById(CARA)]
+  const saved = [ben.user, cara.user, ben.status]
+  // Ben managed last season's team, which no longer ties him down; Cara is the association's
+  // administrator; a revoked role counts as none.
+  ben.user = { email: 'ben@club.example', userRole: { roleType: 'TEAM_MANAGER', revokedAt: null, teamId: 'team-glen-1-old' } }
+  ben.status = 'SUSPENDED'
+  cara.user = { email: 'cara@club.example', userRole: { roleType: 'ADMINISTRATOR', revokedAt: null, teamId: null } }
+  try {
+    const rows = Object.fromEntries((await get('players', ADMIN)).body.data.map(p => [p.firstName, [p.status, p.hasLogin, p.role, p.managedTeam]]))
+    assert.deepEqual(rows, {
+      Ava: ['ACTIVE', true, 'TEAM_MANAGER', { id: GLEN_TEAM, name: 'Glen Waverley 1' }],
+      Ben: ['SUSPENDED', true, 'TEAM_MANAGER', null],
+      Cara: ['ACTIVE', true, 'ADMINISTRATOR', null],
+    })
+    cara.user.userRole.revokedAt = new Date()
+    const revoked = (await get('players', ADMIN)).body.data.find(p => p.id === CARA)
+    assert.deepEqual([revoked.hasLogin, revoked.role], [true, null])
+  } finally {
+    [ben.user, cara.user, ben.status] = saved
+  }
+})
+
+test('I-CLUBADMIN-016: the teams list has each team\'s active squad size and current manager', async () => {
+  const { body } = await get('teams', ADMIN)
+  assert.deepEqual(body.data.map(t => [t.id, t.squadCount, t.managerName]), [[GLEN_TEAM, 1, 'Ava Clark'], ['team-glen-1-old', 1, null]])
 })
 
 test('I-CLUBADMIN-012: a player\'s detail lists every membership, primary first, but only this club\'s teams', async () => {
@@ -233,6 +276,7 @@ test('I-CLUBADMIN-014: a team\'s detail has its roster by name and its manager; 
   const { status, body } = await get(`teams/${GLEN_TEAM}`, ADMIN)
   assert.equal(status, 200)
   assert.equal(body.data.managerName, 'Ava Clark')
+  assert.deepEqual(body.data.manager, { playerId: AVA, name: 'Ava Clark', email: 'ava@club.example' })
   assert.equal(body.data.seasonLabel, 'Winter 2026')
   assert.deepEqual(body.data.players, [
     { id: AVA, firstName: 'Ava', lastName: 'Clark', status: 'ACTIVE', registeredAt: '2026-04-01T00:00:00.000Z' },
@@ -241,6 +285,19 @@ test('I-CLUBADMIN-014: a team\'s detail has its roster by name and its manager; 
   const other = await get(`teams/${MOUNT_TEAM}`, ADMIN)
   assert.equal(other.status, 404)
   assert.equal(other.body.code, 'TEAM_NOT_FOUND')
+})
+
+test('I-CLUBADMIN-017: a manager with no profile is named by their email, with no Player ID', async () => {
+  const ava = roles.find(r => r.userId === 'user-ava')
+  const { player } = ava
+  delete ava.player
+  try {
+    const { body } = await get(`teams/${GLEN_TEAM}`, ADMIN)
+    assert.equal(body.data.managerName, null)
+    assert.deepEqual(body.data.manager, { playerId: null, name: 'ava@club.example', email: 'ava@club.example' })
+  } finally {
+    ava.player = player
+  }
 })
 
 test('I-CLUBADMIN-004: the email is normalised before lookup', async () => {
