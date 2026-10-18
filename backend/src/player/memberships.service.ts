@@ -90,18 +90,22 @@ export class MembershipsService {
         this.prisma.clubMembership.findFirst({ where: { playerId: player.id, isPrimary: true, status: 'ACTIVE' }, include: { club: true }, orderBy: oldestFirst }),
         this.prisma.associationMembership.findFirst({ where: { playerId: player.id, isPrimary: true, status: 'ACTIVE' }, include: { association: true }, orderBy: oldestFirst }),
       ])
-      const team = teams.find(candidate => candidate.section.season.status === 'ACTIVE') ?? null
-      const [managerName, adminName, recordsSecretaryName] = await Promise.all([
-        team ? roleHolderName(this.prisma, 'TEAM_MANAGER', { teamId: team.id }) : null,
+      // A player can be on several teams at once (two competitions, or two clubs), so list them all.
+      const currentTeams = teams.filter(candidate => candidate.section.season.status === 'ACTIVE')
+      const [managerNames, adminName, recordsSecretaryName] = await Promise.all([
+        Promise.all(currentTeams.map(team => roleHolderName(this.prisma, 'TEAM_MANAGER', { teamId: team.id }))),
         club ? roleHolderName(this.prisma, 'CLUB_ADMIN', { clubId: club.clubId }) : null,
         association ? roleHolderName(this.prisma, 'RECORDS_SECRETARY', { associationId: association.associationId }) : null,
       ])
+      const teamContacts = currentTeams.map((team, index) => ({
+        teamId: team.id, teamName: team.name, competitionName: team.section.season.competition.name,
+        seasonLabel: seasonLabel(team.section.season), managerName: managerNames[index],
+        // The club's number, never the volunteer manager's own.
+        clubName: team.club.name, phone: team.club.phone, email: team.club.email,
+      }))
       return {
-        team: team && {
-          teamName: team.name, competitionName: team.section.season.competition.name,
-          seasonLabel: seasonLabel(team.section.season), managerName,
-          clubName: team.club.name, phone: team.club.phone, email: team.club.email,
-        },
+        teams: teamContacts,
+        team: teamContacts[0] ?? null,
         club: club && {
           clubName: club.club.name, adminName, phone: club.club.phone, email: club.club.email, address: club.club.address,
         },

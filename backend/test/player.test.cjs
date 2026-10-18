@@ -27,6 +27,10 @@ const mountA = team('team-mount-a', 'Mount Waverley A', mount, section('sec-2026
 const glenA = team('team-glen-a', 'Glen Waverley A', glen, section('sec-2025', past))
 const rivals = team('team-rivals', 'Pinewood A', mount, section('sec-2026', current))
 const twinsTeam = team('team-glen-b', 'Glen Waverley B', glen, section('sec-2026', current))
+// A second competition running at the same time, so one player can be on two current teams.
+const nightCompetition = { id: 'comp-2', name: 'Night Tennis', associationId: 'assoc-1', association }
+const nightSeason = { id: 'season-night-2026', seasonType: 'Spring', year: 2026, status: 'ACTIVE', startDate: date('2026-08-01'), competitionId: 'comp-2', competition: nightCompetition }
+const nightTeam = team('team-glen-night', 'Glen Waverley Night', glen, section('sec-night-2026', nightSeason))
 const people = {
   chloe: { id: 'player-chloe', firstName: 'Chloe', lastName: 'Cooper' },
   mei: { id: 'player-mei', firstName: 'Mei', lastName: 'Tran' },
@@ -38,6 +42,7 @@ const people = {
 const users = {
   'chloe@club.example': { profile: people.chloe },
   'nolink@club.example': { profile: null },
+  'mei@club.example': { profile: people.mei },
   'hiro.one@club.example': { profile: people.hiroOne },
   'hiro.two@club.example': { profile: people.hiroTwo },
 }
@@ -46,6 +51,7 @@ const rosters = [
   { teamId: glenA.id, team: glenA, playerId: 'player-chloe', player: people.chloe, status: 'ACTIVE' },
   { teamId: mountA.id, team: mountA, playerId: 'player-yuki', player: people.yuki, status: 'EMERGENCY' },
   { teamId: rivals.id, team: rivals, playerId: 'player-mei', player: people.mei, status: 'ACTIVE' },
+  { teamId: nightTeam.id, team: nightTeam, playerId: 'player-mei', player: people.mei, status: 'ACTIVE' },
   { teamId: twinsTeam.id, team: twinsTeam, playerId: 'player-hiro-1', player: people.hiroOne, status: 'ACTIVE' },
   { teamId: twinsTeam.id, team: twinsTeam, playerId: 'player-hiro-2', player: people.hiroTwo, status: 'ACTIVE' },
 ]
@@ -237,6 +243,23 @@ test('SUP-001: contacts name the current team manager and primary club admin; a 
   assert.equal(contacts.team.phone, '03 2222 2222') // the club's number, never the volunteer's own
   assert.equal(contacts.club.adminName, 'Mei Tran')
   assert.equal(contacts.association.recordsSecretaryName, null)
+  assert.deepEqual(contacts.teams.map(t => t.teamName), ['Mount Waverley A']) // the 2025 team is not current
+  assert.deepEqual(contacts.team, contacts.teams[0])
+})
+
+test('SUP-002: a player on several current teams gets every team, each with its own manager and club', async () => {
+  const contacts = await memberships.supportContacts('mei@club.example')
+  assert.deepEqual(contacts.teams, [
+    {
+      teamId: 'team-glen-night', teamName: 'Glen Waverley Night', competitionName: 'Night Tennis', seasonLabel: seasonLabel(nightSeason),
+      managerName: null, clubName: 'Glen Waverley TC', phone: '03 1111 1111', email: 'glen@club.example',
+    },
+    {
+      teamId: 'team-rivals', teamName: 'Pinewood A', competitionName: 'Weekend Senior', seasonLabel: 'Winter 2026',
+      managerName: null, clubName: 'Mount Waverley TC', phone: '03 2222 2222', email: 'mount@club.example',
+    },
+  ])
+  assert.deepEqual(contacts.team, contacts.teams[0])
 })
 
 // ── Unit: standings

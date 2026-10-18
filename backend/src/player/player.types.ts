@@ -114,16 +114,22 @@ export interface TeamDetails extends MembershipTeam {
   members: { id: string; name: string; status: 'ACTIVE' | 'EMERGENCY' | 'INACTIVE'; isCurrentPlayer: boolean }[]
 }
 
+export interface SupportTeamContact {
+  teamId: string
+  teamName: string
+  competitionName: string
+  seasonLabel: string
+  managerName: string | null
+  clubName: string
+  phone: string | null
+  email: string | null
+}
+
 export interface SupportContacts {
-  team: {
-    teamName: string
-    competitionName: string
-    seasonLabel: string
-    managerName: string | null
-    clubName: string
-    phone: string | null
-    email: string | null
-  } | null
+  /** Every team the player is on in a season that is being played now, newest season first. */
+  teams: SupportTeamContact[]
+  /** @deprecated The first of `teams`, kept until the frontend reads `teams`. */
+  team: SupportTeamContact | null
   club: {
     clubName: string
     adminName: string | null
