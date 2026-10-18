@@ -6,7 +6,7 @@ import ContactDetails from "./ContactDetails";
 /** "Who should I contact?": the player's team, primary club and association contacts. */
 export default function SupportContacts() {
   const { data, error, loading, retry } = useApiData(getSupportContacts);
-  const { team, club, association } = data ?? { team: null, club: null, association: null };
+  const { teams, club, association } = data ?? { teams: [], club: null, association: null };
 
   return (
     <aside className="rounded-2xl bg-white p-6" aria-labelledby="contacts-heading">
@@ -29,13 +29,21 @@ export default function SupportContacts() {
         </>
       )}
       <div className="mt-5 space-y-4">
-        <ContactCard
-          title={team ? `Your team · ${team.teamName}` : "Your team manager"}
-          description="Team selection, availability, and match-day arrangements."
-          fallback="Contact your team manager through your club."
-        >
-          {team && (
-            <>
+        {teams.length === 0 ? (
+          <ContactCard
+            title="Your team manager"
+            description="Team selection, availability, and match-day arrangements."
+            fallback="Contact your team manager through your club."
+          />
+        ) : (
+          // A player on several teams this season sees each team's manager.
+          teams.map((team) => (
+            <ContactCard
+              key={team.teamId}
+              title={`Your team · ${team.teamName}`}
+              description="Team selection, availability, and match-day arrangements."
+              fallback="Contact your team manager through your club."
+            >
               <p className="mb-2">
                 {team.competitionName} · {team.seasonLabel}
               </p>
@@ -47,9 +55,9 @@ export default function SupportContacts() {
                   { label: "Email", value: team.email, link: "email" },
                 ]}
               />
-            </>
-          )}
-        </ContactCard>
+            </ContactCard>
+          ))
+        )}
         <ContactCard
           title={club ? `Your primary club · ${club.clubName}` : "Your primary club"}
           description="Profile details, login access, and club or team membership. Your primary club looks after your player record."
