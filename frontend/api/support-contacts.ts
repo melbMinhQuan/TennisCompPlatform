@@ -1,18 +1,22 @@
 import { mockSupportContacts } from "../data/mock-support-contacts";
 import { getPlayerData } from "./client";
 
+// One team the player is on this season; contact goes through the team's club, the manager is named only.
+export type SupportTeamContact = {
+  teamId: string;
+  teamName: string;
+  competitionName: string;
+  seasonLabel: string;
+  managerName: string | null;
+  clubName: string;
+  phone: string | null;
+  email: string | null;
+};
+
 // Who the logged-in player should contact. Any part can be null when it isn't known.
 export type SupportContactsData = {
-  // Current-season team; contact goes through the team's club, the manager is named only.
-  team: {
-    teamName: string;
-    competitionName: string;
-    seasonLabel: string;
-    managerName: string | null;
-    clubName: string;
-    phone: string | null;
-    email: string | null;
-  } | null;
+  // Every team in an ACTIVE season (two competitions or two clubs give two entries); empty when none.
+  teams: SupportTeamContact[];
   // Primary club: responsible for the player's record (ClubMembership.is_primary).
   club: {
     clubName: string;
