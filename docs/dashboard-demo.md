@@ -1,34 +1,8 @@
-# Running the database dashboard showcase
+# Player dashboard API
 
-This implementation adds a separate dashboard module and `/demo` frontend page.
-The existing authentication controller/service/module, schema and seed are unchanged.
-The existing app files only register the new module, page and navigation link.
-
-## Run
-
-PostgreSQL must be running and the existing migrations applied. From the repository
-root, build and start the backend with its environment loaded explicitly:
-
-```bash
-npm run build --workspace=backend
-node --env-file=backend/.env backend/dist/main.js
-```
-
-In another terminal:
-
-```bash
-npm run dev --workspace=frontend
-```
-
-Open **http://localhost:5173/demo**. The frontend defaults to backend port 3000,
-or uses `VITE_API_URL` if configured. Use localhost and port 5173 to match the
-existing backend CORS configuration.
-
-Log in using an existing account from your local spreadsheet. Passwords are sent
-only to the existing login endpoint; the demo does not store them. On successful
-login the frontend requests the dashboard using that submitted email. Logout clears
-the email/data in memory and aborts pending requests. Refreshing the browser requires
-logging in again; there is no new session implementation.
+The routes under `/api/v1/player-dashboard`, which the player's Profile page and its
+Notifications card use. (The separate `/demo` showcase page that first called them has been
+removed; the player pages replaced it.) To run the app, see the README's Quick start.
 
 ## Implemented routes
 

@@ -121,7 +121,7 @@ separate `deploy/` folder.
 That install does not use the lockfile, so the package can hold newer dependency versions
 than the tests ran with, or miss one that only the workspace provided. So the job starts
 the package exactly as App Service will (the startup command above, on an empty database) and
-checks it answers, on every push and pull request. On `main` it hands that same tested package
+checks it answers, on every push. On `main` it hands that same tested package
 to the deploy, packed with `tar` so file permissions survive.
 
 ### Refreshing a page

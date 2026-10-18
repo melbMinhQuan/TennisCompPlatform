@@ -165,3 +165,9 @@ Hiding or disabling the buttons for COMPLETED and ARCHIVED seasons would need a 
 players, so the Notifications page is empty with real data, and marking notices read is tested
 only against a fake backend (I-UI-007). Adding club admin rows to the seed would let the
 end-to-end tests cover it (see [club-admin-notifications.md](club-admin-notifications.md)).
+
+**k. A suspended or pending account is told "Incorrect email or password."** Login refuses any
+account whose `User.status` is not ACTIVE, with the same answer as a wrong password, and checks
+the status only after the password, so a guess never learns an account's status (AUTH-008).
+Decide whether someone with the right password should instead be told their account is
+suspended or not yet active.

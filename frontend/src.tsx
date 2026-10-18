@@ -6,9 +6,6 @@ import StandingsPage from "./pages/StandingsPage";
 import TeamDetailsPage from "./pages/TeamDetailsPage";
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Link, Route, Routes } from 'react-router'
-import Home from './pages/Home'
-import About from './pages/About'
-import DashboardDemo from './pages/DashboardDemo'
 import DashboardPage from './pages/DashboardPage'
 import './style.css'
 import LoginPage from './pages/LoginPage'
@@ -19,7 +16,6 @@ import CompetitionDetailsPage from "./pages/CompetitionDetailsPage";
 import MatchesPage from "./pages/MatchesPage";
 import MatchFixturePage from "./pages/MatchFixturePage";
 import MatchScorecardPage from "./pages/MatchScorecardPage";
-import SiteNavigation from "./components/SiteNavigation";
 
 // Club Admin pages
 import ClubAdminLayout from "./components/ClubAdminLayout";
@@ -44,15 +40,6 @@ function App() {
     <Routes>
       <Route path="/" element={<LoginPage />} />
       <Route path="/login" element={<LoginPage />} />
-      <Route
-        path="/home"
-        element={<><SiteNavigation /><Home /></>}
-      />
-      <Route
-        path="/about"
-        element={<><SiteNavigation /><About /></>}
-      />
-      <Route path="/demo" element={<DashboardDemo />} />
       <Route path="/dashboard" element={<PlayerLayout />}>
         <Route index element={<DashboardPage />} />
 
