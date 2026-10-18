@@ -25,10 +25,12 @@ frontend/data/mock-support-contacts.ts holds Chloe Cooper's (PLR005) contacts
 from the workbook (TEAM018/UR012, CLB01/UR003, ASSOC01/UR002).
 frontend/api/support-contacts.ts exports SupportContactsData and
 getSupportContacts(signal). Logged in, it calls
-GET /api/v1/player/support-contacts?email=, which returns { data: SupportContactsData }. The team is
-the player's team in an ACTIVE season; names come from the unrevoked TEAM_MANAGER, CLUB_ADMIN and
-RECORDS_SECRETARY roles. Any of team, club or
-association may be null, and any field may be null; the card then shows
-general advice instead. Errors never fall back to mock contacts.
+GET /api/v1/player/support-contacts?email=, which returns { data: SupportContactsData }. `teams`
+lists every team the player is on in an ACTIVE season (newest season first, then by team name), so a
+player in two competitions or two clubs gets one entry per team, each with its own manager and club
+contacts; it is empty when they have no current team. `team` is the first of `teams` (or null) and is
+deprecated: it stays only until the frontend reads `teams`. Names come from the unrevoked
+TEAM_MANAGER, CLUB_ADMIN and RECORDS_SECRETARY roles. club or association may be null, and any field
+may be null; the card then shows general advice instead. Errors never fall back to mock contacts.
 
 **Logged-in players never see sample data.** Sample data (Chloe Cooper) is only a logged-out preview. A logged-in player always gets their own data from the backend; if that request fails the page shows an error and "Try again", never the sample.
