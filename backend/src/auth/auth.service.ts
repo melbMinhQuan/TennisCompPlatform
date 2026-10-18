@@ -1,11 +1,20 @@
 import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common'
 import * as bcrypt from 'bcryptjs'
+import type { RoleType } from '@prisma/client'
 import { PrismaService } from '../prisma/prisma.service'
 
 export type LoginResult = 'login_success' | 'login_failed'
 
 export interface LoginResponse {
   result: LoginResult
+  /** The account's unrevoked role on success, so the frontend can pick the right dashboard. */
+  role?: RoleType | null
+  /** The club the role is scoped to (set for CLUB_ADMIN), so the frontend shows that admin's own club. */
+  clubId?: string | null
+  /** That club's name, for the club admin header. */
+  clubName?: string | null
+  /** "First Last" from the account's profile; null when the account has no profile. */
+  displayName?: string | null
 }
 
 @Injectable()
@@ -16,8 +25,10 @@ export class AuthService {
 
   /**
    * Checks an email and password against the user table.
-   * Returns { result: 'login_success' } when they match and
-   * { result: 'login_failed' } when the email is unknown or the password is wrong.
+   * Returns { result: 'login_success', role, clubId, clubName, displayName } when they
+   * match, where role is the account's unrevoked RoleType or null, clubId/clubName are
+   * that role's club (or null) and displayName is the profile's name (or null), and { result: 'login_failed' } when the
+   * email is unknown or the password is wrong.
    *
    * The stored value is a bcrypt hash, so the password is compared with
    * bcrypt.compare rather than a plain equality check.
@@ -26,12 +37,24 @@ export class AuthService {
     try {
       const user = await this.prisma.user.findUnique({
         where: { email: email.trim().toLowerCase() },
+        include: { profile: { select: { firstName: true, lastName: true } } },
       })
 
       if (!user) return { result: 'login_failed' }
 
       const passwordMatches = await bcrypt.compare(password, user.passwordHash)
-      return { result: passwordMatches ? 'login_success' : 'login_failed' }
+      if (!passwordMatches) return { result: 'login_failed' }
+
+      const role = await this.prisma.userRole.findFirst({
+        where: { userId: user.id, revokedAt: null },
+        select: { roleType: true, clubId: true },
+      })
+      const clubId = role?.clubId ?? null
+      const club = clubId
+        ? await this.prisma.club.findUnique({ where: { id: clubId }, select: { name: true } })
+        : null
+      const displayName = user.profile ? `${user.profile.firstName} ${user.profile.lastName}`.trim() || null : null
+      return { result: 'login_success', role: role?.roleType ?? null, clubId, clubName: club?.name ?? null, displayName }
     } catch (error) {
       this.logger.error('Could not verify the login credentials', error)
       throw new InternalServerErrorException('Login is unavailable right now')

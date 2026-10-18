@@ -4,13 +4,13 @@ import { CurrentUserResolver } from '../common/auth/current-user'
 import { readOrUnavailable } from '../common/data-unavailable'
 import { PrismaService } from '../prisma/prisma.service'
 
-type ClubAdminRequest = Request & { adminClubId?: string }
+type ClubAdminRequest = Request & { adminClubId?: string; adminUserId?: string }
 
 /**
  * Lets a request through only for a user who holds an unrevoked CLUB_ADMIN
- * role, and records that role's club on the request. The club always comes
- * from the role, never from the request, so an admin cannot ask for another
- * club's data.
+ * role, and records that role's club and the admin's user ID on the request.
+ * The club always comes from the role, never from the request, so an admin
+ * cannot ask for or change another club's data.
  */
 @Injectable()
 export class ClubAdminGuard implements CanActivate {
@@ -33,6 +33,7 @@ export class ClubAdminGuard implements CanActivate {
       throw new ForbiddenException({ statusCode: 403, code: 'NOT_CLUB_ADMIN', message: 'Only a club administrator can open this page' })
     }
     request.adminClubId = role.clubId
+    request.adminUserId = user.id
     return true
   }
 }
@@ -40,4 +41,9 @@ export class ClubAdminGuard implements CanActivate {
 /** The club of the admin that ClubAdminGuard let through. */
 export const AdminClubId = createParamDecorator(
   (_: unknown, context: ExecutionContext) => context.switchToHttp().getRequest<ClubAdminRequest>().adminClubId,
+)
+
+/** The user ID of the admin that ClubAdminGuard let through, for the audit log. */
+export const AdminUserId = createParamDecorator(
+  (_: unknown, context: ExecutionContext) => context.switchToHttp().getRequest<ClubAdminRequest>().adminUserId,
 )

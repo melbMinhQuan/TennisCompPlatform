@@ -6,6 +6,8 @@ import MatchLoadState from "../components/MatchLoadState";
 import ResultCard from "../components/matches/ResultCard";
 import UpcomingFixtureCard from "../components/matches/UpcomingFixtureCard";
 
+import { todayInMelbourne } from "../utils/date-helpers";
+
 export default function MatchesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -14,9 +16,12 @@ export default function MatchesPage() {
   const fixtures = useApiData(getFixtures);
   const results = useApiData(getResults);
   const current = isHistory ? results : fixtures;
+
+  const today = todayInMelbourne();
   const upcoming = (fixtures.data ?? [])
-    .filter((fixture) => fixture.status !== "Completed" && fixture.status !== "Cancelled")
+    .filter((fixture) => (fixture.status === "Scheduled" || fixture.status === "Postponed") && (!fixture.date || fixture.date >= today))
     .sort((a, b) => (a.date ?? "9999").localeCompare(b.date ?? "9999") || (a.time ?? "").localeCompare(b.time ?? ""));
+
   const history = [...(results.data ?? [])].sort((a, b) => b.date.localeCompare(a.date));
   const shownCount = isHistory ? history.length : upcoming.length;
 

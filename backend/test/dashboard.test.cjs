@@ -19,9 +19,9 @@ function player(person, teamId) {
   }
 }
 const users = {
-  'alice@example.test': { email: 'alice@example.test', player: player(alice, 'team-a') },
-  'bob@example.test': { email: 'bob@example.test', player: player(bob, 'team-b') },
-  'unlinked@example.test': { email: 'unlinked@example.test', player: null },
+  'alice@example.test': { email: 'alice@example.test', profile: player(alice, 'team-a') },
+  'bob@example.test': { email: 'bob@example.test', profile: player(bob, 'team-b') },
+  'unlinked@example.test': { email: 'unlinked@example.test', profile: null },
 }
 function fixture(id, team, date, status = 'SCHEDULED') {
   return { id, homeTeamId: team, awayTeamId: 'visitors', homeTeam: { id: team, name: team }, awayTeam: { id: 'visitors', name: 'Visitors' },
@@ -86,7 +86,7 @@ test('I-DASH-001: HTTP dashboard resolves normalized email and selects only nece
   assert.equal(body.data.profile.primaryClub.name, 'Alice club')
   assert.equal(body.data.utr.rating, 7.85)
   assert.equal(body.data.utr.discipline, null)
-  assert.deepEqual(Object.keys(calls.at(-1).select).sort(), ['email', 'player'])
+  assert.deepEqual(Object.keys(calls.at(-1).select).sort(), ['email', 'profile'])
   assert.equal(body.data.upcomingMatches.items.length, 3)
   assert.equal(body.data.careerSummary.matchesPlayed, 1)
   assert.equal(body.data.careerSummary.matchesWon, 1)
@@ -165,6 +165,19 @@ test('I-DASH-008: bad queries and outages do not return false empty data or priv
     assert.equal(response.body.code, 'DATA_UNAVAILABLE')
     assert.equal(JSON.stringify(response.body).includes('private connection'), false)
   } finally { databaseDown = false }
+})
+
+test('I-DASH-010: UTR history says "not available" rather than showing an empty history, and only for a real player', async () => {
+  const singles = await get('/utr-history')
+  assert.equal(singles.status, 200)
+  assert.deepEqual(singles.body.data, { available: false, items: [], nextCursor: null, hasMore: false, discipline: 'SINGLES' })
+  assert.equal((await get('/utr-history', { discipline: 'DOUBLES' })).body.data.discipline, 'DOUBLES')
+  assert.equal((await get('/utr-history', { discipline: 'MIXED' })).status, 400)
+  for (const [email, code] of [['unknown@example.test', 'USER_NOT_FOUND'], ['unlinked@example.test', 'PLAYER_PROFILE_NOT_LINKED']]) {
+    const response = await get('/utr-history', { email })
+    assert.equal(response.status, 404)
+    assert.equal(response.body.code, code)
+  }
 })
 
 test('I-DASH-009: email lookup is disabled when NODE_ENV=production', async () => {

@@ -1,9 +1,9 @@
 # Hardcoded values in the frontend
 
 Where the frontend still uses fixed values instead of backend data, and why. Use it to find
-them quickly. Updated 28 September 2026.
+them quickly. Updated 18 October 2026.
 
-**Short version:** a logged-in player sees only backend data. What remains hardcoded is
+**Short version:** a logged-in player or club administrator sees only backend data. What remains hardcoded is
 (1) the sample preview shown when nobody is logged in, (2) static help content and links, and
 (3) three values the current layout has no place to show. Section 4 lists the decisions still
 open.
@@ -25,6 +25,19 @@ with the logged-in player's email. The adapter in `frontend/api/` picks the path
 | Team Details | [`teams.ts`](../frontend/api/teams.ts) | `GET /api/v1/player/teams/:teamId` |
 | Standings | [`standings.ts`](../frontend/api/standings.ts) | `GET /api/v1/player/standings` |
 | Help & Support → "Who should I contact?" | [`support-contacts.ts`](../frontend/api/support-contacts.ts) | `GET /api/v1/player/support-contacts` |
+
+The club administrator pages have no sample data and no logged-out preview: they open only for a
+signed-in club administrator, and call `/api/v1/club-admin/*` with the email kept with their
+signed-in role. Their adapters are below; the routes are described in the `club-admin-*.md` docs.
+
+| Club admin page / component | Adapter | Endpoints (under `/api/v1/club-admin`) |
+| --- | --- | --- |
+| Dashboard | [`club-admin-dashboard.ts`](../frontend/api/club-admin-dashboard.ts) | `GET dashboard` |
+| Players, a player's page, Add a player | [`club-admin-players.ts`](../frontend/api/club-admin-players.ts) | `GET players`, `players/:id`, `registry/players`; `POST players`, `players/:id/membership` |
+| Teams, a team's page, Create team, Add players, Assign manager | [`club-admin-teams.ts`](../frontend/api/club-admin-teams.ts) | `GET teams`, `teams/:id`, `open-sections`; `POST teams`, `teams/:id/players`; `DELETE teams/:id/players/:playerId`; `PUT` and `DELETE teams/:id/manager` |
+| Fixtures & Results, a fixture's page | [`club-admin-fixtures.ts`](../frontend/api/club-admin-fixtures.ts) | `GET fixtures`, `fixtures/:id` |
+| Notifications, the sidebar badge, the dashboard's unread tile | [`club-admin-notifications.ts`](../frontend/api/club-admin-notifications.ts) | `GET notifications`; `PATCH notifications/:id/read`, `notifications/read-all` |
+| Help & Support → "Who should I contact?" | [`club-admin-support.ts`](../frontend/api/club-admin-support.ts) | `GET support-contacts` |
 
 Values that were `null` before and are now filled in:
 
@@ -130,4 +143,25 @@ None exist in the current data.
 ([`context/PlayerSession.tsx`](../frontend/context/PlayerSession.tsx)), so a refresh or a
 typed URL logs the player out. This is part of the authentication design, which is not built
 yet. The backend identifies players by `?email=`, a local demo lookup that the
-`DemoEmailGuard` refuses when `NODE_ENV=production`.
+`DemoEmailGuard` refuses when `NODE_ENV=production`. A club administrator is different: their
+role and email are kept in `sessionStorage`
+([`context/RoleSession.tsx`](../frontend/context/RoleSession.tsx)), so a reload keeps them
+signed in until they log out or close the tab. Decide whether players should get the same.
+
+Parked on 18 October 2026, while connecting the club administrator pages:
+
+**g. Club ID and Team ID show the database UUID**, as Player ID does (see b): on the dashboard's
+club card, a team's page and every player row.
+
+**h. "End membership" is not saved.** There is no route for it: what ending a membership does to
+the player's squads and primary club waits on client decision A07. The button stays on the
+player's page, and its confirmation says no database change is made.
+
+**i. A finished season's team still offers squad and manager changes.** The backend refuses
+them (409 `SEASON_CLOSED`, "This team's season has finished") and the page shows that reason.
+Hiding or disabling the buttons for COMPLETED and ARCHIVED seasons would need a layout change.
+
+**j. Seeded club administrators have no notifications.** The generator only writes notices for
+players, so the Notifications page is empty with real data, and marking notices read is tested
+only against a fake backend (I-UI-007). Adding club admin rows to the seed would let the
+end-to-end tests cover it (see [club-admin-notifications.md](club-admin-notifications.md)).

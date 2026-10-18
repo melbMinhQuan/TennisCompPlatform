@@ -1,9 +1,10 @@
 import type { HELP_FAQS } from "../../data/support-content";
 
-type Faq = (typeof HELP_FAQS)[number];
+/** A help answer. Optional `steps` show as a numbered list and `points` as bullet points under the answer. */
+export type HelpFaq = (typeof HELP_FAQS)[number] & { steps?: string[]; points?: string[] };
 
-/** One question that opens to show its answer and any "More information" links. */
-export default function FaqItem({ item }: { item: Faq }) {
+/** One question that opens to show its answer, any steps or bullet points, and any "More information" links. */
+export default function FaqItem({ item }: { item: HelpFaq }) {
   const links = "links" in item ? item.links : undefined;
   return (
     <details className="mt-3 rounded-lg border border-slate-200 p-4">
@@ -11,6 +12,20 @@ export default function FaqItem({ item }: { item: Faq }) {
         {item.title}
       </summary>
       <p className="mt-2 text-sm leading-6 text-slate-600">{item.content}</p>
+      {item.steps && (
+        <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm leading-6 text-slate-600">
+          {item.steps.map((step) => (
+            <li key={step}>{step}</li>
+          ))}
+        </ol>
+      )}
+      {item.points && (
+        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-slate-600">
+          {item.points.map((point) => (
+            <li key={point}>{point}</li>
+          ))}
+        </ul>
+      )}
       {links && (
         <div className="mt-3 text-sm">
           <p className="font-medium text-[#1a3049]">More information</p>

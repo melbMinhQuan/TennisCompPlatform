@@ -43,7 +43,8 @@ export default function CompetitionsPage() {
         </span>
 
         <p className="text-sm text-white/85 min-[768px]:text-muted">
-          {visibleCompetitions.length} competitions · {clubCount} represented clubs
+          {visibleCompetitions.length} {visibleCompetitions.length === 1 ? "competition" : "competitions"} · {clubCount}{" "}
+          {clubCount === 1 ? "represented club" : "represented clubs"}
         </p>
       </div>
 

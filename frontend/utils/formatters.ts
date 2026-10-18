@@ -54,3 +54,8 @@ export function formatRound({ round, roundLabel }: { round: number | null; round
   if (roundLabel) return roundLabel;
   return round === null ? "Round to be confirmed" : `Round ${round}`;
 }
+
+/** "Glen Waverley" from "Glen Waverley Tennis Club", for short labels; other names are kept whole. */
+export function shortClubName(clubName: string) {
+  return clubName.replace(/\s+Tennis Club$/i, "");
+}

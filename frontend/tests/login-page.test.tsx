@@ -10,7 +10,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-/** The login page inside the app's session provider, with /dashboard as a landing marker. */
+/** The login page inside the app's session provider, with /dashboard and /club-admin as landing markers. */
 function renderLogin() {
   render(
     <PlayerSession>
@@ -18,6 +18,7 @@ function renderLogin() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/dashboard" element={<p>Dashboard reached</p>} />
+          <Route path="/club-admin" element={<p>Club admin reached</p>} />
         </Routes>
       </MemoryRouter>
     </PlayerSession>,
@@ -50,10 +51,28 @@ describe("I-UI-001: login form", () => {
     expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({ email: "chloe@club.example", password: "right" });
   });
 
+  test("a club admin opens the club admin dashboard instead", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ result: "login_success", role: "CLUB_ADMIN" }))));
+    renderLogin();
+    submit("admin@club.example", "right");
+    expect(await screen.findByText("Club admin reached")).toBeTruthy();
+    expect(screen.queryByText("Dashboard reached")).toBeNull();
+  });
+
   test("an unreachable server says so instead of blaming the password", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("Failed to fetch"); }));
     renderLogin();
     submit("chloe@club.example", "right");
-    expect((await screen.findByRole("alert")).textContent).not.toMatch(/Incorrect email or password/);
+    expect(await screen.findByRole("alert")).toHaveProperty("textContent", "We couldn’t reach the server. Please try again in a minute.");
+  });
+
+  test("a backend that is still starting gets the same plain message, not a parsing error", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      new Response("<!DOCTYPE html><h1>Service Unavailable</h1>", { status: 503, headers: { "Content-Type": "text/html" } }),
+    ));
+    renderLogin();
+    submit("chloe@club.example", "right");
+    expect(await screen.findByRole("alert")).toHaveProperty("textContent", "We couldn’t reach the server. Please try again in a minute.");
+    expect(screen.queryByText("Dashboard reached")).toBeNull();
   });
 });

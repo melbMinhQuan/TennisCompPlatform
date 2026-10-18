@@ -2,6 +2,8 @@ import { PlayerSessionContext } from "../context/PlayerSession";
 import { useContext, useEffect, useRef, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
 import { login } from "../api/dashboard";
+import { homeForRole, roleFromLogin } from "../api/user-role";
+import { RoleSessionContext } from "../context/RoleSession";
 import logo from "../resources/Logo.png";
 import EmailField from "../components/login/EmailField";
 import ForgotPasswordHelp from "../components/login/ForgotPasswordHelp";
@@ -16,12 +18,14 @@ export default function LoginPage() {
   const activeRequest = useRef<AbortController | null>(null);
   const navigate = useNavigate();
   const { setEmail: setPlayerEmail } = useContext(PlayerSessionContext);
+  const { signIn, signOut } = useContext(RoleSessionContext);
 
   useEffect(() => () => activeRequest.current?.abort(), []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setPlayerEmail("");
+    signOut();
     activeRequest.current?.abort();
     const controller = new AbortController();
     activeRequest.current = controller;
@@ -36,9 +40,13 @@ export default function LoginPage() {
         setError("Incorrect email or password.");
         return;
       }
-      setPlayerEmail(email.trim().toLowerCase());
+      const normalisedEmail = email.trim().toLowerCase();
+      const signedIn = roleFromLogin(normalisedEmail, response);
+      signIn(signedIn);
+      // Club administrators get the club dashboard; everyone else gets their player dashboard.
+      if (signedIn.role !== "CLUB_ADMIN") setPlayerEmail(normalisedEmail);
       setPassword("");
-      navigate("/dashboard");
+      navigate(homeForRole(signedIn.role));
     } catch (error) {
       if (!controller.signal.aborted) {
         setError(error instanceof Error ? error.message : "Could not reach the login server.");

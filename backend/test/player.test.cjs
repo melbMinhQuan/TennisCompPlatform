@@ -26,20 +26,28 @@ const team = (id, name, club, sec) => ({ id, name, clubId: club.id, club, sectio
 const mountA = team('team-mount-a', 'Mount Waverley A', mount, section('sec-2026', current))
 const glenA = team('team-glen-a', 'Glen Waverley A', glen, section('sec-2025', past))
 const rivals = team('team-rivals', 'Pinewood A', mount, section('sec-2026', current))
+const twinsTeam = team('team-glen-b', 'Glen Waverley B', glen, section('sec-2026', current))
 const people = {
   chloe: { id: 'player-chloe', firstName: 'Chloe', lastName: 'Cooper' },
   mei: { id: 'player-mei', firstName: 'Mei', lastName: 'Tran' },
   yuki: { id: 'player-yuki', firstName: 'Yuki', lastName: 'Green' },
+  // Two different people with the same name, as in the seeded test data.
+  hiroOne: { id: 'player-hiro-1', firstName: 'Hiro', lastName: 'Mitchell' },
+  hiroTwo: { id: 'player-hiro-2', firstName: 'Hiro', lastName: 'Mitchell' },
 }
 const users = {
-  'chloe@club.example': { player: people.chloe },
-  'nolink@club.example': { player: null },
+  'chloe@club.example': { profile: people.chloe },
+  'nolink@club.example': { profile: null },
+  'hiro.one@club.example': { profile: people.hiroOne },
+  'hiro.two@club.example': { profile: people.hiroTwo },
 }
 const rosters = [
   { teamId: mountA.id, team: mountA, playerId: 'player-chloe', player: people.chloe, status: 'ACTIVE' },
   { teamId: glenA.id, team: glenA, playerId: 'player-chloe', player: people.chloe, status: 'ACTIVE' },
   { teamId: mountA.id, team: mountA, playerId: 'player-yuki', player: people.yuki, status: 'EMERGENCY' },
   { teamId: rivals.id, team: rivals, playerId: 'player-mei', player: people.mei, status: 'ACTIVE' },
+  { teamId: twinsTeam.id, team: twinsTeam, playerId: 'player-hiro-1', player: people.hiroOne, status: 'ACTIVE' },
+  { teamId: twinsTeam.id, team: twinsTeam, playerId: 'player-hiro-2', player: people.hiroTwo, status: 'ACTIVE' },
 ]
 const venue = { name: 'Mount Waverley Tennis Centre', address: '24 Park Road', timeZone: 'Australia/Melbourne' }
 const fixture = (id, home, away, extra) => ({
@@ -69,9 +77,9 @@ const retired = {
   rubberPlayers: [{ playerId: 'player-chloe', side: 'HOME', player: people.chloe }, { playerId: 'player-mei', side: 'AWAY', player: people.mei }],
 }
 const roles = [
-  { roleType: 'TEAM_MANAGER', teamId: mountA.id, revokedAt: null, user: { player: people.yuki } },
-  { roleType: 'CLUB_ADMIN', clubId: glen.id, revokedAt: null, user: { player: people.mei } },
-  { roleType: 'RECORDS_SECRETARY', associationId: 'assoc-1', revokedAt: new Date(), user: { player: people.mei } },
+  { roleType: 'TEAM_MANAGER', teamId: mountA.id, revokedAt: null, user: { profile: people.yuki } },
+  { roleType: 'CLUB_ADMIN', clubId: glen.id, revokedAt: null, user: { profile: people.mei } },
+  { roleType: 'RECORDS_SECRETARY', associationId: 'assoc-1', revokedAt: new Date(), user: { profile: people.mei } },
 ]
 let databaseDown = false
 const guard = rows => { if (databaseDown) throw new Error('password=secret host=db.internal'); return rows }
@@ -96,7 +104,7 @@ const prisma = {
   },
   team: {
     findFirst: async ({ where }) => {
-      const found = [mountA, glenA, rivals].find(t => t.id === where.id)
+      const found = [mountA, glenA, rivals, twinsTeam].find(t => t.id === where.id)
       const onRoster = found && rosters.some(r => r.teamId === found.id && r.playerId === where.teamPlayers.some.playerId)
       return onRoster ? { ...found, teamPlayers: rosters.filter(r => r.teamId === found.id) } : null
     },
@@ -210,6 +218,16 @@ test('TEAM-001: a team roster marks the logged-in player and keeps unusual statu
 
 test('TEAM-002: another team\'s roster is refused as not found', async () => {
   await assert.rejects(memberships.teamDetails(EMAIL, rivals.id), e => e.getStatus() === 404 && e.getResponse().code === 'TEAM_NOT_FOUND')
+})
+
+test('TEAM-003: two teammates with the same name are both listed, and only the one logged in is marked as you', async () => {
+  for (const [email, me] of [['hiro.one@club.example', people.hiroOne], ['hiro.two@club.example', people.hiroTwo]]) {
+    const details = await memberships.teamDetails(email, twinsTeam.id)
+    assert.deepEqual(details.members.map(m => [m.id, m.name, m.isCurrentPlayer]), [
+      ['player-hiro-1', 'Hiro Mitchell', me === people.hiroOne],
+      ['player-hiro-2', 'Hiro Mitchell', me === people.hiroTwo],
+    ], `logged in as ${email}`)
+  }
 })
 
 test('SUP-001: contacts name the current team manager and primary club admin; a revoked role names nobody', async () => {

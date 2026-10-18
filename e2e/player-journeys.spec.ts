@@ -53,8 +53,19 @@ test("E2E-004: see my competitions, current and past", async ({ page }) => {
 test("E2E-005: see my fixtures and a scorecard", async ({ page }) => {
   await logIn(page);
   await openFromMenu(page, "Matches");
-  await page.getByRole("link", { name: "View fixture" }).first().click();
-  await expect(page.getByRole("heading", { name: "Fixture Details" })).toBeVisible();
+
+  const viewFixture = page.getByRole("link", { name: "View fixture" });
+
+  if (await viewFixture.count() > 0) {
+    await viewFixture.first().click();
+    await expect(
+      page.getByRole("heading", { name: "Fixture Details" })
+    ).toBeVisible();
+  } else {
+    await expect(
+      page.getByText("No upcoming team fixtures are scheduled.")
+    ).toBeVisible();
+  }
 
   await openFromMenu(page, "Matches");
   await page.getByRole("button", { name: "History" }).click();

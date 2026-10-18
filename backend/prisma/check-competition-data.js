@@ -324,6 +324,33 @@ for (const m of S.ProfileMergeRequest) {
   }
 }
 
+// ── Duplicate profiles (DATA-001 in TestingPlan.xlsx). The same person registered twice
+// shares a name and a date of birth: such a pair must be waiting in a ProfileMergeRequest,
+// or it is a data mistake. Same-name players born on different days are look-alikes, and at
+// least one pair must exist so duplicate-profile detection has two people to tell apart.
+{
+  const fullName = p => `${p.first_name} ${p.last_name}`
+  const awaitingMerge = (a, b) => S.ProfileMergeRequest.some(m =>
+    (m.player_a_id === a.id && m.player_b_id === b.id) || (m.player_a_id === b.id && m.player_b_id === a.id))
+  const byName = new Map()
+  for (const p of S.Player) {
+    const key = fullName(p).trim().toLowerCase()
+    byName.set(key, [...(byName.get(key) ?? []), p])
+  }
+  let lookAlikes = 0
+  for (const group of byName.values()) {
+    for (const [i, a] of group.entries()) {
+      for (const b of group.slice(i + 1)) {
+        if (String(a.date_of_birth) !== String(b.date_of_birth)) lookAlikes++
+        else if (!awaitingMerge(a, b)) {
+          bad(`${a.id} and ${b.id} are both ${fullName(a)}, born ${a.date_of_birth}: the same person registered twice? Pair them in ProfileMergeRequest, or correct one`)
+        }
+      }
+    }
+  }
+  if (!lookAlikes) bad('no two players share a name, so duplicate-profile detection has no look-alikes to tell apart')
+}
+
 // ── Club membership implies membership of that club's association
 const assocOfClub = new Map(S.Club.map(c => [c.id, c.association_id]))
 count('players in a club whose association they do not belong to',

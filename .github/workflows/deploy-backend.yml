@@ -1,22 +1,24 @@
-# Deploys the NestJS backend to Azure App Service whenever main changes.
-# npm workspaces keep every dependency in the root node_modules, so the backend
-# cannot be uploaded on its own folder. This builds it, then packages dist/,
-# prisma/ and package.json with their own production node_modules.
+# Uploads the backend package that CI built and tested (the backend-package job in ci.yml)
+# to Azure App Service, then checks the live API works. Only CI calls this, once every check
+# has passed on main; to redeploy, open that CI run and choose "Re-run all jobs".
 # Needs the repository secret AZURE_BACKEND_PUBLISH_PROFILE (App Service ->
 # Overview -> Download publish profile).
 name: Deploy backend
 
 on:
-  push:
-    branches: [main]
-  workflow_dispatch:
+  workflow_call:
+
+env:
+  BACKEND_URL: https://tenniscomp-dkdxhgawdsbnfwgw.newzealandnorth-01.azurewebsites.net
+  FRONTEND_URL: https://delightful-pond-03c981700.5.azurestaticapps.net
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
 
     steps:
+      # Only for the check script: the backend itself is the package CI tested.
       - name: Check out the code
         uses: actions/checkout@v4
 
@@ -24,29 +26,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
 
-      - name: Install dependencies (exactly as locked)
-        run: npm ci
+      - name: Download the tested package
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-package
 
-      - name: Generate the Prisma client
-        run: npx prisma generate
-        working-directory: backend
-
-      - name: Build the backend
-        run: npm run build --workspace=backend
-
-      # prisma (the CLI) is installed as a runtime dependency here because the
-      # App Service startup command runs `prisma migrate deploy` before the API
-      # starts, so a release that adds a migration applies it automatically.
-      - name: Package the backend on its own
+      - name: Unpack it
         run: |
           mkdir deploy
-          cp -r backend/dist backend/prisma backend/package.json deploy/
-          cd deploy
-          npm install --omit=dev
-          npm install prisma@5.22.0
-          npx prisma generate
+          tar -xzf backend-package.tgz -C deploy
 
       - name: Deploy to Azure App Service
         uses: azure/webapps-deploy@v3
@@ -54,3 +43,7 @@ jobs:
           app-name: tenniscomp
           publish-profile: ${{ secrets.AZURE_BACKEND_PUBLISH_PROFILE }}
           package: deploy
+
+      # Fails if the live API cannot reach the database or refuses the live frontend (CORS).
+      - name: Check the live backend
+        run: node .github/scripts/smoke-test.mjs backend

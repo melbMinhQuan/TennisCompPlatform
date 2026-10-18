@@ -35,10 +35,10 @@ test('dashboard seed links accounts, builds complete matches, preserves edits an
         const first = await seedDashboard(tx, entries)
         const afterSeed = await counts(tx)
         assert.equal(afterSeed.Player, before.Player + first.inserted.players)
-        assert.equal(await tx.user.count({ where: { email: { in: entries.map(e => e.email) }, player: { isNot: null } } }), 100)
+        assert.equal(await tx.user.count({ where: { email: { in: entries.map(e => e.email) }, profile: { isNot: null } } }), 100)
 
-        const users = await tx.user.findMany({ where: { email: { in: entries.map(e => e.email) } }, include: { player: true } })
-        const seeded = users.filter(u => u.player?.id === demoId(`player:${u.id}`))
+        const users = await tx.user.findMany({ where: { email: { in: entries.map(e => e.email) } }, include: { profile: true } })
+        const seeded = users.filter(u => u.profile?.id === demoId(`player:${u.id}`))
         assert.ok(seeded.length, 'Test requires at least one eligible demo profile')
         const player = seeded[0].player
         assert.equal(await tx.clubMembership.count({ where: { playerId: player.id, isPrimary: true } }), 1)
@@ -46,7 +46,7 @@ test('dashboard seed links accounts, builds complete matches, preserves edits an
         // The original empty database produces four completed personal matches per player.
         if (seeded.length === 100) {
           for (const user of seeded) {
-            assert.equal(await tx.rubberPlayer.count({ where: { playerId: user.player.id } }), 4)
+            assert.equal(await tx.rubberPlayer.count({ where: { playerId: user.profile.id } }), 4)
           }
           assert.equal(await tx.fixture.count({ where: { sectionId: demoId('section'), status: 'SCHEDULED' } }), 20)
           assert.equal(await tx.rubber.count({ where: { matchFormatId: demoId('format') } }), 160)

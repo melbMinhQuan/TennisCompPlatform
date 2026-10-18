@@ -10,8 +10,13 @@ export async function getNotifications(email: string, signal: AbortSignal) {
   return (await request<{ data: Page<NotificationItem> & { unreadCount: number | null } }>(`/api/v1/player-dashboard/notifications?${query}`, signal)).data
 }
 
+/**
+ * Checks the email and password. On success /auth/login also returns the account's unrevoked
+ * RoleType (e.g. 'CLUB_ADMIN', 'PLAYER') as `role`, or null, plus that role's `clubId` and `clubName`
+ * (null when the role has no club) and the profile's `displayName`; see api/user-role.ts.
+ */
 export async function login(email: string, password: string, signal: AbortSignal) {
-  const response = await request<{ result: 'login_success' | 'login_failed' }>('/auth/login', signal, { email, password })
+  const response = await request<{ result: 'login_success' | 'login_failed'; role?: string | null; clubId?: string | null; clubName?: string | null; displayName?: string | null }>('/auth/login', signal, { email, password })
   if (response.result !== 'login_success' && response.result !== 'login_failed') throw new Error('The login server returned an unexpected response.')
   return response
 }

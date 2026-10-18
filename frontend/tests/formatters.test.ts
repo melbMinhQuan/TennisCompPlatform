@@ -1,6 +1,8 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { formatDateChange, formatRound, formatTopPercent, timeAgo } from "../utils/formatters";
-import { dateParts, formatFixtureDate, formatResultDate, formatTime } from "../utils/date-helpers";
+import {
+  dateParts, formatFixtureDate, formatFixtureDateWithYear, formatResultDate, formatTime, melbourneDate, todayInMelbourne,
+} from "../utils/date-helpers";
 
 const NOW = Date.parse("2026-09-28T12:00:00Z");
 
@@ -58,5 +60,28 @@ describe("FE-007: UTR best rank as a top percentage", () => {
     expect(formatTopPercent(28)).toBe("Top 72%");
     expect(formatTopPercent(87.6)).toBe("Top 12%");
     expect(formatTopPercent(100)).toBe("Top 1%");
+  });
+});
+
+describe("FE-012: dates in Melbourne for the club administrator pages", () => {
+  test("a fixture date can carry its year; a postponed one says so", () => {
+    expect(formatFixtureDateWithYear("2026-09-26")).toBe("SAT 26 SEP 2026");
+    expect(formatFixtureDateWithYear(null)).toBe("Date to be confirmed");
+  });
+
+  test("a moment is dated by Melbourne's calendar, across daylight saving too", () => {
+    expect(melbourneDate("2026-05-31T13:30:00Z")).toBe("2026-05-31"); // 23:30 on 31 May (AEST)
+    expect(melbourneDate("2026-05-31T15:30:00Z")).toBe("2026-06-01"); // 01:30 on 1 June
+    expect(melbourneDate(new Date("2026-12-31T13:30:00Z"))).toBe("2027-01-01"); // 00:30 on New Year's Day (AEDT)
+  });
+
+  test("today is Melbourne's today, not the computer's", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-31T15:30:00Z"));
+    try {
+      expect(todayInMelbourne()).toBe("2026-06-01");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

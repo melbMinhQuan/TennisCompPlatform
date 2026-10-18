@@ -80,7 +80,7 @@ All test accounts share one password:
 | Email | Password |
 | --- | --- |
 | `chloe.cooper005@players.example` | `WaverleyDev#2026` |
-| `raj.mitchell001@players.example` | `WaverleyDev#2026` |
+| `julie.prentice@admin.example` | `WaverleyDev#2026` |
 
 Every other `.example` address in the `User` sheet of `backend/prisma/competition_data.xlsx` also
 works with the same password.
@@ -136,7 +136,11 @@ Other ways to open the database:
 | `npm run dev:frontend` | Starts the frontend on port 5173 |
 | `npm run prisma:studio --workspace=backend` | Opens the database in the browser on port 5555 |
 | `npm test` | Unit and integration tests (no database needed) |
+| `npm run test:coverage --workspace=backend` (or `=frontend`) | The same tests with a coverage report; fails below the minimums |
 | `npm run test:e2e` | End-to-end tests in Chrome (database must be running and seeded) |
+| `npm run data:check --workspace=backend` | Checks the test-data workbook against the schema and the competition rules |
+| `npm run test:database --workspace=backend` | Tests on a real local database, rolled back afterwards: seeding twice, matching players |
+| `npm run players:duplicates --workspace=backend` | Lists profiles that are probably one person registered twice ([docs/player-matching.md](docs/player-matching.md)) |
 | `docker compose up -d` | Starts the database |
 | `docker compose down` | Stops the database and keeps the data |
 | `docker compose down -v` | Stops the database and **deletes all data** |
@@ -152,18 +156,42 @@ test's name starts with its ID (e.g. `AUTH-002`), so a failure points straight t
 | --- | --- | --- | --- |
 | Unit | One function or service, with a fake database | `backend/test/`, `frontend/tests/` | `npm test` |
 | Integration | A real HTTP route, or a rendered React component | same folders; `I-` IDs | `npm test` |
-| End to end | The whole app in Chrome against the real seeded database | `e2e/` | `npm run test:e2e` |
+| Database | The seed and player matching against a real Postgres, rolled back afterwards | `backend/test/seed-competition.integration.cjs`, `player-matching.integration.cjs` | `npm run test:database --workspace=backend` |
+| End to end | The whole app in Chrome against the real seeded database, as players and club administrators | `e2e/` | `npm run test:e2e` |
+| Live | The deployed site in a browser, after each release | `e2e/live/`; `LIVE-` IDs | CI only (see below) |
 
 `npm run test:e2e` reuses the backend and frontend if they are already running; otherwise it
 starts them. It uses your installed Google Chrome. When a test fails, a screenshot and a
 step-by-step trace are saved in `test-results/`.
 
-**CI:** GitHub Actions (`.github/workflows/ci.yml`) runs on every push and pull request, in two
-jobs:
+Two end-to-end tests change the database, as a club administrator would: E2E-017 enters a team
+for Wheelers Hill and picks its squad and manager, and E2E-018 registers a new player whom
+Burwood then adds. Each run uses names no other run uses, in clubs no other test reads, so they
+can run again and again. CI's database is thrown away after each run; to clear them from yours,
+run `npm run seed:competition -- --sync` in `backend/`.
 
-- **test-and-build:** unit and integration tests, then the frontend build.
-- **end-to-end:** creates an empty database, migrates and seeds it, starts the app and runs the
-  end-to-end tests.
+**Coverage.** `npm run test:coverage` in either workspace reports which code the tests run, and
+fails if it drops below a minimum set a few points under the October 2026 level (backend:
+`test:coverage` in `backend/package.json`; frontend: `frontend/vite.config.ts`). The frontend
+figure is low on purpose: pages are tested end to end, which coverage does not count, so the
+logic in `api/`, `context/` and `utils/` has a stricter minimum of its own. The club
+administrator pages are also rendered against a fake backend (`frontend/tests/club-admin-pages.test.tsx`).
+
+**CI/CD:** GitHub Actions (`.github/workflows/ci.yml`) runs on every push and pull request:
+
+- **test-and-build:** checks the test-data workbook (`data:check`), type-checks the end-to-end
+  tests, runs the backend and frontend tests with coverage (figures on the run's summary page),
+  then type-checks and builds the frontend, its tests included.
+- **end-to-end:** creates an empty database and migrates it, fails if `schema.prisma` has a change
+  with no migration, runs the database tests in transactions it rolls back (seeding twice must
+  add nothing; player matching on the seeded data), seeds it for real, then runs the end-to-end
+  tests against the production build of the frontend.
+- **backend-package:** builds the backend package exactly as Azure receives it, starts it the way
+  Azure does on an empty database, and checks it answers.
+- **deploy-backend, then deploy-frontend:** only for a push to `main`, and only once all three
+  jobs above pass. The backend uploaded is the package just tested; the frontend goes out only
+  after the live backend passes its check; then a browser logs in to the live site. See
+  [docs/deployment.md](docs/deployment.md).
 
 A red ❌ on a pull request means something broke; open the run to see which test ID failed. For an
 end-to-end failure, download the `playwright-report` file attached to the run.
@@ -176,6 +204,16 @@ end-to-end failure, download the `playwright-report` file attached to the run.
 rows. It covers two associations, twelve clubs, five competitions, 292 fixtures, 274 results,
 ladders, standings, UTR ratings and notifications. Names and match formats are real; dates of
 birth, phone numbers, ratings and contact details are made up (see the `README` sheet inside it).
+
+Two names, Hiro Mitchell and Amelia Lee, each belong to two different people on purpose, so the
+app can be tested on look-alikes. Duplicate-player tests keep it that way: `data:check` fails on
+a player registered twice (same name and date of birth) unless a merge request pairs the two
+(DATA-001); TEAM-003 and E2E-010 check same-name players are never mixed up; SEED-002 checks
+that running the seed again never adds a second copy of anything.
+
+Scoresheets often record incomplete names ("Josh" for Joshua Smith). How the system works out
+which player is meant, and finds profiles registered twice, is in
+[docs/player-matching.md](docs/player-matching.md).
 
 Run these in `backend/`:
 
@@ -224,7 +262,7 @@ All player routes take `?email=` (the logged-in player's address) and answer `{ 
 
 | Route | Returns | Used by |
 | --- | --- | --- |
-| `POST /auth/login` | `{ "result": "login_success" }` or `"login_failed"` (both status 200) | Login |
+| `POST /auth/login` | `{ "result": "login_success" }` with the account's `role`, `clubId`, `clubName` and `displayName`, or `"login_failed"` (both status 200) | Login |
 | `GET /api/v1/player-dashboard` | Profile, UTR, career summary, 4 newest notifications | Profile |
 | `GET /api/v1/player-dashboard/notifications` | All notifications and the unread count | Notifications → View All |
 | `GET /api/v1/player/competitions` | One entry per active team, with its next fixture | Competitions |
@@ -238,6 +276,11 @@ All player routes take `?email=` (the logged-in player's address) and answer `{ 
 Errors: `400` for a bad email or team ID. `404` with `USER_NOT_FOUND`,
 `PLAYER_PROFILE_NOT_LINKED` or `TEAM_NOT_FOUND`. `503 DATA_UNAVAILABLE` when the database can't be
 read.
+
+The club administrator pages use `/api/v1/club-admin/*`, which also take `?email=` (the
+administrator's) and work out the club from their CLUB_ADMIN role, never from the request. They
+are described in `docs/club-admin-dashboard.md`, `club-admin-edits.md` (players, teams, squads,
+managers), `club-admin-fixtures.md`, `club-admin-notifications.md` and `club-admin-support.md`.
 
 **The email is a demo lookup, not real authentication.** These routes refuse all requests when
 `NODE_ENV=production`, until proper sessions are built.
