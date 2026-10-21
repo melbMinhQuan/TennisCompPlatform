@@ -8,7 +8,8 @@
     "dev:frontend": "npm run dev --workspace=frontend",
     "dev:backend": "npm run start:dev --workspace=backend",
     "test": "npm test --workspace=backend && npm test --workspace=frontend",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:plan": "node scripts/check-testing-plan.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0"

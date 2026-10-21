@@ -39,6 +39,11 @@ jobs:
       - name: Check the test data (competition_data.xlsx)
         run: npm run data:check --workspace=backend
 
+      # TestingPlan.xlsx lists every test: a test with no row, a row with no test, or two tests
+      # sharing an ID fails the run.
+      - name: Check the testing plan lists every test (TestingPlan.xlsx)
+        run: npm run test:plan
+
       - name: Type-check the end-to-end tests
         run: npx tsc -p e2e
 
@@ -105,9 +110,10 @@ jobs:
           }
 
       # Tests that need a real database, each in a transaction that is rolled back: SEED-002 (seeding
-      # a second time adds nothing, so no player is ever duplicated) and MATCH-005 / DUP-003
-      # (incomplete names and duplicate profiles, on the real seeded data).
-      - name: Database tests (seeding twice, matching players), rolled back
+      # a second time adds nothing, so no player is ever duplicated), MATCH-005 / DUP-003
+      # (incomplete names and duplicate profiles, on the real seeded data) and JUNIOR-101..110 (who
+      # sees a junior's details, through the real API). It builds the backend first.
+      - name: Database tests (seeding twice, matching players, junior privacy), rolled back
         run: npm run test:database --workspace=backend
 
       - name: Load the test data (competition_data.xlsx)
