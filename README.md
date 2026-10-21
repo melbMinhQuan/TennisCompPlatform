@@ -81,9 +81,12 @@ All test accounts share one password:
 | --- | --- |
 | `chloe.cooper005@players.example` | `WaverleyDev#2026` |
 | `julie.prentice@admin.example` | `WaverleyDev#2026` |
+| `raj.mitchell001@players.example` (association administrator) | `WaverleyDev#2026` |
 
 Every other `.example` address in the `User` sheet of `backend/prisma/competition_data.xlsx` also
-works with the same password.
+works with the same password. To see a junior's details from each role's point of view (the junior,
+their team manager, their club, another club, the association), use the accounts listed in
+[docs/junior-privacy.md](docs/junior-privacy.md).
 
 ### Step 4 (optional): Browse the database
 
@@ -151,12 +154,14 @@ Other ways to open the database:
 
 `TestingPlan.xlsx` lists every test: its ID, what it checks, and how to run it. Each automated
 test's name starts with its ID (e.g. `AUTH-002`), so a failure points straight to its row.
+`npm run test:plan` checks the two agree (every test has a row, every row has a test, no ID is
+used twice), and CI runs it on every push, so the plan cannot fall behind the code.
 
 | Type | What it covers | Where | Run with |
 | --- | --- | --- | --- |
 | Unit | One function or service, with a fake database | `backend/test/`, `frontend/tests/` | `npm test` |
-| Integration | A real HTTP route, or a rendered React component | same folders; `I-` IDs | `npm test` |
-| Database | The seed and player matching against a real Postgres, rolled back afterwards | `backend/test/seed-competition.integration.cjs`, `player-matching.integration.cjs` | `npm run test:database --workspace=backend` |
+| Integration | A real HTTP route, or a rendered React component | same folders; `I-` IDs (and the junior privacy routes and pages, `JUNIOR-`) | `npm test` |
+| Database | The seed, player matching and junior privacy against a real Postgres, rolled back afterwards | `backend/test/seed-competition.integration.cjs`, `player-matching.integration.cjs`, `junior-privacy.integration.cjs` | `npm run test:database --workspace=backend` |
 | End to end | The whole app in Chrome against the real seeded database, as players and club administrators | `e2e/` | `npm run test:e2e` |
 | Live | The deployed site in a browser, after each release | `e2e/live/`; `LIVE-` IDs | CI only (see below) |
 
@@ -179,12 +184,12 @@ administrator pages are also rendered against a fake backend (`frontend/tests/cl
 
 **CI/CD:** GitHub Actions (`.github/workflows/ci.yml`) runs on every push and pull request:
 
-- **test-and-build:** checks the test-data workbook (`data:check`), type-checks the end-to-end
-  tests, runs the backend and frontend tests with coverage (figures on the run's summary page),
+- **test-and-build:** checks the test-data workbook (`data:check`) and that `TestingPlan.xlsx`
+  lists every test (`test:plan`), type-checks the end-to-end tests, runs the backend and frontend tests with coverage (figures on the run's summary page),
   then type-checks and builds the frontend, its tests included.
 - **end-to-end:** creates an empty database and migrates it, fails if `schema.prisma` has a change
   with no migration, runs the database tests in transactions it rolls back (seeding twice must
-  add nothing; player matching on the seeded data), seeds it for real, then runs the end-to-end
+  add nothing; player matching and junior privacy on the seeded data), seeds it for real, then runs the end-to-end
   tests against the production build of the frontend.
 - **backend-package:** builds the backend package exactly as Azure receives it, starts it the way
   Azure does on an empty database, and checks it answers.
@@ -211,6 +216,10 @@ a player registered twice (same name and date of birth) unless a merge request p
 (DATA-001); TEAM-003 and E2E-010 check same-name players are never mixed up; SEED-002 checks
 that running the seed again never adds a second copy of anything.
 
+Ten juniors (under 18) play in Weekend Junior's coming season, each with a parent or guardian on
+record; two of the parents manage a team. Who may see a junior's details, and the accounts to try
+each view with, are in [docs/junior-privacy.md](docs/junior-privacy.md).
+
 Scoresheets often record incomplete names ("Josh" for Joshua Smith). How the system works out
 which player is meant, and finds profiles registered twice, is in
 [docs/player-matching.md](docs/player-matching.md).
@@ -218,7 +227,8 @@ which player is meant, and finds profiles registered twice, is in
 Run these in `backend/`:
 
 ```bash
-npm run seed:competition              # load the data (safe to re-run; only inserts what is missing)
+npm run seed:competition              # load the data (safe to re-run; only inserts what is missing,
+                                      # plus any club or player code left empty by an older seed)
 npm run seed:competition -- --dry-run # show what it would do, write nothing
 npm run seed:competition -- --sync    # make the database match the workbook exactly
 ```
@@ -268,8 +278,8 @@ All player routes take `?email=` (the logged-in player's address) and answer `{ 
 | `GET /api/v1/player/competitions` | One entry per active team, with its next fixture | Competitions |
 | `GET /api/v1/player/fixtures` | All fixtures of the player's teams | Matches → Upcoming |
 | `GET /api/v1/player/results` | The player's finalised rubbers, newest first | Matches → History, Recent Activity |
-| `GET /api/v1/player/memberships` | Association and club memberships, teams | My Clubs |
-| `GET /api/v1/player/teams/:teamId` | Team details and roster (own teams only) | Team Details |
+| `GET /api/v1/player/memberships` | Association and club memberships, teams, and the team the login manages | My Clubs |
+| `GET /api/v1/player/teams/:teamId` | Team details and roster (own or managed teams only; juniors' parent contacts for the manager only) | Team Details |
 | `GET /api/v1/player/standings` | Ladders, player standings, UTR rankings | Standings & Rankings |
 | `GET /api/v1/player/support-contacts` | Team manager, club admin, records secretary | Help & Support |
 
@@ -281,6 +291,10 @@ The club administrator pages use `/api/v1/club-admin/*`, which also take `?email
 administrator's) and work out the club from their CLUB_ADMIN role, never from the request. They
 are described in `docs/club-admin-dashboard.md`, `club-admin-edits.md` (players, teams, squads,
 managers), `club-admin-fixtures.md`, `club-admin-notifications.md` and `club-admin-support.md`.
+
+`GET /api/v1/association-admin/juniors?email=` is the association administrator's list of juniors,
+with every detail and an age check per team; only an `ADMINISTRATOR` role holder gets it. Who may
+see which junior details on every route is in [docs/junior-privacy.md](docs/junior-privacy.md).
 
 **The email is a demo lookup, not real authentication.** These routes refuse all requests when
 `NODE_ENV=production`, until proper sessions are built.
@@ -300,6 +314,14 @@ the open decisions.
 | `PORT` | `3000` | API port |
 | `CORS_ORIGIN` | `http://localhost:5173` | Frontend address(es) allowed to call the API, comma-separated |
 | `UTR_PROVIDER` | `disabled` | `disabled`, `mock` or `engage` |
+
+---
+
+## Deployment
+
+The live site runs on Azure and deploys automatically when `main` changes: merge features into
+`develop`, then `develop` into `main` to release. [docs/deployment.md](docs/deployment.md) covers
+what is deployed where, the settings, the live database and troubleshooting.
 
 ---
 
@@ -323,6 +345,6 @@ TennisComp/
 │   │   ├── utr/          # UTR provider scaffold
 │   │   └── prisma/       # Database client for NestJS
 │   └── test/             # Backend tests
-├── docs/                 # API contracts and design notes
+├── docs/                 # API contracts, design notes and deployment
 └── docker-compose.yml    # Database container (Postgres 16)
 ```
