@@ -6,7 +6,7 @@ Based on the functional requirement "Club information stored and shown… so tea
 know where to go and who to call" and the roles in competition_data.xlsx
 (TEAM_MANAGER, CLUB_ADMIN, RECORDS_SECRETARY). Three cards:
 
-1. Your team: current-season team, its team manager (name only) and the team's
+1. Your team: current (or about to start) season team, its team manager (name only) and the team's
    club phone/email. For selection, availability and match-day arrangements.
 2. Your primary club: club administrator (name only) and the club's phone,
    email and address. For profile details, login access and memberships; the
@@ -26,7 +26,7 @@ from the workbook (TEAM018/UR012, CLB01/UR003, ASSOC01/UR002).
 frontend/api/support-contacts.ts exports SupportContactsData and
 getSupportContacts(signal). Logged in, it calls
 GET /api/v1/player/support-contacts?email=, which returns { data: SupportContactsData }. `teams`
-lists every team the player is on in an ACTIVE season (newest season first, then by team name), so a
+lists every team the player is on in an ACTIVE or UPCOMING season (newest season first, then by team name), so a
 player in two competitions or two clubs gets one entry per team, each with its own manager and club
 contacts; it is empty when they have no current team. `team` is the first of `teams` (or null) and is
 deprecated: it stays only until the frontend reads `teams`. Names come from the unrevoked

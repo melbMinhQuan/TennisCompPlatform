@@ -1,3 +1,5 @@
+import type { Guardian } from "./junior/GuardianContact";
+import JuniorNotice from "./junior/JuniorNotice";
 import ProfileDetails from "./profile/ProfileDetails";
 import ProfileHeader from "./profile/ProfileHeader";
 
@@ -13,7 +15,16 @@ export type PlayerProfileData = {
   teams: string[];
   association: string | null;
   playerId: string | null;
+  /** Under 18: the card then explains who can see these details and shows the parent's contact. */
+  isJunior?: boolean;
+  guardian?: Guardian | null;
 };
+
+/** "Fiona Brennan · 0413 207 707 · fiona.brennan@families.example", whatever parts are recorded. */
+function guardianLine(guardian: Guardian | null | undefined) {
+  const parts = [guardian?.name, guardian?.phone, guardian?.email].filter(Boolean);
+  return parts.length ? parts.join(" · ") : "Not supplied";
+}
 
 /** Profile sidebar: avatar, name and status, then personal details and club / team details. */
 export default function PlayerProfile({ player }: { player: PlayerProfileData }) {
@@ -23,6 +34,7 @@ export default function PlayerProfile({ player }: { player: PlayerProfileData })
       className="min-w-0 rounded-2xl bg-white p-5 text-[#1a3049] min-[768px]:rounded-none min-[768px]:bg-transparent min-[768px]:p-0 min-[768px]:text-[#1a3049]"
     >
       <ProfileHeader displayName={player.displayName} avatarUrl={player.avatarUrl} status={player.status} />
+      {player.isJunior && <JuniorNotice audience="self" className="mt-5" />}
 
       <div className="mt-6 min-w-0 max-w-full overflow-hidden text-sm leading-6 min-[768px]:mt-7 min-[768px]:bg-[#d9d9d9] min-[768px]:px-5 min-[768px]:py-8">
         <ProfileDetails
@@ -32,6 +44,7 @@ export default function PlayerProfile({ player }: { player: PlayerProfileData })
             ["Gender", player.gender ? player.gender.charAt(0) + player.gender.slice(1).toLowerCase() : "Not supplied"],
             ["Email", player.email || "Not supplied"],
             ["Phone", player.phone || "Not supplied"],
+            ...(player.isJunior ? [["Parent or guardian", guardianLine(player.guardian)] as [string, string]] : []),
           ]}
         />
 

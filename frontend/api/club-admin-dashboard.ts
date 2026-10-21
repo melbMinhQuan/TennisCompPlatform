@@ -1,4 +1,4 @@
-import type { SeasonStatus } from "../types/season";
+import { isOpenSeason, type SeasonStatus } from "../types/season";
 import { clubAdminRequest } from "./client";
 
 /**
@@ -10,6 +10,8 @@ export type ClubAdminDashboardData = {
   asOf: string;
   club: {
     id: string;
+    /** The readable Club ID (CLB01); null only for a club added before codes were automatic. */
+    code: string | null;
     name: string;
     associationName: string;
     phone: string | null;
@@ -60,7 +62,7 @@ export function defaultSeasonId(data: ClubAdminDashboardData) {
  */
 export function dashboardSeasonSummary(data: ClubAdminDashboardData, seasonId: string) {
   const teams = data.teams.filter((team) => team.seasonId === seasonId);
-  const active = data.seasons.find((season) => season.id === seasonId)?.status === "ACTIVE";
-  const attention = active ? teams.filter((team) => !team.managerName || team.squadCount === 0) : [];
+  const open = isOpenSeason(data.seasons.find((season) => season.id === seasonId)?.status);
+  const attention = open ? teams.filter((team) => !team.managerName || team.squadCount === 0) : [];
   return { teams, attention };
 }

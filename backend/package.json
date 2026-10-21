@@ -7,7 +7,7 @@
     "build": "nest build",
     "test": "nest build && node --test test/*.test.cjs",
     "test:coverage": "nest build && node --enable-source-maps --test --experimental-test-coverage --test-coverage-exclude=\"prisma/**\" --test-coverage-exclude=\"test/**\" --test-coverage-lines=90 --test-coverage-branches=80 --test-coverage-functions=90 --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=lcov.info test/*.test.cjs",
-    "test:database": "node --env-file-if-exists=.env --test test/seed-competition.integration.cjs test/player-matching.integration.cjs",
+    "test:database": "nest build && node --env-file-if-exists=.env --test test/seed-competition.integration.cjs test/player-matching.integration.cjs test/junior-privacy.integration.cjs",
     "prisma:generate": "prisma generate --allow-no-models",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",

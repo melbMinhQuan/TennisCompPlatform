@@ -28,6 +28,8 @@ export type PlayerMemberships = {
     name: string;
   })[];
   teams: MembershipTeam[];
+  /** The team this login manages (a team manager need not play in it); empty for anyone else. */
+  managedTeams: MembershipTeam[];
 };
 
 // Logged out: the sample preview. Logged in: GET /api/v1/player/memberships,

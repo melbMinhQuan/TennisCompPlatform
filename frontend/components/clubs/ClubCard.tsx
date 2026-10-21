@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import type { MembershipTeam } from "../../api/memberships";
 import MembershipBadge from "./MembershipBadge";
 import { CLUB_CARD_CLASS, membershipDetail, pastLabel, type ClubMembership } from "./membership-helpers";
+import { isOpenSeason } from "../../types/season";
 
 /** One club membership: badge, the first two team chips, and an expandable list of all its teams. */
 export default function ClubCard({ club, teams }: { club: ClubMembership; teams: MembershipTeam[] }) {
@@ -23,7 +24,7 @@ export default function ClubCard({ club, teams }: { club: ClubMembership; teams:
           {teams.slice(0, 2).map((team) => (
             <li
               key={team.id}
-              className={`max-w-full rounded-2xl px-2.5 py-1 text-xs [overflow-wrap:anywhere] ${team.seasonStatus === "ACTIVE" ? "bg-[#eef1f5] text-[#2868ad]" : "bg-slate-100 text-slate-600"}`}
+              className={`max-w-full rounded-2xl px-2.5 py-1 text-xs [overflow-wrap:anywhere] ${isOpenSeason(team.seasonStatus) ? "bg-[#eef1f5] text-[#2868ad]" : "bg-slate-100 text-slate-600"}`}
             >
               {team.name} · {team.competitionName} {team.seasonLabel}
               {pastLabel(team)}

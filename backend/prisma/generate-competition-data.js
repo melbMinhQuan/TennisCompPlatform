@@ -156,7 +156,18 @@ const NAMES = [
 // Names come from the original spreadsheet (two are deliberately duplicated so
 // the duplicate-profile rules can be tested). Every address is rewritten to a
 // reserved .example domain so no real mailbox can appear in a test database.
-const passwordHash = bcrypt.hashSync(DEV_PASSWORD, 10)
+// The hash already in the workbook is reused while it still matches, so a
+// regeneration does not give every User row a fresh salt (and a --sync then
+// rewrite every login) when nothing about the accounts changed.
+const passwordHash = (() => {
+  try {
+    const existing = XLSX.utils.sheet_to_json(XLSX.readFile(OUT).Sheets.User)[0]?.password_hash
+    if (existing && bcrypt.compareSync(DEV_PASSWORD, existing)) return existing
+  } catch {
+    // No workbook yet: hash afresh below.
+  }
+  return bcrypt.hashSync(DEV_PASSWORD, 10)
+})()
 
 const players = NAMES.map((fullName, i) => {
   const parts = fullName.trim().split(/\s+/)
@@ -1004,6 +1015,104 @@ for (const team of teams.filter(t => t._season === 'SEA03')) {
 }
 for (const p of players.filter(free)) add(p, 'PLAYER', 'GLOBAL', {})
 
+// ──────────────────────────────────────────────────────────────── juniors
+// Weekend Junior's next season: three teams entered and their squads
+// registered, but no draw yet (an UPCOMING season has no fixtures). Built from
+// fixed lists, without rnd(), so adding them leaves every other row as it was.
+// Each junior has a parent or guardian on record; two of those parents manage
+// their child's team, which is what a team manager's view of parent contacts
+// needs. Who may see what is in docs/junior-privacy.md.
+const JUNIOR_SEASON = {
+  id: 'SEA06', competition_id: 'COMP02', year: 2026, season_type: 'Summer', start_date: '2026-10-31', end_date: '2027-03-20',
+  status: 'UPCOMING', format: 'MF04', setsToWin: 2, playDay: 6, startTime: '09:00', sections: 2, teamsPerSection: 0, complete: false,
+}
+SEASONS.push(JUNIOR_SEASON)
+// The age limit applies on the season's first day (min_age/max_age).
+const juniorSections = [['18 & Under', 18, 2], ['12 & Under', 12, 1]].map(([name, maxAge, teamCount], n) => ({
+  id: `SEC${pad(sections.length + n + 1, 2)}`, season_id: JUNIOR_SEASON.id, name, gender: '', age_group: 'Junior',
+  min_age: '', max_age: maxAge, team_count: teamCount,
+}))
+sections.push(...juniorSections)
+const juniorTeams = {}
+for (const [key, clubId, section, label] of [
+  ['GW18', 'CLB01', juniorSections[0], '18U'], ['MW18', 'CLB02', juniorSections[0], '18U'], ['GW12', 'CLB01', juniorSections[1], '12U'],
+]) {
+  const club = clubs.find(c => c.id === clubId)
+  juniorTeams[key] = {
+    id: `TEAM${pad(teams.length + 1, 3)}`, club_id: clubId, section_id: section.id,
+    home_venue_id: venues.find(v => v.club_id === clubId).id,
+    name: `${club.name.replace(' Tennis Club', '')} ${label}`, _season: JUNIOR_SEASON.id,
+  }
+  teams.push(juniorTeams[key])
+}
+
+// Parents and guardians, on reserved .example addresses. The two with a team
+// to manage also have a login and an adult profile of their own.
+const GUARDIANS = [
+  ['Siobhan Fitzgerald'], ['Adaeze Okafor', 'GW18'], ['Rakesh Patel'], ['Ingrid Lindqvist'], ['Tomasz Kowalski'],
+  ['Lucia Rossi', 'MW18'], ['Aiko Saito'], ['Fiona Brennan'], ['Chidi Achebe'],
+].map(([fullName, manages], i) => {
+  const [first, last] = fullName.split(' ')
+  return { first, last, manages, email: `${slug(first)}.${slug(last)}@families.example`, phone: `0413 ${pad(200 + i, 3)} ${pad(700 + i, 3)}` }
+})
+// [first, last, date of birth, team, guardian]. The Brennans are siblings with
+// one parent. Ruby Achebe is 13 on the season's first day, too old for 12 & Under
+// on purpose, so the association's eligibility check has something to find.
+const JUNIOR_ROWS = [
+  ['Leo', 'Fitzgerald', '2009-11-14', 'GW18', 0], ['Maya', 'Okafor', '2010-03-02', 'GW18', 1],
+  ['Arjun', 'Patel', '2011-07-21', 'GW18', 2], ['Sophie', 'Lindqvist', '2012-05-09', 'GW18', 3],
+  ['Noah', 'Kowalski', '2010-01-30', 'MW18', 4], ['Isabella', 'Rossi', '2011-09-12', 'MW18', 5],
+  ['Kenji', 'Saito', '2012-12-03', 'MW18', 6], ['Ella', 'Brennan', '2014-08-18', 'GW12', 7],
+  ['Liam', 'Brennan', '2015-02-25', 'GW12', 7], ['Ruby', 'Achebe', '2013-06-11', 'GW12', 8],
+]
+const firstFreeNumber = players.length + adminPlayers.length + 1
+const juniors = JUNIOR_ROWS.map(([first, last, dateOfBirth, teamKey, guardianIndex], i) => {
+  const guardian = GUARDIANS[guardianIndex]
+  return {
+    id: `PLR${pad(firstFreeNumber + i, 3)}`,
+    // The junior's own login, used by the junior or by their parent on their behalf.
+    _lookup_user_email: `${slug(first)}.${slug(last)}@juniors.example`,
+    first_name: first, last_name: last, date_of_birth: dateOfBirth,
+    gender: ['FEMALE', 'MALE'][i % 2],
+    phone: `0414 ${pad(300 + i, 3)} ${pad(800 + i, 3)}`,
+    avatar_url: '', is_junior: true, status: 'ACTIVE',
+    guardian_name: `${guardian.first} ${guardian.last}`, guardian_email: guardian.email, guardian_phone: guardian.phone,
+    _team: teamKey,
+  }
+})
+const managingParents = GUARDIANS.filter(g => g.manages).map((g, i) => ({
+  id: `PLR${pad(firstFreeNumber + juniors.length + i, 3)}`,
+  _lookup_user_email: g.email,
+  first_name: g.first, last_name: g.last,
+  date_of_birth: `${1978 + i * 3}-${pad(4 + i, 2)}-${pad(10 + i, 2)}`,
+  gender: ['FEMALE', 'MALE'][i % 2],
+  phone: g.phone, avatar_url: '', is_junior: false, status: 'ACTIVE',
+  _team: g.manages,
+}))
+const juniorUsers = [...juniors, ...managingParents].map(p => ({
+  id: `USR${p.id.slice(3)}`, email: p._lookup_user_email, password_hash: passwordHash, status: 'ACTIVE', last_login_at: '',
+}))
+for (const p of [...juniors, ...managingParents]) {
+  const team = juniorTeams[p._team]
+  clubMemberships.push({
+    id: `CM${pad(clubMemberships.length + 1, 3)}`, player_id: p.id, club_id: team.club_id,
+    is_primary: true, start_date: '2025-08-02', end_date: '', status: 'ACTIVE',
+  })
+  associationMemberships.push({
+    id: `AM${pad(associationMemberships.length + 1, 3)}`, player_id: p.id,
+    association_id: associationOfClub.get(team.club_id), is_primary: true, status: 'ACTIVE',
+  })
+}
+for (const p of juniors) {
+  teamPlayers.push({
+    id: `TP${pad(teamPlayers.length + 1, 4)}`, team_id: juniorTeams[p._team].id, player_id: p.id,
+    status: 'ACTIVE', register_at: utc('2026-09-15', '09:00'),
+  })
+  add(p, 'PLAYER', 'GLOBAL', {})
+}
+for (const p of managingParents) add(p, 'TEAM_MANAGER', 'TEAM', { team_id: juniorTeams[p._team].id })
+const withoutTeamKey = rows => rows.map(({ _team, ...rest }) => (void _team, rest))
+
 // ──────────────────────────────────────────────────────────────── README
 const README = [
   ['Purpose', 'Test data for the Tennis Competition Platform, one sheet per database table. Rebuild with `npm run data:generate`, validate with `npm run data:check`.'],
@@ -1024,12 +1133,13 @@ const README = [
   ['Rubber winner is derived', 'winner_side is blank for a completed rubber, because the winner is read from the set scores. It is only stored for a walkover, forfeit or retirement, where the scores cannot decide it.'],
   ['Finals come from the ladder', 'Finals fixtures exist only for seasons whose home-and-away rounds are finished, and the teams are taken from the final ladder positions. The current season has no finals yet.'],
   ['Upcoming season', 'Summer 2026/27 Weekend Senior (SEA05) is UPCOMING with two empty sections, team_count 0, so new teams have somewhere to be entered. It has no teams, fixtures or ladder until they are.'],
+  ['Juniors', 'Summer 2026/27 Weekend Junior (SEA06) is UPCOMING with three teams entered (Glen Waverley 18U, Mount Waverley 18U, Glen Waverley 12U) and ten juniors (is_junior TRUE) registered, but no draw yet. Each junior has a parent or guardian (guardian_* columns, @families.example); Adaeze Okafor and Lucia Rossi also log in and manage their child\'s team. Juniors log in at @juniors.example. Ruby Achebe is 13 on the season\'s first day, too old for 12 & Under on purpose. Who may see a junior\'s details is in docs/junior-privacy.md.'],
   ['Ladder points and tie-break', 'Four points for a match win plus one per rubber won. Ties are separated by rubber percentage, then game percentage, then team name. Confirm this matches the association\'s rule before relying on it.'],
   ['Emergency players', 'Emergencies are not pre-registered on a roster. They appear only in the rubber they were called into, with is_emergency = TRUE, matching the last-minute substitution the client described.'],
   ['Result workflow', 'Results run enter -> opponent confirmation -> finalised. A few stay PENDING_CONFIRMATION and some are DISPUTED with a CorrectionRequest raised; AuditLog records who did what and when.'],
   ['Multiple clubs and associations', 'A quarter of the players hold a secondary club membership, and two associations exist with one ProfileMergeRequest between them.'],
   ['Duplicate names are intentional', '"Hiro Mitchell" and "Amelia Lee" each appear twice as different people, so duplicate detection on name + date of birth can be tested. Do not merge them.'],
-  ['SYNTHETIC: dates of birth and gender', 'Derived from the row index, never inferred from anyone\'s name. All players are adults.'],
+  ['SYNTHETIC: dates of birth and gender', 'Derived from the row index (fixed for the juniors), never inferred from anyone\'s name. Everyone is an adult except the ten juniors.'],
   ['SYNTHETIC: UTR ratings', 'Generated, not supplied by Universal Tennis. UtrLink.utr_rating always equals the newest snapshot for that player.'],
   ['SYNTHETIC: clubs and venues', 'Suburb names are real; addresses, phone numbers and emails are placeholders on .example domains.'],
 ].map(([field, value]) => ({ field, value }))
@@ -1043,10 +1153,10 @@ const strip = rows => rows.map(r => {
 
 const book = XLSX.utils.book_new()
 const sheets = [
-  ['README', README], ['User', [...users, ...adminUsers]], ['Association', ASSOCS], ['Club', clubs], ['Venue', venues],
+  ['README', README], ['User', [...users, ...adminUsers, ...juniorUsers]], ['Association', ASSOCS], ['Club', clubs], ['Venue', venues],
   ['Competition', competitions], ['MatchFormat', matchFormats], ['EligibilityRule', eligibilityRules],
   ['Season', SEASONS.map(({ format, setsToWin, playDay, startTime, sections: _s, teamsPerSection, complete, ...r }) => (void format, void setsToWin, void playDay, void startTime, void _s, void teamsPerSection, void complete, r))],
-  ['SectionGrade', sections], ['Team', strip(teams)], ['Player', [...players, ...adminPlayers]],
+  ['SectionGrade', sections], ['Team', strip(teams)], ['Player', [...players, ...adminPlayers, ...withoutTeamKey([...juniors, ...managingParents])]],
   ['ClubMembership', clubMemberships], ['AssociationMembership', associationMemberships],
   ['TeamPlayer', teamPlayers], ['UtrLink', utrLinks], ['UtrRatingSnapshot', utrSnapshots],
   ['RankingCohort', cohorts], ['RankingEntry', rankingEntries],

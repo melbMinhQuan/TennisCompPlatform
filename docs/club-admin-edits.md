@@ -67,7 +67,9 @@ A manager is a `UserRole` (TEAM_MANAGER, context TEAM, with `clubId` and `teamId
 exactly one role row. So:
 
 - The player needs a **login account**. A player without one gets 422 `MANAGER_NOT_ELIGIBLE`
-  with `reason: "NO_LOGIN_ACCOUNT"`. The other reasons are `INACTIVE_PLAYER` and `NOT_CLUB_MEMBER`.
+  with `reason: "NO_LOGIN_ACCOUNT"`. The other reasons are `INACTIVE_PLAYER`, `NOT_CLUB_MEMBER` and
+  `UNDER_18`: a junior cannot manage a team, because a manager sees every junior's parent contact
+  ([junior-privacy.md](junior-privacy.md)).
   The page knows all of this before anyone is picked, from `GET players` (below).
 - Their role becomes TEAM_MANAGER. A replaced or removed manager goes back to PLAYER (context
   GLOBAL) instead of being revoked, so they can still sign in as a player.
@@ -100,8 +102,8 @@ profiles.
 
 **Create new player.** Creates the player and an ACTIVE, primary membership of the club from
 today. `isJunior` is set when they are under 18 today. 409 `POSSIBLE_DUPLICATE` with `playerId`
-when a profile with the same name (ignoring case) and date of birth exists; offer to add that
-one instead.
+and `playerCode` (the readable Player ID the page shows) when a profile with the same name
+(ignoring case) and date of birth exists; offer to add that one instead.
 
 ## What the pages read
 

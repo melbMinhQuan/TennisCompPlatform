@@ -197,7 +197,7 @@ describe("FE-013: the club administrator dashboard's season and short club names
     id, name: id, seasonId, competition: "Weekend Senior", section: "Section 1", squadCount: 6, managerName: "Ava Clark", ...changes,
   });
   const dashboard = (seasons: ClubAdminDashboardData["seasons"], teams: ClubAdminDashboardData["teams"] = []): ClubAdminDashboardData => ({
-    asOf: "2026-10-18", club: { id: "club-1", name: "Glen Waverley Tennis Club", associationName: "Waverley Tennis", phone: null, email: null, address: null },
+    asOf: "2026-10-18", club: { id: "club-1", code: "CLB01", name: "Glen Waverley Tennis Club", associationName: "Waverley Tennis", phone: null, email: null, address: null },
     adminName: "Margaret", activeMembers: 26, seasons, teams, unreadCount: 0, activity: [],
   });
 
@@ -208,11 +208,13 @@ describe("FE-013: the club administrator dashboard's season and short club names
     expect(defaultSeasonId(dashboard([]))).toBe("");
   });
 
-  test("only the season being played asks for attention: a team with no manager or no active players", () => {
-    const data = dashboard([season("2025", "COMPLETED"), season("2026", "ACTIVE")], [
+  test("only seasons still to be played ask for attention: a team with no manager or no active players", () => {
+    const data = dashboard([season("2025", "COMPLETED"), season("2026", "ACTIVE"), season("2027", "UPCOMING")], [
       team("ready", "2026"), team("no-manager", "2026", { managerName: null }), team("empty", "2026", { squadCount: 0 }),
-      team("old-no-manager", "2025", { managerName: null }),
+      team("old-no-manager", "2025", { managerName: null }), team("next-no-manager", "2027", { managerName: null }),
     ]);
+    // A season that has not started yet is being set up, so its gaps count too.
+    expect(dashboardSeasonSummary(data, "2027")).toMatchObject({ attention: [{ id: "next-no-manager" }] });
     expect(dashboardSeasonSummary(data, "2026")).toMatchObject({ attention: [{ id: "no-manager" }, { id: "empty" }] });
     expect(dashboardSeasonSummary(data, "2026").teams).toHaveLength(3);
     expect(dashboardSeasonSummary(data, "2025")).toMatchObject({ teams: [{ id: "old-no-manager" }], attention: [] });

@@ -16,6 +16,8 @@
  * Safe to run more than once. Row ids are derived from the spreadsheet codes,
  * so a second run inserts nothing new rather than creating duplicates. It only
  * ever inserts: no row is updated or deleted, so hand-edited records survive.
+ * The one exception is a club or player seeded before the `code` column
+ * existed: its empty code is filled in, and nothing else on the row changes.
  *
  * That insert-only contract holds while the workbook only grows. It does NOT
  * hold after `npm run data:generate`, which renumbers the sequential codes: a
@@ -99,10 +101,17 @@ type Table = {
    * once a running count, so a database seeded then has rows on the wrong user.
    */
   uniqueOwner?: string
+  /**
+   * True when the table stores the workbook's readable ID in `code`, beside the
+   * UUID derived from it. Rows seeded before that column existed have it empty,
+   * and a plain seed fills it in: the only write it makes to an existing row.
+   */
+  coded?: boolean
   of: (tx: Prisma.TransactionClient) => {
     createMany(a: unknown): Promise<{ count: number }>
     deleteMany(a: unknown): Promise<{ count: number }>
     findMany(a?: unknown): Promise<Record<string, unknown>[]>
+    update(a: unknown): Promise<unknown>
     upsert(a: unknown): Promise<unknown>
   }
   rows: (S: Record<string, Row[]>, U: Users) => Built[]
@@ -119,8 +128,8 @@ const TABLES: Table[] = [
       phone: str(r.phone), status: String(r.status) as never,
     })) },
 
-  { name: 'club', of: tx => tx.club as never, rows: S => S.Club.map(r => ({
-      id: uuidFor(String(r.id)), associationId: ref(r.association_id)!, name: String(r.name),
+  { name: 'club', coded: true, of: tx => tx.club as never, rows: S => S.Club.map(r => ({
+      id: uuidFor(String(r.id)), code: String(r.id), associationId: ref(r.association_id)!, name: String(r.name),
       address: str(r.address), email: str(r.email), phone: str(r.phone), status: String(r.status) as never,
     })) },
 
@@ -170,13 +179,14 @@ const TABLES: Table[] = [
     }))
   } },
 
-  { name: 'player', of: tx => tx.player as never, rows: (S, U) => S.Player.map(r => ({
-      id: uuidFor(String(r.id)),
+  { name: 'player', coded: true, of: tx => tx.player as never, rows: (S, U) => S.Player.map(r => ({
+      id: uuidFor(String(r.id)), code: String(r.id),
       userId: U.get(String(r._lookup_user_email)) ?? null,
       firstName: String(r.first_name), lastName: String(r.last_name),
       dateOfBirth: date(r.date_of_birth)!, gender: String(r.gender) as never,
       phone: str(r.phone), avatarUrl: str(r.avatar_url),
       isJunior: bool(r.is_junior), status: String(r.status) as never,
+      guardianName: str(r.guardian_name), guardianEmail: str(r.guardian_email), guardianPhone: str(r.guardian_phone),
     })) },
 
   { name: 'clubMembership', of: tx => tx.clubMembership as never, rows: S => S.ClubMembership.map(r => ({
@@ -406,8 +416,28 @@ export async function seedCompetition(tx: Prisma.TransactionClient, S: Record<st
   const U = userIndex(S)
 
   const inserted: Record<string, number> = {}
+  const codesFilled: Record<string, number> = {}
   for (const t of TABLES) {
     const data = t.rows(S, U)
+    if (t.coded) {
+      // A club or player added through the app took the next free code, which the
+      // workbook may since have given to a row of its own. Inserting would then skip
+      // the workbook's row without a word (the code is unique), so stop instead.
+      const taken = await t.of(tx).findMany({
+        where: { code: { in: data.map(r => r.code) }, id: { notIn: data.map(r => r.id) } }, select: { code: true },
+      })
+      if (taken.length) {
+        throw new Error(`The workbook's ${t.name} ${taken.map(r => r.code).join(', ')} already belong(s) to a ${t.name} added through the app. `
+          + 'Run with --sync to replace the database with the workbook, or remove that row first.')
+      }
+      // Read before inserting, so only rows that predate the column are counted.
+      const uncoded = await t.of(tx).findMany({ where: { id: { in: data.map(r => r.id) }, code: null }, select: { id: true } })
+      const codeOf = new Map(data.map(r => [r.id, r.code]))
+      if (!dryRun) {
+        for (const r of uncoded) await t.of(tx).update({ where: { id: r.id }, data: { code: codeOf.get(String(r.id)) } })
+      }
+      codesFilled[t.name] = uncoded.length
+    }
     if (dryRun) {
       inserted[t.name] = data.length
     } else if (t.deferredUnique) {
@@ -419,7 +449,7 @@ export async function seedCompetition(tx: Prisma.TransactionClient, S: Record<st
     }
   }
 
-  return { dryRun, accounts: S.User.length, [dryRun ? 'rowsInWorkbook' : 'inserted']: inserted }
+  return { dryRun, accounts: S.User.length, [dryRun ? 'rowsInWorkbook' : 'inserted']: inserted, codesFilled }
 }
 
 /**
@@ -496,14 +526,14 @@ async function main() {
   const db = new PrismaClient()
   try {
     const result = await db.$transaction(
-      tx => (sync ? syncCompetition(tx, sheets, dryRun) : seedCompetition(tx, sheets, dryRun)),
+      async tx => (sync ? await syncCompetition(tx, sheets, dryRun) : await seedCompetition(tx, sheets, dryRun)),
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 600_000 },
     )
     console.log(dryRun
       ? 'Dry run: nothing was written.'
       : sync
         ? 'Competition data synced. The database now matches the workbook; rows it no longer defines were deleted.'
-        : 'Competition data seeded. Nothing was updated or deleted, so any row you edited by hand survived.')
+        : 'Competition data seeded. Nothing was deleted, and the only update was filling in missing club and player codes, so any row you edited by hand survived.')
     console.log(JSON.stringify(result, null, 2))
   } finally {
     await db.$disconnect()

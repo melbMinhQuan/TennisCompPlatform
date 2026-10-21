@@ -17,7 +17,8 @@ test.describe("viewing my club (Margaret Hayes, Glen Waverley)", () => {
     await expect(main(page).getByRole("heading", { name: "Welcome, Margaret" })).toBeVisible();
     const summary = main(page).locator("section", { has: page.getByRole("heading", { name: "Glen Waverley Tennis Club" }) });
     await expect(summary).toContainText("Waverley Tennis");
-    await expect(summary.getByRole("link", { name: /Active club members/ })).toContainText("26");
+    // 26 adults, plus seven juniors and a parent who manages a junior team (see docs/junior-privacy.md).
+    await expect(summary.getByRole("link", { name: /Active club members/ })).toContainText("34");
     await expect(page.getByLabel("Showing teams for").locator("option:checked")).toHaveText("Weekend Senior · Winter 2026 · Current");
     const teams = main(page).locator("section", { has: page.getByRole("heading", { name: "Your teams · Winter 2026" }) });
     await expect(teams).toContainText("Manager: Diego Brooks");
@@ -29,9 +30,9 @@ test.describe("viewing my club (Margaret Hayes, Glen Waverley)", () => {
   test("E2E-012: find a member and open their record, and stay logged in after a reload", async ({ page }) => {
     await logInAsClubAdmin(page);
     await openFromClubAdminMenu(page, "Players");
-    await expect(main(page).getByRole("heading", { name: "Active players (26)" })).toBeVisible();
+    await expect(main(page).getByRole("heading", { name: "Active players (34)" })).toBeVisible();
     await page.reload();
-    await expect(main(page).getByRole("heading", { name: "Active players (26)" })).toBeVisible();
+    await expect(main(page).getByRole("heading", { name: "Active players (34)" })).toBeVisible();
 
     await main(page).getByLabel("Search my club’s players").fill("chloe");
     await expect(main(page).getByRole("heading", { name: "Active players (1)" })).toBeVisible();
@@ -112,6 +113,8 @@ test.describe("changing my club, saved to the database", () => {
     await logInAsClubAdmin(page, KAREN);
     await openFromClubAdminMenu(page, "Teams");
     await main(page).getByRole("link", { name: "+ Create team" }).click();
+    // Weekend Junior's next season is open for entries too.
+    await page.getByLabel(/^Competition/).selectOption({ label: "Weekend Senior" });
     await expect(page.getByLabel(/^Season/).locator("option:checked")).toHaveText("Summer 2026/27");
     await page.getByLabel(/^Section/).selectOption({ label: "Section 2" });
     await page.getByLabel(/^Name/).fill(teamName);

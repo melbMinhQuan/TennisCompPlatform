@@ -2,7 +2,8 @@ import type { SeasonStatus } from "../types/season";
 import type { TeamPlayerStatus } from "./club-admin-players";
 import { clubAdminRecord, clubAdminRequest } from "./client";
 
-// Shapes from backend/src/club-admin/club-admin.types.ts. IDs are database UUIDs.
+// Shapes from backend/src/club-admin/club-admin.types.ts. IDs are database UUIDs; a player's `code`
+// is their readable Player ID (PLR005), null only for a player added before codes were automatic.
 
 /** Where a section or team sits: its season and competition. */
 type SeasonContext = {
@@ -32,9 +33,9 @@ export type ClubTeamSummary = ClubTeam & {
 /** One of the club's teams with its roster and current manager, as every team change answers it. */
 export type ClubTeamDetail = ClubTeam & {
   managerName: string | null;
-  /** Player ID is null when the manager has no profile; name is then their email. */
-  manager: { playerId: string | null; name: string; email: string } | null;
-  players: { id: string; firstName: string; lastName: string; status: TeamPlayerStatus; registeredAt: string | null }[];
+  /** Player ID and code are null when the manager has no profile; name is then their email. */
+  manager: { playerId: string | null; playerCode: string | null; name: string; email: string } | null;
+  players: { id: string; code: string | null; firstName: string; lastName: string; isJunior: boolean; status: TeamPlayerStatus; registeredAt: string | null }[];
 };
 
 /** A section of an UPCOMING season run by the club's association, open for new teams. */

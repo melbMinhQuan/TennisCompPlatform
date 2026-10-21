@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { Prisma, type SeasonStatus } from '@prisma/client'
 import { readOrUnavailable } from '../common/data-unavailable'
+import { guardianContact } from '../common/junior-privacy'
 import { roleHolderName, teamManagerNames } from '../common/role-holder'
 import { calendarDate, fullName, seasonLabel } from '../player/player-mappers'
 import { nameFit, normalizeName, parseWrittenName } from '../player-matching/names'
@@ -92,12 +93,12 @@ export class ClubAdminService {
     return readOrUnavailable(async () => {
       const team = await this.prisma.team.findFirst({
         where: { id: teamId, clubId },
-        include: { ...teamInclude, teamPlayers: { include: { player: { select: { id: true, firstName: true, lastName: true } } } } },
+        include: { ...teamInclude, teamPlayers: { include: { player: { select: { id: true, code: true, firstName: true, lastName: true, isJunior: true } } } } },
       })
       if (!team) throw new NotFoundException({ statusCode: 404, code: 'TEAM_NOT_FOUND', message: 'Team not found' })
       const role = await this.prisma.userRole.findFirst({
         where: { teamId: team.id, roleType: 'TEAM_MANAGER', revokedAt: null },
-        include: { user: { select: { email: true, profile: { select: { id: true, firstName: true, lastName: true } } } } },
+        include: { user: { select: { email: true, profile: { select: { id: true, code: true, firstName: true, lastName: true } } } } },
         // The longest-serving manager wins if a team somehow has two, as roleHolderName does.
         orderBy: [{ grantedAt: 'asc' }, { id: 'asc' }],
       })
@@ -105,11 +106,11 @@ export class ClubAdminService {
       return {
         ...this.clubTeam(team),
         managerName: profile ? fullName(profile) : null,
-        manager: role ? { playerId: profile?.id ?? null, name: profile ? fullName(profile) : role.user.email, email: role.user.email } : null,
+        manager: role ? { playerId: profile?.id ?? null, playerCode: profile?.code ?? null, name: profile ? fullName(profile) : role.user.email, email: role.user.email } : null,
         players: team.teamPlayers
           .map(entry => ({
-            id: entry.player.id, firstName: entry.player.firstName, lastName: entry.player.lastName,
-            status: entry.status, registeredAt: entry.registerAt?.toISOString() ?? null,
+            id: entry.player.id, code: entry.player.code, firstName: entry.player.firstName, lastName: entry.player.lastName,
+            isJunior: entry.player.isJunior, status: entry.status, registeredAt: entry.registerAt?.toISOString() ?? null,
           }))
           .sort(byName),
       }
@@ -144,7 +145,7 @@ export class ClubAdminService {
         .map(({ player, ...membership }) => {
           const role = roleOf(player)
           return {
-            id: player.id, firstName: player.firstName, lastName: player.lastName, status: player.status,
+            id: player.id, code: player.code, firstName: player.firstName, lastName: player.lastName, isJunior: player.isJunior, status: player.status,
             membership: this.membership(membership),
             teamNames: [...new Set(player.teamPlayers.map(entry => entry.team.name))].sort(),
             hasLogin: player.user !== null,
@@ -179,9 +180,9 @@ export class ClubAdminService {
       })
       if (!player || isClubAdmin(player)) throw playerNotFound()
       return {
-        id: player.id, firstName: player.firstName, lastName: player.lastName,
+        id: player.id, code: player.code, firstName: player.firstName, lastName: player.lastName,
         dateOfBirth: calendarDate(player.dateOfBirth)!, isJunior: player.isJunior,
-        email: player.user?.email ?? null, phone: player.phone, status: player.status,
+        email: player.user?.email ?? null, phone: player.phone, guardian: guardianContact(player), status: player.status,
         memberships: player.clubMemberships
           .map(membership => ({ clubId: membership.clubId, clubName: membership.club.name, ...this.membership(membership) }))
           .sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary) || a.clubName.localeCompare(b.clubName)),
@@ -253,10 +254,12 @@ export class ClubAdminService {
           const email = search.playerEmail ? person.user?.email === search.playerEmail : null
           const current = person.clubMemberships.filter(membership => isCurrentMembership(membership, today))
           const match: RegistryMatch = {
-            id: person.id, firstName: person.firstName, lastName: person.lastName,
+            id: person.id, code: person.code, firstName: person.firstName, lastName: person.lastName,
             match: { name: exact ? 'exact' : 'similar', nameReasons, dateOfBirth, email },
+            isJunior: person.isJunior,
             inThisClub: current.some(membership => membership.clubId === clubId),
-            otherClubs: current.filter(membership => membership.clubId !== clubId).map(membership => membership.club.name).sort(),
+            // Where a junior plays is not another club's to know.
+            otherClubs: person.isJunior ? [] : current.filter(membership => membership.clubId !== clubId).map(membership => membership.club.name).sort(),
           }
           return [{ match, score: (exact ? 100 : 20) + (dateOfBirth ? 30 : 0) + (email ? 30 : 0) }]
         })

@@ -15,6 +15,7 @@ import {
   matchLightButtonClass,
   pageTitleClass,
 } from "../components/MatchesUI";
+import { displayId } from "../utils/formatters";
 
 // A user has one role, so holding any of these rules them out (HOLDS_ANOTHER_ROLE).
 const OTHER_ROLES: Record<string, string> = {
@@ -42,10 +43,12 @@ export default function ClubAdminTeamAssignManagerPage() {
   const action = useClubAdminAction();
 
   /**
-   * Why a player can't manage this team, matching the backend's rules: a login account, one role
-   * per user, and one team at a time while that team's season is upcoming or active. "" means they can.
+   * Why a player can't manage this team, matching the backend's rules: an adult (a manager sees every
+   * junior's parent contact), a login account, one role per user, and one team at a time while that
+   * team's season is upcoming or active. "" means they can.
    */
   function blockedReason(player: ClubPlayer) {
+    if (player.isJunior) return "Under 18";
     if (!player.hasLogin) return "No login account";
     if (player.role && OTHER_ROLES[player.role]) return `Holds another role (${OTHER_ROLES[player.role]})`;
     if (player.managedTeam && player.managedTeam.id !== teamId) return `Already manages ${player.managedTeam.name}`;
@@ -66,7 +69,7 @@ export default function ClubAdminTeamAssignManagerPage() {
             `${player.firstName} ${player.lastName}`
               .toLowerCase()
               .includes(query) ||
-            player.id.toLowerCase().includes(query))
+            displayId(player).toLowerCase().includes(query))
       )
       .sort((a, b) =>
         `${a.firstName} ${a.lastName}`.localeCompare(
@@ -184,7 +187,7 @@ export default function ClubAdminTeamAssignManagerPage() {
                     {player.firstName} {player.lastName}
                   </p>
                   <p className="text-xs text-muted">
-                    {player.id} ·{" "}
+                    {displayId(player)} ·{" "}
                     {reason ||
                       (squadPlayerIds.has(player.id)
                         ? "In this squad"

@@ -3,6 +3,7 @@ import { getCompetitions } from "../api/matches";
 import { useApiData } from "../api/useApiData";
 import { matchBadgeClass, matchButtonClass, matchCardClass, pageClass, pageIntroClass, pageTitleClass } from "../components/MatchesUI";
 import MatchLoadState from "../components/MatchLoadState";
+import { isOpenSeason } from "../types/season";
 
 export default function CompetitionsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -10,8 +11,9 @@ export default function CompetitionsPage() {
   const { data: competitions, error, retry } = useApiData(getCompetitions);
   if (!competitions) return <MatchLoadState error={error} retry={retry} />;
 
+  // Current means still to be played: a season under way, or one the player is entered in that has not started.
   const visibleCompetitions = competitions.filter(
-    (competition) => isPast ? competition.seasonStatus !== "ACTIVE" : competition.seasonStatus === "ACTIVE",
+    (competition) => isPast !== isOpenSeason(competition.seasonStatus),
   );
 
   const clubCount = new Set(
@@ -60,7 +62,7 @@ export default function CompetitionsPage() {
             </h2>
 
             <span className="mt-3 inline-flex rounded-md bg-[#e5f4ec] px-2.5 py-1 text-xs font-semibold text-[#197354]">
-              {isPast ? "PAST ENTRY" : "ACTIVE ENTRY"}
+              {isPast ? "PAST ENTRY" : competition.seasonStatus === "UPCOMING" ? "UPCOMING ENTRY" : "ACTIVE ENTRY"}
             </span>
 
             <p className="mt-4 text-xs font-medium uppercase tracking-wide text-muted">

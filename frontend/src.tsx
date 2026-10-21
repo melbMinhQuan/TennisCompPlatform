@@ -1,6 +1,9 @@
 import PlayerSession from "./context/PlayerSession";
 import RoleSession from "./context/RoleSession";
 import RequireClubAdmin from "./components/RequireClubAdmin";
+import RequireAssociationAdmin from "./components/RequireAssociationAdmin";
+import AssociationAdminLayout from "./components/AssociationAdminLayout";
+import AssociationAdminJuniorsPage from "./pages/AssociationAdminJuniorsPage";
 import MyClubsPage from "./pages/MyClubsPage";
 import StandingsPage from "./pages/StandingsPage";
 import TeamDetailsPage from "./pages/TeamDetailsPage";
@@ -169,6 +172,11 @@ function App() {
           path="*"
           element={<ClubAdminPlaceholderPage title="Page not found" />}
         />
+      </Route>
+
+      <Route path="/association-admin" element={<RequireAssociationAdmin><AssociationAdminLayout /></RequireAssociationAdmin>}>
+        <Route index element={<AssociationAdminJuniorsPage />} />
+        <Route path="*" element={<p className="text-white md:text-[#1a3049]">Page not found. <Link className="underline" to="/association-admin">Back to juniors</Link></p>} />
       </Route>
 
       <Route path="*" element={<main className="p-8"><h1 className="text-2xl font-semibold">Page not found</h1><Link className="mt-4 inline-block text-brand underline" to="/login">Return to login</Link></main>} />

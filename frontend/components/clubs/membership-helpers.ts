@@ -12,7 +12,9 @@ export const primaryFirst = (a: Membership, b: Membership) => Number(b.isPrimary
 export const currentFirst = (a: MembershipTeam, b: MembershipTeam) =>
   Number(b.seasonStatus === "ACTIVE") - Number(a.seasonStatus === "ACTIVE");
 
-export const pastLabel = (team: MembershipTeam) => (team.seasonStatus === "ACTIVE" ? "" : " · Past season");
+/** Nothing for the season being played; otherwise whether the season is still to come or over. */
+export const pastLabel = (team: MembershipTeam) =>
+  team.seasonStatus === "ACTIVE" ? "" : team.seasonStatus === "UPCOMING" ? " · Coming season" : " · Past season";
 
 /** "May 2025" from an ISO date, or null. */
 function monthYear(value: string | null) {

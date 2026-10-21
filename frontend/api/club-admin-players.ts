@@ -1,7 +1,9 @@
+import type { Guardian } from "../components/junior/GuardianContact";
 import type { SeasonStatus } from "../types/season";
 import { clubAdminRecord, clubAdminRequest } from "./client";
 
-// Shapes from backend/src/club-admin/club-admin.types.ts. IDs are database UUIDs.
+// Shapes from backend/src/club-admin/club-admin.types.ts. IDs are database UUIDs; `code` is the
+// readable Player ID (PLR005), null only for a player added before codes were automatic. Show it with displayId.
 
 export type PlayerStatus = "ACTIVE" | "INACTIVE" | "SUSPENDED";
 export type TeamPlayerStatus = "ACTIVE" | "EMERGENCY" | "INACTIVE";
@@ -17,8 +19,12 @@ export type ClubPlayerMembership = {
 /** One row of the club's Players list. No date of birth or contact details. */
 export type ClubPlayer = {
   id: string;
+  /** The readable Player ID (PLR005); null only for a player added before codes were automatic. */
+  code: string | null;
   firstName: string;
   lastName: string;
+  /** Under 18: the club's own administrator may know (docs/junior-privacy.md). */
+  isJunior: boolean;
   /** The player record's own status: only an ACTIVE player can join a squad or manage a team. */
   status: PlayerStatus;
   membership: ClubPlayerMembership;
@@ -35,12 +41,16 @@ export type ClubPlayer = {
 /** A member of the club with every club they belong to (primary first) and this club's teams only. */
 export type ClubPlayerDetail = {
   id: string;
+  /** The readable Player ID (PLR005); null only for a player added before codes were automatic. */
+  code: string | null;
   firstName: string;
   lastName: string;
   dateOfBirth: string;
   isJunior: boolean;
   email: string | null;
   phone: string | null;
+  /** A junior's parent or guardian; null for an adult. */
+  guardian: Guardian | null;
   status: PlayerStatus;
   memberships: (ClubPlayerMembership & { clubId: string; clubName: string })[];
   teams: {
@@ -60,6 +70,8 @@ export type ClubPlayerDetail = {
 /** One registry search result: never a date of birth or contact details, only whether they agree. */
 export type RegistryMatch = {
   id: string;
+  /** The readable Player ID (PLR005); null only for a player added before codes were automatic. */
+  code: string | null;
   firstName: string;
   lastName: string;
   match: {
@@ -69,9 +81,11 @@ export type RegistryMatch = {
     dateOfBirth: boolean | null;
     email: boolean | null;
   };
+  /** Under 18: the result is the name alone, so the page says why. */
+  isJunior: boolean;
   /** Already a current member of the administrator's club: there is nothing to add. */
   inThisClub: boolean;
-  /** Other clubs the player is a current member of, by name. */
+  /** Other clubs the player is a current member of, by name. Always empty for a junior. */
   otherClubs: string[];
 };
 

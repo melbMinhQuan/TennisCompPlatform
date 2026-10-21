@@ -1,6 +1,7 @@
 import { HttpException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
 import { PrismaService } from '../prisma/prisma.service'
+import { guardianContact } from '../common/junior-privacy'
 import { rubberWinner } from '../common/rubber-winner'
 import { ageOn, calendarDate, compareDates, DashboardQuery, inDateRange, melbourneToday, paginate } from './dashboard.query'
 import type { BestUtrRank, DashboardData, NotificationItem, Page, ResultItem, ScheduleItem } from './dashboard.types'
@@ -60,9 +61,9 @@ export class DashboardService {
     const preview: DashboardQuery = { email: query.email, limit: 3, scope: 'upcoming', discipline: 'SINGLES', cursor: undefined, from: undefined, to: undefined, competitionId: undefined }
     return {
       profile: {
-        id: player.id, avatarUrl: null, displayName: `${player.firstName} ${player.lastName}`.trim(),
+        id: player.id, code: player.code, avatarUrl: null, displayName: `${player.firstName} ${player.lastName}`.trim(),
         status: player.status, dateOfBirth: birth, age: ageOn(birth, melbourneToday()), gender: player.gender,
-        email: loginEmail, phone: player.phone,
+        email: loginEmail, phone: player.phone, isJunior: player.isJunior, guardian: guardianContact(player),
         primaryClub: reference(club), primaryAssociation: reference(association),
         clubs: [...player.clubMemberships].sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary)).map(m => reference(m.club)!),
         teams: player.teamPlayers.map(m => reference(m.team)!).sort((a, b) => a.name.localeCompare(b.name)),

@@ -70,3 +70,6 @@ export function useClubAdminData<T>(load: Load<T>) {
   const { signedIn } = useContext(RoleSessionContext);
   return useLoad(load, signedIn?.email ?? "");
 }
+
+/** The same for the association administrator pages: they too identify the signed-in role holder. */
+export const useAssociationAdminData = useClubAdminData;

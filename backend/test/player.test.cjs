@@ -31,13 +31,24 @@ const twinsTeam = team('team-glen-b', 'Glen Waverley B', glen, section('sec-2026
 const nightCompetition = { id: 'comp-2', name: 'Night Tennis', associationId: 'assoc-1', association }
 const nightSeason = { id: 'season-night-2026', seasonType: 'Spring', year: 2026, status: 'ACTIVE', startDate: date('2026-08-01'), competitionId: 'comp-2', competition: nightCompetition }
 const nightTeam = team('team-glen-night', 'Glen Waverley Night', glen, section('sec-night-2026', nightSeason))
+// A junior team in a season that has not started yet. Its manager is a parent who is not on it.
+const juniorCompetition = { id: 'comp-junior', name: 'Weekend Junior', associationId: 'assoc-1', association }
+const upcoming = { id: 'season-junior', seasonType: 'Summer', year: 2026, status: 'UPCOMING', startDate: date('2026-10-31'), endDate: date('2027-03-20'), competitionId: 'comp-junior', competition: juniorCompetition }
+const juniorTeam = team('team-glen-18u', 'Glen Waverley 18U', glen, section('sec-junior-2026', upcoming))
+const junior = (id, firstName, lastName, guardianName, guardianEmail) => ({
+  id, firstName, lastName, isJunior: true, dateOfBirth: date('2010-03-02'), phone: '0414 300 800',
+  guardianName, guardianEmail, guardianPhone: '0413 200 700',
+})
 const people = {
-  chloe: { id: 'player-chloe', firstName: 'Chloe', lastName: 'Cooper' },
+  chloe: { id: 'player-chloe', code: 'PLR005', firstName: 'Chloe', lastName: 'Cooper' },
   mei: { id: 'player-mei', firstName: 'Mei', lastName: 'Tran' },
   yuki: { id: 'player-yuki', firstName: 'Yuki', lastName: 'Green' },
   // Two different people with the same name, as in the seeded test data.
   hiroOne: { id: 'player-hiro-1', firstName: 'Hiro', lastName: 'Mitchell' },
   hiroTwo: { id: 'player-hiro-2', firstName: 'Hiro', lastName: 'Mitchell' },
+  leo: junior('player-leo', 'Leo', 'Fitzgerald', 'Siobhan Fitzgerald', 'siobhan.fitzgerald@families.example'),
+  maya: junior('player-maya', 'Maya', 'Okafor', 'Adaeze Okafor', 'adaeze.okafor@families.example'),
+  adaeze: { id: 'player-adaeze', firstName: 'Adaeze', lastName: 'Okafor', isJunior: false, guardianName: null, guardianEmail: null, guardianPhone: null },
 }
 const users = {
   'chloe@club.example': { profile: people.chloe },
@@ -45,6 +56,9 @@ const users = {
   'mei@club.example': { profile: people.mei },
   'hiro.one@club.example': { profile: people.hiroOne },
   'hiro.two@club.example': { profile: people.hiroTwo },
+  'yuki@club.example': { profile: people.yuki },
+  'maya.okafor@juniors.example': { profile: people.maya },
+  'adaeze.okafor@families.example': { profile: people.adaeze },
 }
 const rosters = [
   { teamId: mountA.id, team: mountA, playerId: 'player-chloe', player: people.chloe, status: 'ACTIVE' },
@@ -54,6 +68,8 @@ const rosters = [
   { teamId: nightTeam.id, team: nightTeam, playerId: 'player-mei', player: people.mei, status: 'ACTIVE' },
   { teamId: twinsTeam.id, team: twinsTeam, playerId: 'player-hiro-1', player: people.hiroOne, status: 'ACTIVE' },
   { teamId: twinsTeam.id, team: twinsTeam, playerId: 'player-hiro-2', player: people.hiroTwo, status: 'ACTIVE' },
+  { teamId: juniorTeam.id, team: juniorTeam, playerId: 'player-leo', player: people.leo, status: 'ACTIVE' },
+  { teamId: juniorTeam.id, team: juniorTeam, playerId: 'player-maya', player: people.maya, status: 'ACTIVE' },
 ]
 const venue = { name: 'Mount Waverley Tennis Centre', address: '24 Park Road', timeZone: 'Australia/Melbourne' }
 const fixture = (id, home, away, extra) => ({
@@ -83,7 +99,8 @@ const retired = {
   rubberPlayers: [{ playerId: 'player-chloe', side: 'HOME', player: people.chloe }, { playerId: 'player-mei', side: 'AWAY', player: people.mei }],
 }
 const roles = [
-  { roleType: 'TEAM_MANAGER', teamId: mountA.id, revokedAt: null, user: { profile: people.yuki } },
+  { roleType: 'TEAM_MANAGER', teamId: mountA.id, revokedAt: null, email: 'yuki@club.example', user: { profile: people.yuki } },
+  { roleType: 'TEAM_MANAGER', teamId: juniorTeam.id, revokedAt: null, email: 'adaeze.okafor@families.example', user: { profile: people.adaeze } },
   { roleType: 'CLUB_ADMIN', clubId: glen.id, revokedAt: null, user: { profile: people.mei } },
   { roleType: 'RECORDS_SECRETARY', associationId: 'assoc-1', revokedAt: new Date(), user: { profile: people.mei } },
 ]
@@ -109,13 +126,21 @@ const prisma = {
     findFirst: async () => ({ clubId: glen.id, club: glen }),
   },
   team: {
+    // Without a roster filter the caller is the team's manager, who need not play in it.
     findFirst: async ({ where }) => {
-      const found = [mountA, glenA, rivals, twinsTeam].find(t => t.id === where.id)
-      const onRoster = found && rosters.some(r => r.teamId === found.id && r.playerId === where.teamPlayers.some.playerId)
-      return onRoster ? { ...found, teamPlayers: rosters.filter(r => r.teamId === found.id) } : null
+      const found = [mountA, glenA, rivals, twinsTeam, juniorTeam].find(t => t.id === where.id)
+      const allowed = found && (!where.teamPlayers || rosters.some(r => r.teamId === found.id && r.playerId === where.teamPlayers.some.playerId))
+      return allowed ? { ...found, teamPlayers: rosters.filter(r => r.teamId === found.id) } : null
     },
+    findUnique: async ({ where }) => [mountA, glenA, rivals, twinsTeam, juniorTeam].find(t => t.id === where.id) ?? null,
   },
-  userRole: { findFirst: async ({ where }) => roles.find(r => r.roleType === where.roleType && r.revokedAt === null && Object.keys(where).every(k => ['roleType', 'revokedAt'].includes(k) || r[k] === where[k])) ?? null },
+  // Role holders by team, club or association (equality), or the login's own role by user email.
+  userRole: {
+    findFirst: async ({ where }) => roles.find(r => r.roleType === where.roleType && r.revokedAt === null
+      && (where.user === undefined || r.email === where.user.email)
+      && Object.keys(where).every(k => ['roleType', 'revokedAt', 'user'].includes(k)
+        || (k === 'teamId' && where.teamId?.not === null ? r.teamId !== undefined : r[k] === where[k]))) ?? null,
+  },
   sectionGrade: { findMany: async () => [mountA.section, glenA.section] },
   ladderEntry: { findMany: async () => [{ id: 'lad-1', sectionId: 'sec-2026', teamId: mountA.id, team: mountA, position: 1, played: 3, won: 2, lost: 1, drawn: 0, points: 12, rubbersFor: 6, rubbersAgainst: 3, setsFor: 13, setsAgainst: 8, gamesFor: 90, gamesAgainst: 70, calculatedAt: new Date('2026-05-10T03:00:00Z') }] },
   playerStanding: { findMany: async () => [{ id: 'ps-1', sectionId: 'sec-2026', playerId: 'player-chloe', player: people.chloe, position: 4, rubbersPlayed: 3, rubbersWon: 2, rubbersLost: 1, setsWon: 5, setsLost: 3, gamesWon: 40, gamesLost: 30, winPercentage: { toString: () => '66.67' }, calculatedAt: new Date('2026-05-10T03:00:00Z') }] },
@@ -151,7 +176,7 @@ test('MAP-001: season, format, status and time labels', () => {
 
 // ── Unit: player lookup
 test('PLAYER-001: an email resolves to its linked player', async () => {
-  assert.deepEqual(await lookup.findByEmail(EMAIL), { id: 'player-chloe', displayName: 'Chloe Cooper' })
+  assert.deepEqual(await lookup.findByEmail(EMAIL), { id: 'player-chloe', code: 'PLR005', displayName: 'Chloe Cooper' })
 })
 
 test('PLAYER-002: unknown and unlinked accounts are distinct 404s', async () => {
@@ -182,7 +207,7 @@ test('FIX-002: a finals fixture has no round number but carries its label', asyn
 test('COMP-001: one competition entry per active team, newest season first', async () => {
   const entries = await matches.competitions(EMAIL)
   assert.deepEqual(entries.map(e => [e.id, e.season, e.seasonStatus]), [['team-mount-a', 'Winter 2026', 'ACTIVE'], ['team-glen-a', 'Winter 2025', 'COMPLETED']])
-  assert.deepEqual(entries[0].player, { id: 'player-chloe', name: 'Chloe Cooper' })
+  assert.deepEqual(entries[0].player, { id: 'player-chloe', code: 'PLR005', name: 'Chloe Cooper' })
 })
 
 test('COMP-002: the next fixture skips past dates and finished seasons have none', async () => {
@@ -234,6 +259,49 @@ test('TEAM-003: two teammates with the same name are both listed, and only the o
       ['player-hiro-2', 'Hiro Mitchell', me === people.hiroTwo],
     ], `logged in as ${email}`)
   }
+})
+
+// ── Juniors on a team list (docs/junior-privacy.md)
+const MEMBER_FIELDS = ['id', 'isCurrentPlayer', 'name', 'status']
+
+test('JUNIOR-004: a teammate sees only the names on a junior\'s team list, never their details or parent', async () => {
+  const details = await memberships.teamDetails('maya.okafor@juniors.example', juniorTeam.id)
+  assert.equal(details.viewerIsManager, false)
+  assert.deepEqual(details.members.map(m => [m.name, m.isCurrentPlayer]), [['Leo Fitzgerald', false], ['Maya Okafor', true]])
+  for (const member of details.members) assert.deepEqual(Object.keys(member).sort(), MEMBER_FIELDS)
+  const text = JSON.stringify(details)
+  for (const secret of ['families.example', '0413 200 700', '0414 300 800', '2010-03-02', 'isJunior']) assert.equal(text.includes(secret), false, `${secret} leaked`)
+  // Nor do they manage anything.
+  assert.deepEqual((await memberships.memberships('maya.okafor@juniors.example')).managedTeams, [])
+})
+
+test('JUNIOR-005: the team manager, who need not play in the team, sees the juniors and their parent\'s phone and email', async () => {
+  const manager = 'adaeze.okafor@families.example'
+  const details = await memberships.teamDetails(manager, juniorTeam.id)
+  assert.equal(details.viewerIsManager, true)
+  assert.deepEqual(details.members.map(m => [m.name, m.isJunior, m.guardian, m.isCurrentPlayer]), [
+    ['Leo Fitzgerald', true, { name: 'Siobhan Fitzgerald', email: 'siobhan.fitzgerald@families.example', phone: '0413 200 700' }, false],
+    ['Maya Okafor', true, { name: 'Adaeze Okafor', email: 'adaeze.okafor@families.example', phone: '0413 200 700' }, false],
+  ])
+  // The junior's own phone and date of birth stay with the junior, their club and the association.
+  const text = JSON.stringify(details)
+  for (const secret of ['0414 300 800', '2010-03-02']) assert.equal(text.includes(secret), false, `${secret} leaked`)
+  // My Clubs lists the team they manage, though they are on no roster.
+  const mine = await memberships.memberships(manager)
+  assert.deepEqual([mine.teams, mine.managedTeams.map(t => t.name)], [[], ['Glen Waverley 18U']])
+})
+
+test('JUNIOR-006: the manager of another team, or a player not on it, cannot open a junior team at all', async () => {
+  for (const email of ['yuki@club.example', EMAIL]) {
+    await assert.rejects(memberships.teamDetails(email, juniorTeam.id), e => e.getStatus() === 404 && e.getResponse().code === 'TEAM_NOT_FOUND', email)
+  }
+  // Yuki still manages their own team, and sees it as its manager.
+  assert.equal((await memberships.teamDetails('yuki@club.example', mountA.id)).viewerIsManager, true)
+})
+
+test('SUP-004: a team whose season is about to start names its manager too, so a junior knows who to call before round 1', async () => {
+  const contacts = await memberships.supportContacts('maya.okafor@juniors.example')
+  assert.deepEqual(contacts.teams.map(t => [t.teamName, t.seasonLabel, t.managerName, t.phone]), [['Glen Waverley 18U', 'Summer 2026/27', 'Adaeze Okafor', '03 1111 1111']])
 })
 
 test('SUP-001: contacts name the current team manager and primary club admin; a revoked role names nobody', async () => {

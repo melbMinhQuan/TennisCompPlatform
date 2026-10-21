@@ -54,13 +54,13 @@ function reset() {
     team(MOUNT_UP, 'Mount Waverley 1', 'club-mount', SEC_UP1),
   ]
   const person = (playerId, firstName, lastName, extra = {}) => ({
-    id: playerId, firstName, lastName, dateOfBirth: new Date('1990-01-01'), gender: 'FEMALE', isJunior: false,
+    id: playerId, code: null, firstName, lastName, dateOfBirth: new Date('1990-01-01'), gender: 'FEMALE', isJunior: false,
     phone: '0400 000 000', status: 'ACTIVE', mergeIntoId: null, userId: null, ...extra,
   })
   people = [
     person(AVA, 'Ava', 'Clark', { userId: 'user-ava' }),
     person(BEN, 'Ben', 'Adams'),
-    person(CARA, 'Cara', 'Brown', { dateOfBirth: new Date('1995-06-15'), userId: 'user-cara' }),
+    person(CARA, 'Cara', 'Brown', { code: 'PLR023', dateOfBirth: new Date('1995-06-15'), userId: 'user-cara' }),
     person(DAN, 'Dan', 'Evans', { userId: 'user-dan' }),
     person(EVE, 'Eve', 'Fox', { userId: 'user-eve' }),
     person(FRANK, 'Frank', 'Green', { userId: 'user-frank' }),
@@ -375,7 +375,7 @@ test('I-CLUBEDIT-008: assigning a manager replaces the old one, who becomes a pl
   assert.equal(status, 200)
   assert.equal(body.data.managerName, 'Dan Evans')
   // The answer names the new manager's Player ID, which the page uses to mark them in the squad.
-  assert.deepEqual(body.data.manager, { playerId: DAN, name: 'Dan Evans', email: 'dan@club.example' })
+  assert.deepEqual(body.data.manager, { playerId: DAN, playerCode: null, name: 'Dan Evans', email: 'dan@club.example' })
   const { id: _dan, grantedAt: danGranted, ...dan } = roleOf('user-dan')
   assert.deepEqual(dan, { userId: 'user-dan', roleType: 'TEAM_MANAGER', contextType: 'TEAM', associationId: null, clubId: 'club-glen', teamId: GLEN_A, competitionId: null, revokedAt: null })
   assert.ok(danGranted > new Date('2026-01-01'))
@@ -468,7 +468,7 @@ test('I-CLUBEDIT-014: creating a player registers them as a primary member; the 
   const duplicate = await call('POST', 'players', { body: { firstName: 'cara', lastName: 'BROWN', dateOfBirth: '1995-06-15', gender: 'FEMALE' } })
   assert.equal(duplicate.status, 409)
   assert.equal(duplicate.body.code, 'POSSIBLE_DUPLICATE')
-  assert.equal(duplicate.body.playerId, CARA)
+  assert.deepEqual([duplicate.body.playerId, duplicate.body.playerCode], [CARA, 'PLR023'])
 })
 
 test('I-CLUBEDIT-015: a new player needs a name, a real date of birth and a gender', async () => {
@@ -483,9 +483,9 @@ test('I-CLUBEDIT-016: the registry search finds people by name, ranks by birthda
   const { status, body } = await call('GET', 'registry/players', { query: { name: 'cara brown', dateOfBirth: '1995-06-15', playerEmail: 'Cara@Club.example' } })
   assert.equal(status, 200)
   assert.deepEqual(body.data, [{
-    id: CARA, firstName: 'Cara', lastName: 'Brown',
+    id: CARA, code: 'PLR023', firstName: 'Cara', lastName: 'Brown',
     match: { name: 'exact', nameReasons: ['same first name', 'same surname'], dateOfBirth: true, email: true },
-    inThisClub: true, otherClubs: ['Mount Waverley Tennis Club'],
+    isJunior: false, inThisClub: true, otherClubs: ['Mount Waverley Tennis Club'],
   }])
 
   // A nickname still finds them; a wrong birthday ranks lower but hides nobody.
@@ -531,4 +531,44 @@ test('I-CLUBEDIT-018: a database failure during a change is a 503 that leaks not
   } finally {
     prisma.$transaction = original
   }
+})
+
+test('JUNIOR-003: another club\'s admin searching for a junior sees the name and a tick or cross, never the date of birth, email, phone or clubs', async () => {
+  // Cara, a junior here, plays for Glen and Mount; the admin searching runs Syndal, which she is not in.
+  Object.assign(personById(CARA), { isJunior: true, guardianName: 'Pat Brown', guardianEmail: 'pat.brown@families.example', guardianPhone: '0413 200 700' })
+  users.push({ id: 'user-syndal-admin', email: 'admin.syndal@admin.example' })
+  roles.push({
+    id: 'role-syndal-admin', userId: 'user-syndal-admin', roleType: 'CLUB_ADMIN', contextType: 'CLUB', associationId: null,
+    clubId: 'club-syndal', teamId: null, competitionId: null, grantedAt: new Date('2026-01-01'), revokedAt: null,
+  })
+  const search = query => call('GET', 'registry/players', { query, email: 'admin.syndal@admin.example' })
+  const right = await search({ name: 'Cara Brown', dateOfBirth: '1995-06-15', playerEmail: 'cara@club.example' })
+  assert.equal(right.status, 200)
+  assert.deepEqual(right.body.data, [{
+    id: CARA, code: 'PLR023', firstName: 'Cara', lastName: 'Brown',
+    match: { name: 'exact', nameReasons: ['same first name', 'same surname'], dateOfBirth: true, email: true },
+    isJunior: true, inThisClub: false, otherClubs: [],
+  }])
+  // A wrong date of birth or email is a cross, and the real values never appear either way.
+  const wrong = await search({ name: 'Cara Brown', dateOfBirth: '1995-06-16', playerEmail: 'someone@else.example' })
+  assert.deepEqual([wrong.body.data[0].match.dateOfBirth, wrong.body.data[0].match.email], [false, false])
+  for (const body of [right.body, wrong.body]) {
+    const text = JSON.stringify(body)
+    for (const secret of ['1995-06-15', 'cara@club.example', '0400 000 000', 'Pat Brown', 'families.example', 'Glen Waverley', 'Mount Waverley']) {
+      assert.equal(text.includes(secret), false, `${secret} leaked`)
+    }
+  }
+  // An adult in the same search still shows where they play.
+  personById(CARA).isJunior = false
+  assert.deepEqual((await search({ name: 'Cara Brown' })).body.data[0].otherClubs, ['Glen Waverley Tennis Club', 'Mount Waverley Tennis Club'])
+})
+
+test('JUNIOR-014: a junior cannot be made a team manager, who would see other juniors\' parent contacts', async () => {
+  // Cara has a login and is an active member, so only her age stands in the way.
+  personById(CARA).isJunior = true
+  const { status, body } = await call('PUT', `teams/${GLEN_A}/manager`, { body: { playerId: CARA } })
+  assert.deepEqual([status, body.code, body.reason], [422, 'MANAGER_NOT_ELIGIBLE', 'UNDER_18'])
+  assert.equal(roleOf('user-ava').teamId, GLEN_A, 'Ava is still the manager')
+  assert.equal(roleOf('user-cara').roleType, 'PLAYER')
+  assert.deepEqual(audit, [])
 })

@@ -166,4 +166,6 @@ export const mockMemberships: PlayerMemberships = {
         sectionName: section.name,
       };
     }),
+  // The sample player manages no team.
+  managedTeams: [],
 };

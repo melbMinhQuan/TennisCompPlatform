@@ -1,3 +1,8 @@
+/** The ID people read: the readable code (CLB01, PLR005), else the database UUID for an old record without one. */
+export function displayId(record: { id: string; code: string | null }) {
+  return record.code ?? record.id;
+}
+
 const MINUTE_MS = 60_000;
 const HOUR_MS = 60 * MINUTE_MS;
 const DAY_MS = 24 * HOUR_MS;
@@ -18,6 +23,12 @@ export function timeAgo(isoTimestamp: string, now = Date.now()) {
   }).formatToParts(new Date(isoTimestamp));
   const part = (type: string) => Number(parts.find((value) => value.type === type)?.value);
   return `${part("day")} ${SHORT_MONTHS[part("month") - 1]} ${part("year")}`;
+}
+
+/** "11 Jun 2013" from YYYY-MM-DD, without shifting the day through a time zone or Intl's month names. */
+export function dayMonthYear(date: string) {
+  const [year, month, day] = date.split("-").map(Number);
+  return `${day} ${SHORT_MONTHS[month - 1]} ${year}`;
 }
 
 /** "Sep 26" from YYYY-MM-DD, without shifting the calendar day through a time zone. */

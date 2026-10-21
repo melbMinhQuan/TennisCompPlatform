@@ -11,6 +11,8 @@ import {
   matchLightButtonClass,
   pageTitleClass,
 } from "../components/MatchesUI";
+import { displayId } from "../utils/formatters";
+import JuniorBadge from "../components/junior/JuniorBadge";
 
 const button = matchButtonClass;
 const secondary = matchLightButtonClass;
@@ -197,10 +199,11 @@ export default function ClubAdminTeamDetailPage() {
                 <div>
                   <p className="font-semibold">
                     {player.firstName} {player.lastName}
+                    {player.isJunior && <JuniorBadge />}
                   </p>
 
                   <p className="mt-0.5 text-sm text-muted">
-                    {player.id}
+                    {displayId(player)}
                   </p>
                 </div>
 
@@ -320,7 +323,7 @@ export default function ClubAdminTeamDetailPage() {
                 {manager.name}
               </p>
               <p className="mt-1 text-sm text-muted">
-                Player ID: {manager.playerId ?? "—"}
+                Player ID: {manager.playerCode ?? manager.playerId ?? "—"}
               </p>
               <p className="mt-1 text-sm text-muted">
                 {manager.email}

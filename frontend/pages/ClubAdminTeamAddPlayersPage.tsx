@@ -12,6 +12,7 @@ import {
   matchLightButtonClass,
   pageTitleClass,
 } from "../components/MatchesUI";
+import { displayId } from "../utils/formatters";
 
 // The backend's reasons a player cannot join a squad (422 PLAYERS_NOT_ELIGIBLE).
 const NOT_ELIGIBLE: Record<string, string> = {
@@ -59,7 +60,7 @@ export default function ClubAdminTeamAddPlayersPage() {
           `${player.firstName} ${player.lastName}`
             .toLowerCase()
             .includes(query) ||
-          player.id.toLowerCase().includes(query)
+          displayId(player).toLowerCase().includes(query)
       )
       .map((player) => {
         const isMember = player.membership.status === "ACTIVE";
@@ -223,7 +224,7 @@ export default function ClubAdminTeamAddPlayersPage() {
                     {player.firstName} {player.lastName}
                   </p>
                   <p className="text-xs text-muted">
-                    {player.id} · {eligible ? "Active member" : reason}
+                    {displayId(player)} · {eligible ? "Active member" : reason}
                   </p>
                 </div>
 

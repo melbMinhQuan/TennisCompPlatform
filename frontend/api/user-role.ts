@@ -24,7 +24,12 @@ export function roleFromLogin(email: string, response: LoginDetails): SignedInRo
   };
 }
 
-/** Where each role lands after logging in: club administrators get the club dashboard. */
+/**
+ * Where each role lands after logging in: club administrators get the club dashboard, the
+ * association's administrator its juniors page, and everyone else their player dashboard.
+ */
 export function homeForRole(role: string) {
-  return role === "CLUB_ADMIN" ? "/club-admin" : "/dashboard";
+  if (role === "CLUB_ADMIN") return "/club-admin";
+  if (role === "ADMINISTRATOR") return "/association-admin";
+  return "/dashboard";
 }

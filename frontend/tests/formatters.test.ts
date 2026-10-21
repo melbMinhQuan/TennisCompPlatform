@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from "vitest";
-import { formatDateChange, formatRound, formatTopPercent, timeAgo } from "../utils/formatters";
+import { dayMonthYear, formatDateChange, formatRound, formatTopPercent, timeAgo } from "../utils/formatters";
 import {
   dateParts, formatFixtureDate, formatFixtureDateWithYear, formatResultDate, formatTime, melbourneDate, todayInMelbourne,
 } from "../utils/date-helpers";
@@ -83,5 +83,12 @@ describe("FE-012: dates in Melbourne for the club administrator pages", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe("FE-014: calendar dates in full", () => {
+  test("months are named the same on every machine, and the day never shifts", () => {
+    // Intl's en-AU names June "June" but November "Nov"; the page must not mix the two.
+    expect([dayMonthYear("2013-06-11"), dayMonthYear("2009-11-14"), dayMonthYear("2026-09-01")]).toEqual(["11 Jun 2013", "14 Nov 2009", "1 Sep 2026"]);
   });
 });

@@ -58,6 +58,8 @@ export interface ResultItem {
 export interface DashboardData {
   profile: {
     id: string
+    /** The readable Player ID (PLR005); null only for a player added before codes were automatic. */
+    code: string | null
     avatarUrl: null
     displayName: string
     status: string
@@ -66,6 +68,10 @@ export interface DashboardData {
     gender: string
     email: string
     phone: string | null
+    /** Under 18. The profile is the player's own, so a junior sees their own details here. */
+    isJunior: boolean
+    /** A junior's own parent or guardian on record; null for an adult. */
+    guardian: { name: string | null; email: string | null; phone: string | null } | null
     primaryClub: Reference | null
     /** Every active club membership, primary first. */
     clubs: Reference[]

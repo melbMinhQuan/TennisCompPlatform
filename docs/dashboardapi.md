@@ -53,6 +53,7 @@ Example `200` response showing the full future shape; values are illustrative:
   "data": {
     "profile": {
       "id": "player-id",
+      "code": "PLR005",
       "avatarUrl": null,
       "displayName": "Lebron Chris",
       "status": "ACTIVE",

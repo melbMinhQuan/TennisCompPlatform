@@ -46,7 +46,7 @@ const roles = [
   { userId: 'user-old-sec', roleType: 'RECORDS_SECRETARY', clubId: null, associationId: 'assoc-waverley', revokedAt: new Date(), player: { firstName: 'Old', lastName: 'Secretary' } },
   { userId: 'user-mia', roleType: 'RECORDS_SECRETARY', clubId: null, associationId: 'assoc-waverley', revokedAt: null, player: { firstName: 'Mia', lastName: 'Coleman' } },
   { userId: 'user-other-admin', roleType: 'ADMINISTRATOR', clubId: null, associationId: 'assoc-other', revokedAt: null, player: { firstName: 'Other', lastName: 'Admin' } },
-  { userId: 'user-ava', roleType: 'TEAM_MANAGER', clubId: 'club-glen', associationId: null, teamId: GLEN_TEAM, revokedAt: null, email: 'ava@club.example', player: { id: AVA, firstName: 'Ava', lastName: 'Clark' } },
+  { userId: 'user-ava', roleType: 'TEAM_MANAGER', clubId: 'club-glen', associationId: null, teamId: GLEN_TEAM, revokedAt: null, email: 'ava@club.example', player: { id: AVA, code: 'PLR001', firstName: 'Ava', lastName: 'Clark' } },
 ]
 const waverley = { id: 'assoc-waverley', name: 'Waverley Tennis', phone: '03 9000 0000', email: 'info@waverleytennis.example' }
 const clubs = {
@@ -55,10 +55,10 @@ const clubs = {
 // Ava and Ben play for Glen (Ben left the club); Cara's home club is Mount but she
 // also plays for Glen; Margaret is Glen's club admin; Mount-only is never Glen's.
 const person = (id, firstName, lastName, extra = {}) => ({
-  id, firstName, lastName, dateOfBirth: new Date('1990-01-01'), isJunior: false, phone: null, status: 'ACTIVE', user: null, ...extra,
+  id, code: null, firstName, lastName, dateOfBirth: new Date('1990-01-01'), isJunior: false, phone: null, status: 'ACTIVE', user: null, ...extra,
 })
 const people = [
-  person(AVA, 'Ava', 'Clark', { phone: '0400 000 001', user: { email: 'ava@club.example', userRole: { roleType: 'TEAM_MANAGER', revokedAt: null, teamId: GLEN_TEAM } } }),
+  person(AVA, 'Ava', 'Clark', { code: 'PLR001', phone: '0400 000 001', user: { email: 'ava@club.example', userRole: { roleType: 'TEAM_MANAGER', revokedAt: null, teamId: GLEN_TEAM } } }),
   person(BEN, 'Ben', 'Adams'),
   person(CARA, 'Cara', 'Brown'),
   person(MARGARET, 'Margaret', 'Hayes', { user: { email: 'admin.glen@admin.example', userRole: { roleType: 'CLUB_ADMIN', revokedAt: null } } }),
@@ -218,11 +218,11 @@ test('I-CLUBADMIN-011: players are the club\'s members, active or not, without t
   const noLogin = { hasLogin: false, role: null, managedTeam: null }
   assert.deepEqual(body.data, [
     {
-      id: AVA, firstName: 'Ava', lastName: 'Clark', status: 'ACTIVE', membership: { status: 'ACTIVE', isPrimary: true, startDate: '2025-05-06', endDate: null },
+      id: AVA, code: 'PLR001', firstName: 'Ava', lastName: 'Clark', isJunior: false, status: 'ACTIVE', membership: { status: 'ACTIVE', isPrimary: true, startDate: '2025-05-06', endDate: null },
       teamNames: ['Glen Waverley 1'], hasLogin: true, role: 'TEAM_MANAGER', managedTeam: { id: GLEN_TEAM, name: 'Glen Waverley 1' },
     },
-    { id: BEN, firstName: 'Ben', lastName: 'Adams', status: 'ACTIVE', membership: { status: 'INACTIVE', isPrimary: true, startDate: '2025-05-06', endDate: '2026-03-01' }, teamNames: [], ...noLogin },
-    { id: CARA, firstName: 'Cara', lastName: 'Brown', status: 'ACTIVE', membership: { status: 'ACTIVE', isPrimary: false, startDate: '2025-05-06', endDate: null }, teamNames: [], ...noLogin },
+    { id: BEN, code: null, firstName: 'Ben', lastName: 'Adams', isJunior: false, status: 'ACTIVE', membership: { status: 'INACTIVE', isPrimary: true, startDate: '2025-05-06', endDate: '2026-03-01' }, teamNames: [], ...noLogin },
+    { id: CARA, code: null, firstName: 'Cara', lastName: 'Brown', isJunior: false, status: 'ACTIVE', membership: { status: 'ACTIVE', isPrimary: false, startDate: '2025-05-06', endDate: null }, teamNames: [], ...noLogin },
   ])
 })
 
@@ -276,11 +276,11 @@ test('I-CLUBADMIN-014: a team\'s detail has its roster by name and its manager; 
   const { status, body } = await get(`teams/${GLEN_TEAM}`, ADMIN)
   assert.equal(status, 200)
   assert.equal(body.data.managerName, 'Ava Clark')
-  assert.deepEqual(body.data.manager, { playerId: AVA, name: 'Ava Clark', email: 'ava@club.example' })
+  assert.deepEqual(body.data.manager, { playerId: AVA, playerCode: 'PLR001', name: 'Ava Clark', email: 'ava@club.example' })
   assert.equal(body.data.seasonLabel, 'Winter 2026')
   assert.deepEqual(body.data.players, [
-    { id: AVA, firstName: 'Ava', lastName: 'Clark', status: 'ACTIVE', registeredAt: '2026-04-01T00:00:00.000Z' },
-    { id: CARA, firstName: 'Cara', lastName: 'Brown', status: 'EMERGENCY', registeredAt: null },
+    { id: AVA, code: 'PLR001', firstName: 'Ava', lastName: 'Clark', isJunior: false, status: 'ACTIVE', registeredAt: '2026-04-01T00:00:00.000Z' },
+    { id: CARA, code: null, firstName: 'Cara', lastName: 'Brown', isJunior: false, status: 'EMERGENCY', registeredAt: null },
   ])
   const other = await get(`teams/${MOUNT_TEAM}`, ADMIN)
   assert.equal(other.status, 404)
@@ -294,9 +294,56 @@ test('I-CLUBADMIN-017: a manager with no profile is named by their email, with n
   try {
     const { body } = await get(`teams/${GLEN_TEAM}`, ADMIN)
     assert.equal(body.data.managerName, null)
-    assert.deepEqual(body.data.manager, { playerId: null, name: 'ava@club.example', email: 'ava@club.example' })
+    assert.deepEqual(body.data.manager, { playerId: null, playerCode: null, name: 'ava@club.example', email: 'ava@club.example' })
   } finally {
     ava.player = player
+  }
+})
+
+// ── Juniors (docs/junior-privacy.md). Cara plays for Glen and Mount; Mount-only is never Glen's.
+const asJunior = (person, guardian = { guardianName: 'Pat Brown', guardianEmail: 'pat.brown@families.example', guardianPhone: '0413 200 700' }) => {
+  const saved = { isJunior: person.isJunior, phone: person.phone, user: person.user }
+  Object.assign(person, { isJunior: true, phone: '0414 300 800', user: { email: 'cara@juniors.example', userRole: null }, ...guardian })
+  return () => { Object.assign(person, saved); for (const key of Object.keys(guardian)) delete person[key] }
+}
+
+test('JUNIOR-001: a club admin sees every detail of a junior in their own club, parent contact included', async () => {
+  const restore = asJunior(personById(CARA))
+  try {
+    const { status, body } = await get(`players/${CARA}`, ADMIN)
+    assert.equal(status, 200)
+    assert.deepEqual(
+      { isJunior: body.data.isJunior, dateOfBirth: body.data.dateOfBirth, email: body.data.email, phone: body.data.phone, guardian: body.data.guardian },
+      {
+        isJunior: true, dateOfBirth: '1990-01-01', email: 'cara@juniors.example', phone: '0414 300 800',
+        guardian: { name: 'Pat Brown', email: 'pat.brown@families.example', phone: '0413 200 700' },
+      },
+    )
+    // The Players list and the squad mark the junior, still without contact details.
+    const row = (await get('players', ADMIN)).body.data.find(p => p.id === CARA)
+    assert.equal(row.isJunior, true)
+    assert.equal(JSON.stringify(row).includes('0414 300 800'), false)
+    const squad = (await get(`teams/${GLEN_TEAM}`, ADMIN)).body.data.players
+    assert.deepEqual(squad.map(p => [p.firstName, p.isJunior]), [['Ava', false], ['Cara', true]])
+    // An adult has no parent contact.
+    assert.equal((await get(`players/${AVA}`, ADMIN)).body.data.guardian, null)
+  } finally {
+    restore()
+  }
+})
+
+test('JUNIOR-002: a junior who only plays for another club is a 404 to this club admin, never their details', async () => {
+  const restore = asJunior(personById(MOUNT_ONLY))
+  try {
+    const { status, body } = await get(`players/${MOUNT_ONLY}`, ADMIN)
+    assert.equal(status, 404)
+    assert.equal(body.code, 'PLAYER_NOT_FOUND')
+    assert.equal(JSON.stringify(body).includes('families.example'), false)
+    // Nor are they on the club's Players list, or reachable through the other club's team.
+    assert.equal((await get('players', ADMIN)).body.data.some(p => p.id === MOUNT_ONLY), false)
+    assert.equal((await get(`teams/${MOUNT_TEAM}`, ADMIN)).status, 404)
+  } finally {
+    restore()
   }
 })
 

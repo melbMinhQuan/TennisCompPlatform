@@ -4,6 +4,9 @@ import { getTeamDetails } from "../api/teams";
 import { darkCardClass, matchCardClass, matchLightButtonClass, pageClass, pageTitleClass } from "../components/MatchesUI";
 import MatchLoadState from "../components/MatchLoadState";
 import { useApiData } from "../api/useApiData";
+import GuardianContact from "../components/junior/GuardianContact";
+import JuniorBadge from "../components/junior/JuniorBadge";
+import JuniorNotice from "../components/junior/JuniorNotice";
 
 const card = `${matchCardClass} text-[#1a3049]`;
 // Most members are ACTIVE, so only the unusual statuses get a badge.
@@ -51,7 +54,9 @@ export default function TeamDetailsPage() {
             <p className="text-xs font-medium uppercase tracking-wide text-[#bacbdf]">
               {team.seasonStatus === "ACTIVE"
                 ? "Current season"
-                : "Past season"}
+                : team.seasonStatus === "UPCOMING"
+                  ? "Coming season"
+                  : "Past season"}
             </p>
             <h2 className="mt-2 text-2xl font-bold [overflow-wrap:anywhere]">
               {team.name}
@@ -85,8 +90,12 @@ export default function TeamDetailsPage() {
             </div>
             {team.seasonStatus !== "ACTIVE" && (
               <p className="mt-2 text-sm text-muted">
-                Members registered for this past season.
+                {team.seasonStatus === "UPCOMING" ? "Members registered for the coming season." : "Members registered for this past season."}
               </p>
+            )}
+            {/* Only the team's manager is sent who is a junior, and a junior's parent contact. */}
+            {team.viewerIsManager && members.some((member) => member.isJunior) && (
+              <JuniorNotice audience="manager" className="mt-4" />
             )}
             {members.length === 0 ? (
               <p className="mt-5 text-sm text-muted">
@@ -112,14 +121,18 @@ export default function TeamDetailsPage() {
                             .map((n) => n[0])
                             .join("")}
                         </span>
-                        <h3 className="min-w-0 font-semibold [overflow-wrap:anywhere]">
-                          {member.name}
-                          {member.isCurrentPlayer && (
-                            <span className="ml-2 rounded-full bg-[#1a3049] px-2 py-0.5 text-xs font-medium text-white">
-                              You
-                            </span>
-                          )}
-                        </h3>
+                        <div className="min-w-0">
+                          <h3 className="min-w-0 font-semibold [overflow-wrap:anywhere]">
+                            {member.name}
+                            {member.isCurrentPlayer && (
+                              <span className="ml-2 rounded-full bg-[#1a3049] px-2 py-0.5 text-xs font-medium text-white">
+                                You
+                              </span>
+                            )}
+                            {member.isJunior && <JuniorBadge />}
+                          </h3>
+                          {member.isJunior && <GuardianContact guardian={member.guardian ?? null} className="mt-1 text-muted" />}
+                        </div>
                       </div>
                       {badge && (
                         <span className="rounded-md bg-[#eef1f5] px-3 py-1.5 text-xs font-medium text-muted">

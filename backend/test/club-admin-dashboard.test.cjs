@@ -29,7 +29,7 @@ const managerUsers = {
   'user-gone': { email: 'gone@club.example', profile: { firstName: 'Gone', lastName: 'Away' } },
 }
 const clubs = {
-  'club-glen': { id: 'club-glen', name: 'Glen Waverley Tennis Club', phone: '03 9336 5357', email: 'admin@glen.example', address: '20 Reserve Road', association: { name: 'Waverley Tennis' } },
+  'club-glen': { id: 'club-glen', code: 'CLB01', name: 'Glen Waverley Tennis Club', phone: '03 9336 5357', email: 'admin@glen.example', address: '20 Reserve Road', association: { name: 'Waverley Tennis' } },
   'club-mount': { id: 'club-mount', name: 'Mount Waverley Tennis Club', phone: null, email: null, address: null, association: { name: 'Waverley Tennis' } },
 }
 
@@ -150,7 +150,7 @@ test('I-CLUBDASH-001: the dashboard names the club and greets the admin by first
   assert.equal(status, 200)
   assert.match(body.data.asOf, /^\d{4}-\d{2}-\d{2}$/)
   assert.deepEqual(body.data.club, {
-    id: 'club-glen', name: 'Glen Waverley Tennis Club', associationName: 'Waverley Tennis',
+    id: 'club-glen', code: 'CLB01', name: 'Glen Waverley Tennis Club', associationName: 'Waverley Tennis',
     phone: '03 9336 5357', email: 'admin@glen.example', address: '20 Reserve Road',
   })
   assert.equal(body.data.adminName, 'Margaret')

@@ -23,12 +23,13 @@ Logged in, it calls GET /api/v1/player/memberships?email=, which returns { data:
 Logged out, the service returns a cloned sample response. API failures show an error and Retry; they never silently fall back to sample data.
 
 Expected data:
-- player: { id, displayName }
+- player: { id, code (readable Player ID such as PLR005, null only for a player added before codes were automatic), displayName }
 - associations[]: { id (membership ID), associationId, name, isPrimary, status, startDate, endDate } (AssociationMembership has no dates in the workbook, so both are null)
 - clubs[]: { id (membership ID), clubId, associationId, associationName, name, isPrimary, status, startDate, endDate } (ClubMembership.start_date / end_date)
 - teams[]: { id (team ID), clubId, name, competitionName, seasonLabel, seasonStatus, sectionName }
   - seasonLabel is Season.season_type + year, e.g. "Winter 2026"
-  - seasonStatus is Season.status (ACTIVE / COMPLETED / ARCHIVED); the page lists ACTIVE (current) teams first and labels the rest "Past season"
+  - seasonStatus is Season.status (UPCOMING / ACTIVE / COMPLETED / ARCHIVED); the page lists ACTIVE (current) teams first and labels the rest "Coming season" (UPCOMING) or "Past season"
+- managedTeams[]: the same shape, for the team the login manages (an unrevoked TEAM_MANAGER role), which they need not play in. The page lists it under "Teams you manage"; empty for anyone else
 
 A membership with an endDate shows "Ended {Month Year}" instead of "Active membership".
 
@@ -53,9 +54,12 @@ details, birthdays, or invented captain roles are included.
 frontend/api/teams.ts is the API adapter. Logged in, it calls
 GET /api/v1/player/teams/:teamId?email=, which answers only for a team the
 player is on (any other team is 404). The envelope is { data: TeamDetails }; TeamDetails extends MembershipTeam with clubName,
-associationName, and members: { id (player ID), name, status
+associationName, viewerIsManager, and members: { id (player ID), name, status
 (ACTIVE/EMERGENCY/INACTIVE), isCurrentPlayer (true only for the logged-in
-player, which the server knows from the session) }[].
+player, which the server knows from the session) }[]. The team's manager can open
+it without being on it; for them (viewerIsManager true) each member also carries
+isJunior and a junior's guardian { name, email, phone }. Nobody else is sent
+those fields (docs/junior-privacy.md).
 The server must authorize roster access. Map a different backend response here.
 
 Mock rosters are used only when nobody is logged in. Live failures never fall back to mock rosters. HTTP 404

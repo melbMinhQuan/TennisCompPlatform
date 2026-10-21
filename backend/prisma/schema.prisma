@@ -46,6 +46,13 @@ enum UserStatus {
 model Player {
   id String @id @default(uuid())
 
+  // The readable Player ID (e.g. PLR005). The seed writes the workbook's code and
+  // derives `id` from it; any other new player, such as one a club administrator
+  // adds, gets the next free code from a database trigger (migration
+  // 20261020000100_assign_codes_automatically). Null only for a player added
+  // before that trigger existed.
+  code String? @unique
+
   firstName String @map("first_name")
   lastName  String @map("last_name")
 
@@ -61,6 +68,12 @@ model Player {
   avatarUrl String? @map("avatar_url")
 
   isJunior Boolean @default(false) @map("is_junior")
+
+  // A junior's parent or guardian, the contact a team manager may see (see
+  // docs/junior-privacy.md for who sees what). Null for an adult.
+  guardianName  String? @map("guardian_name")
+  guardianEmail String? @map("guardian_email")
+  guardianPhone String? @map("guardian_phone")
 
   status PlayerStatus @default(ACTIVE)
 
@@ -126,6 +139,12 @@ enum AssociationStatus {
 
 model Club {
   id String @id @default(uuid())
+
+  // The readable Club ID (e.g. CLB01). The seed writes the workbook's code and
+  // derives `id` from it; any other new club gets the next free code from a
+  // database trigger (migration 20261020000100_assign_codes_automatically).
+  // Null only for a club added before that trigger existed.
+  code String? @unique
 
   associationId String      @map("association_id")
   association   Association @relation(fields: [associationId], references: [id])

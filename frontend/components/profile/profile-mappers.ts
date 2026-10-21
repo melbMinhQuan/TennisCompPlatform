@@ -3,7 +3,7 @@ import type { MatchFixture } from "../../api/matches";
 import type { PlayerProfileData } from "../PlayerProfile";
 import type { UpcomingCompetitionItem } from "../UpcomingCompetition";
 import { dateParts, formatTime, todayInMelbourne } from "../../utils/date-helpers";
-import { formatRound } from "../../utils/formatters";
+import { displayId, formatRound } from "../../utils/formatters";
 
 /** Converts the dashboard API profile into what the profile card shows. */
 export function toPlayerProfile(profile: DashboardData["profile"]): PlayerProfileData {
@@ -18,7 +18,9 @@ export function toPlayerProfile(profile: DashboardData["profile"]): PlayerProfil
     clubs: profile.clubs.map((club) => club.name),
     teams: profile.teams.map((team) => team.name),
     association: profile.primaryAssociation?.name ?? null,
-    playerId: profile.id,
+    playerId: displayId(profile),
+    isJunior: profile.isJunior,
+    guardian: profile.guardian,
   };
 }
 

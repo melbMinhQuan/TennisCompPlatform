@@ -50,7 +50,7 @@ export class ClubAdminDashboardService {
       return {
         asOf: today,
         club: {
-          id: club.id, name: club.name, associationName: club.association.name,
+          id: club.id, code: club.code, name: club.name, associationName: club.association.name,
           phone: club.phone, email: club.email, address: club.address,
         },
         adminName: admin.profile?.firstName ?? admin.email,

@@ -16,7 +16,7 @@ export class PlayerLookupService {
   async findByEmail(email: string): Promise<PlayerIdentity> {
     const user = await this.prisma.user.findUnique({
       where: { email },
-      select: { profile: { select: { id: true, firstName: true, lastName: true } } },
+      select: { profile: { select: { id: true, code: true, firstName: true, lastName: true } } },
     })
     if (!user) throw new NotFoundException({ statusCode: 404, code: 'USER_NOT_FOUND', message: 'Account not found' })
     if (!user.profile) {
@@ -25,6 +25,6 @@ export class PlayerLookupService {
         message: 'Login account found, but it does not have a linked player profile yet.',
       })
     }
-    return { id: user.profile.id, displayName: fullName(user.profile) }
+    return { id: user.profile.id, code: user.profile.code, displayName: fullName(user.profile) }
   }
 }

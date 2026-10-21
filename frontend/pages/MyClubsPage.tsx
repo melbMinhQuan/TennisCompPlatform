@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import { getPlayerMemberships } from "../api/memberships";
 import { useApiData } from "../api/useApiData";
 import { pageClass, pageIntroClass, pageTitleClass } from "../components/MatchesUI";
@@ -45,6 +46,22 @@ export default function MyClubsPage() {
               teams: new Set(data.teams.map((t) => t.id)).size,
             }}
           />
+          {data.managedTeams.length > 0 && (
+            <section className={CLUB_CARD_CLASS} aria-labelledby="managed-teams-heading">
+              <h2 id="managed-teams-heading" className="text-lg font-bold">Teams you manage</h2>
+              <p className="mt-1 text-sm text-muted">Open a team to see its squad and how to reach each junior's parent or guardian.</p>
+              <ul className="mt-3 divide-y divide-[#dce4ee]">
+                {data.managedTeams.map((team) => (
+                  <li key={team.id} className="py-3">
+                    <Link to={`/dashboard/clubs/teams/${team.id}`} className="font-semibold text-[#075bc5] underline-offset-4 hover:underline">
+                      {team.name}
+                    </Link>
+                    <span className="block text-sm text-muted">{team.competitionName} · {team.seasonLabel} · {team.sectionName}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
           {associations.map((a) => (
             <AssociationSection
               key={a.id}

@@ -4,6 +4,7 @@ import type { CompetitionEntry } from "../types/competition";
 // from Project detail/competition_data.xlsx (TeamPlayer TP0106, TP0210, TP0002).
 const previewPlayer = {
   id: "PLR005",
+  code: "PLR005",
   name: "Chloe Cooper",
 };
 

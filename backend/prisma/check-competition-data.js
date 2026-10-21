@@ -31,6 +31,36 @@ count('players with a non-.example address',
   S.Player.filter(p => !/\.example$/.test(String(p._lookup_user_email))).length)
 count('User rows with a non-.example address',
   S.User.filter(u => !/\.example$/.test(String(u.email))).length)
+count('parent or guardian contacts with a non-.example address',
+  S.Player.filter(p => p.guardian_email !== '' && !/\.example$/.test(String(p.guardian_email))).length)
+
+// ── Juniors: is_junior agrees with the date of birth, and every junior has a
+// parent or guardian to contact (docs/junior-privacy.md). Nobody else has one.
+const under18 = p => {
+  const [y, ...rest] = String(p.date_of_birth).split('-')
+  return `${Number(y) + 18}-${rest.join('-')}` > TODAY
+}
+count('players whose is_junior disagrees with their date of birth',
+  S.Player.filter(p => (p.is_junior === true) !== under18(p)).length)
+count('juniors with no parent or guardian name, phone or email',
+  S.Player.filter(p => p.is_junior === true && (p.guardian_name === '' || (p.guardian_phone === '' && p.guardian_email === ''))).length)
+count('adults with a parent or guardian on record',
+  S.Player.filter(p => p.is_junior !== true && [p.guardian_name, p.guardian_phone, p.guardian_email].some(v => v !== undefined && v !== '')).length)
+// One junior is deliberately too old for their section, so the association
+// admin's eligibility check has something to find. Keep at least one.
+const ageOn = (dob, on) => {
+  const [y, m, d] = String(dob).split('-').map(Number)
+  const [ty, tm, td] = String(on).split('-').map(Number)
+  return ty - y - (tm < m || (tm === m && td < d) ? 1 : 0)
+}
+const sectionById = new Map(S.SectionGrade.map(sec => [sec.id, sec]))
+const seasonById = new Map(S.Season.map(se => [se.id, se]))
+const overAge = S.TeamPlayer.filter(tp => {
+  const player = S.Player.find(p => p.id === tp.player_id)
+  const sec = sectionById.get(teamById.get(tp.team_id).section_id)
+  return player.is_junior === true && sec.max_age !== '' && ageOn(player.date_of_birth, seasonById.get(sec.season_id).start_date) > sec.max_age
+})
+if (!overAge.length) bad('no junior is outside their section\'s age limit, so the eligibility check has nothing to find')
 
 // ── Legal tennis set scores: 6-0..6-4, 7-5, or 7-6 on a tiebreak
 const illegal = S.RubberSet.filter(s => {
@@ -366,10 +396,13 @@ count('players in a club whose association they do not belong to',
   count('cells holding an empty string where NULL was meant', empties)
 }
 
-// ── PDF: 6 or 8 team sections, 14 rounds, each pair meeting home and away
+// ── PDF: 6 or 8 team sections, 14 rounds, each pair meeting home and away.
+// An UPCOMING season is still taking entries and has no draw, so it is skipped.
+const upcomingSeasons = new Set(S.Season.filter(se => se.status === 'UPCOMING').map(se => se.id))
+const drawnTeam = teamId => !upcomingSeasons.has(sectionById.get(teamById.get(teamId).section_id).season_id)
 for (const sec of S.SectionGrade) {
   const teams = S.Team.filter(t => t.section_id === sec.id)
-  if (!teams.length) continue
+  if (!teams.length || upcomingSeasons.has(sec.season_id)) continue
   if (![6, 8].includes(teams.length)) bad(`${sec.id}: ${teams.length} teams, the document allows 6 or 8`)
   const regular = S.Fixture.filter(f => f.section_id === sec.id && f.is_finals !== true)
   const rounds = new Set(regular.map(f => f.round_number))
@@ -466,10 +499,11 @@ else if (withFixtures.length < S.Competition.length) {
 // ── Every rostered player gets matches, and enough of them to play finals
 const appearances = new Map()
 for (const rp of S.RubberPlayer) appearances.set(rp.player_id, (appearances.get(rp.player_id) || 0) + 1)
+// A season without a draw has played nothing yet, so its squads are left out.
 count('rostered players who never appear in a rubber',
-  [...new Set(S.TeamPlayer.filter(t => t.status === 'ACTIVE').map(t => t.player_id))]
+  [...new Set(S.TeamPlayer.filter(t => t.status === 'ACTIVE' && drawnTeam(t.team_id)).map(t => t.player_id))]
     .filter(id => !appearances.has(id)).length)
-const short = [...new Set(S.TeamPlayer.map(t => t.player_id))].filter(id => (appearances.get(id) || 0) < 3)
+const short = [...new Set(S.TeamPlayer.filter(t => drawnTeam(t.team_id)).map(t => t.player_id))].filter(id => (appearances.get(id) || 0) < 3)
 if (short.length) warn(`${short.length} players have fewer than 3 matches (finals-ineligible under ELIG01)`)
 
 // ── The dashboard has to be fillable for a real player

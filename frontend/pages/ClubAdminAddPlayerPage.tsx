@@ -17,7 +17,9 @@ import {
   pageTitleClass,
 } from "../components/MatchesUI";
 import CreatePlayerForm from "../components/club-admin/players/CreatePlayerForm";
-import { shortClubName } from "../utils/formatters";
+import { displayId, shortClubName } from "../utils/formatters";
+import JuniorBadge from "../components/junior/JuniorBadge";
+import JuniorNotice from "../components/junior/JuniorNotice";
 
 type Stage = "search" | "choose" | "create" | "done";
 const button = matchButtonClass;
@@ -98,7 +100,7 @@ export default function ClubAdminAddPlayerPage() {
     const player = await action.run(
       (admin, signal) => createClubPlayer(details, admin, signal),
       (refusal) => refusal.code === "POSSIBLE_DUPLICATE"
-        ? `${details.firstName} ${details.lastName} (${String(refusal.body?.playerId ?? "")}) already has a record with this date of birth. Go back to the results and add that player instead.`
+        ? `${details.firstName} ${details.lastName} (${String(refusal.body?.playerCode ?? refusal.body?.playerId ?? "")}) already has a record with this date of birth. Go back to the results and add that player instead.`
         : null,
     );
     if (!player) return;
@@ -196,6 +198,7 @@ export default function ClubAdminAddPlayerPage() {
         <div className="mt-5">
           <h2 className="mb-4 text-lg font-bold">{results.length} results for “{fullName.trim()}”</h2>
           {action.error && <p role="alert" className="mb-4 rounded-lg bg-white p-3 text-sm text-red-700">{action.error}</p>}
+          {results.some((player) => player.isJunior) && <JuniorNotice audience="registry" className="mb-4" />}
           <div className="space-y-4">
             {results.map((player) => {
               const member = player.inThisClub;
@@ -204,13 +207,13 @@ export default function ClubAdminAddPlayerPage() {
               return (
                 <article key={player.id} className="rounded-2xl bg-white p-5 text-[#1a3049] md:p-6">
                   <div className="flex flex-col-reverse items-start justify-between gap-2 md:flex-row">
-                    <h3 className="font-bold">{player.firstName} {player.lastName} · {player.id}</h3>
+                    <h3 className="font-bold">{player.firstName} {player.lastName} · {displayId(player)}{player.isJunior && <JuniorBadge />}</h3>
                     <span className={`rounded-md px-3 py-1 text-xs font-semibold ${member ? "bg-[#e4f5ec] text-[#187650]" : exact ? "bg-[#e7f0fa]" : "bg-[#fff1df] text-[#a45c14]"}`}>
                       {member ? "Already in your club" : exact ? "In another club / Not a member" : "Possible match"}
                     </span>
                   </div>
                   <p className="mt-2 text-sm font-medium">Name {exact ? "✓" : "similar"} {player.match.dateOfBirth !== null && ` · Date of birth ${player.match.dateOfBirth ? "✓" : "×"}`} {player.match.email !== null && ` · Email ${player.match.email ? "✓" : "×"}`}</p>
-                  <p className="mt-2 text-sm text-muted">{member ? `Already a ${shortClubName(clubName)} member. There is nothing to add.` : clubs.length ? `Plays for ${clubs.join(", ")}. Adding them keeps the same Player ID and history.` : "No current club membership."}</p>
+                  <p className="mt-2 text-sm text-muted">{member ? `Already a ${shortClubName(clubName)} member. There is nothing to add.` : player.isJunior ? "A junior: where they play is not shown to other clubs. Adding them keeps the same Player ID and history." : clubs.length ? `Plays for ${clubs.join(", ")}. Adding them keeps the same Player ID and history.` : "No current club membership."}</p>
                   {member ? (
                     <Link to={`/club-admin/players/${player.id}`} className={`${secondary} mt-3 w-full md:w-auto`}>View player</Link>
                   ) : (
@@ -246,7 +249,7 @@ export default function ClubAdminAddPlayerPage() {
           <div role="status" className="rounded-2xl bg-[#e3f5eb] p-6 text-[#175e48]">
             <p className="text-xs font-semibold">✓ {created ? "New player created" : "Added to your club"}</p>
             <h2 className="mt-3 text-xl font-bold">{selected.firstName} {selected.lastName} is now in {clubName}</h2>
-            <p className="mt-2 text-sm">Player ID {selected.id}. {created ? "They are a member of your club from today." : "Their existing Player ID and history stay the same."}</p>
+            <p className="mt-2 text-sm">Player ID {displayId(selected)}. {created ? "They are a member of your club from today." : "Their existing Player ID and history stay the same."}</p>
           </div>
           <div className="mt-4 rounded-2xl bg-white p-5 text-[#1a3049] md:p-6">
             <h3 className="mb-4 text-lg font-bold">What next?</h3>

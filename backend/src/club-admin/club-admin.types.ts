@@ -2,6 +2,7 @@ import type {
   FixtureStatus, MembershipStatus, NotificationTargetType, NotificationType, PlayerStatus, ResultStatus, RoleType, RubberOutcome, RubberType,
   TeamPlayerStatus,
 } from '@prisma/client'
+import type { GuardianContact } from '../common/junior-privacy'
 import type { SeasonStatus } from '../player/player.types'
 
 export interface ClubCompetition {
@@ -53,8 +54,12 @@ export interface ClubPlayerMembership {
 /** One row of the club's Players list. No date of birth or contact details. */
 export interface ClubPlayer {
   id: string
+  // The readable Player ID (PLR005); null only for a player added before codes were automatic.
+  code: string | null
   firstName: string
   lastName: string
+  // Under 18. The club's own administrator may know; see docs/junior-privacy.md.
+  isJunior: boolean
   // The player record's own status: only an ACTIVE player can join a squad or manage a team.
   status: PlayerStatus
   membership: ClubPlayerMembership
@@ -70,12 +75,17 @@ export interface ClubPlayer {
 
 export interface ClubPlayerDetail {
   id: string
+  // The readable Player ID (PLR005); null only for a player added before codes were automatic.
+  code: string | null
   firstName: string
   lastName: string
   dateOfBirth: string
   isJunior: boolean
   email: string | null
   phone: string | null
+  // A junior's parent or guardian; null for an adult. Only the club's own administrator gets
+  // this page, because the player must be a member of their club.
+  guardian: GuardianContact | null
   status: PlayerStatus
   // Every club the player belongs to, primary first, so the admin can see their home club.
   memberships: (ClubPlayerMembership & { clubId: string; clubName: string })[]
@@ -86,10 +96,11 @@ export interface ClubPlayerDetail {
 export interface ClubTeamDetail extends ClubTeam {
   // The manager's profile name; null when the team has no manager or the manager has no profile.
   managerName: string | null
-  // The current manager: their Player ID (null without a profile), name (their email without a
-  // profile) and account email, so the page can show them and mark them in the squad.
-  manager: { playerId: string | null; name: string; email: string } | null
-  players: { id: string; firstName: string; lastName: string; status: TeamPlayerStatus; registeredAt: string | null }[]
+  // The current manager: their Player ID and readable code (null without a profile), name (their
+  // email without a profile) and account email, so the page can show them and mark them in the squad.
+  manager: { playerId: string | null; playerCode: string | null; name: string; email: string } | null
+  // `code` is the readable Player ID, as on ClubPlayer.
+  players: { id: string; code: string | null; firstName: string; lastName: string; isJunior: boolean; status: TeamPlayerStatus; registeredAt: string | null }[]
 }
 
 /**
@@ -124,9 +135,13 @@ export interface OpenSection extends ClubSection {
 /**
  * One registry search result. Never carries date of birth or contact details:
  * the matches only say whether what the admin typed agrees with the record.
+ * For a junior the result is the name alone: otherClubs is always empty, so
+ * another club cannot learn where a child plays (docs/junior-privacy.md).
  */
 export interface RegistryMatch {
   id: string
+  // The readable Player ID (PLR005); null only for a player added before codes were automatic.
+  code: string | null
   firstName: string
   lastName: string
   match: {
@@ -137,9 +152,11 @@ export interface RegistryMatch {
     dateOfBirth: boolean | null
     email: boolean | null
   }
+  // Under 18, so the page can say why only the name is shown.
+  isJunior: boolean
   // An ACTIVE membership of the admin's club, so there is nothing to add.
   inThisClub: boolean
-  // Other clubs the player is an active member of, by name.
+  // Other clubs the player is an active member of, by name. Always empty for a junior.
   otherClubs: string[]
 }
 
@@ -216,6 +233,8 @@ export interface ClubAdminDashboard {
   asOf: string
   club: {
     id: string
+    // The readable Club ID (CLB01); null only for a club added before codes were automatic.
+    code: string | null
     name: string
     associationName: string
     phone: string | null

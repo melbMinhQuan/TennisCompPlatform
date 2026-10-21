@@ -98,22 +98,24 @@ const notice = (id: string, readAt: string | null = null): ClubAdminNotification
 });
 const dashboard = (unreadCount: number): ClubAdminDashboardData => ({
   asOf: "2026-10-18",
-  club: { id: "club-glen", name: "Glen Waverley Tennis Club", associationName: "Waverley Tennis", phone: null, email: null, address: null },
+  club: { id: "club-glen", code: "CLB01", name: "Glen Waverley Tennis Club", associationName: "Waverley Tennis", phone: null, email: null, address: null },
   adminName: "Margaret", activeMembers: 26,
   seasons: [{ id: "s2026", label: "Winter 2026", competition: "Weekend Senior", status: "ACTIVE" }],
   teams: [{ id: TEAM, name: "Glen Waverley A", seasonId: "s2026", competition: "Weekend Senior", section: "Section 1", squadCount: 6, managerName: "Ava Clark" }],
   unreadCount, activity: [],
 });
 const season = { seasonId: "s2026", seasonLabel: "Winter 2026", seasonStatus: "ACTIVE" as const, competitionId: "comp", competitionName: "Weekend Senior" };
-const squadPlace = (id: string, firstName: string, lastName: string) => ({ id, firstName, lastName, status: "ACTIVE" as const, registeredAt: null });
+// Ava has a readable Player ID, Ben does not, so pages show a code for one and the UUID for the other.
+const codes: Record<string, string> = { [AVA]: "PLR001" };
+const squadPlace = (id: string, firstName: string, lastName: string, isJunior = false) => ({ id, code: codes[id] ?? null, firstName, lastName, isJunior, status: "ACTIVE" as const, registeredAt: null });
 const team = (changes: Partial<ClubTeamDetail> = {}): ClubTeamDetail => ({
   id: TEAM, name: "Glen Waverley A", sectionId: "sec-1", sectionName: "Section 1", ...season,
-  managerName: "Ava Clark", manager: { playerId: AVA, name: "Ava Clark", email: "ava@club.example" },
+  managerName: "Ava Clark", manager: { playerId: AVA, playerCode: "PLR001", name: "Ava Clark", email: "ava@club.example" },
   players: [squadPlace(AVA, "Ava", "Clark"), squadPlace(BEN, "Ben", "Adams")],
   ...changes,
 });
 const member = (id: string, firstName: string, lastName: string, changes: Partial<ClubPlayer> = {}): ClubPlayer => ({
-  id, firstName, lastName, status: "ACTIVE", membership: { status: "ACTIVE", isPrimary: true, startDate: "2025-05-06", endDate: null },
+  id, code: codes[id] ?? null, firstName, lastName, isJunior: false, status: "ACTIVE", membership: { status: "ACTIVE", isPrimary: true, startDate: "2025-05-06", endDate: null },
   teamNames: [], hasLogin: true, role: "PLAYER", managedTeam: null, ...changes,
 });
 
@@ -123,6 +125,7 @@ describe("I-UI-006: club administrator sign-in survives a reload and identifies 
     openAsAdmin("/club-admin");
     expect(await screen.findByRole("heading", { name: "Welcome, Margaret" })).toBeTruthy();
     expect(await screen.findByRole("heading", { name: "Glen Waverley Tennis Club" })).toBeTruthy();
+    expect(screen.getByText("Club ID CLB01")).toBeTruthy();
     expect(calls.map((call) => [call.path, call.query.get("email")])).toEqual(
       expect.arrayContaining([["dashboard", ADMIN.email], ["notifications", ADMIN.email]]),
     );
@@ -143,7 +146,8 @@ describe("I-UI-006: club administrator sign-in survives a reload and identifies 
     });
     openAsAdmin("/club-admin/players");
     expect(await screen.findByRole("heading", { name: "Active players (2)" })).toBeTruthy();
-    expect(screen.getByText(`${AVA} · Glen Waverley A`)).toBeTruthy();
+    expect(screen.getByText("PLR001 · Glen Waverley A")).toBeTruthy();
+    expect(screen.getByText(`${BEN} · No team yet`)).toBeTruthy(); // no readable ID: the UUID instead
     expect(screen.getByText("Additional club")).toBeTruthy();
     expect(screen.getAllByRole("link", { name: "View ›" }).map((link) => link.getAttribute("href"))).toEqual([`/club-admin/players/${AVA}`, `/club-admin/players/${BEN}`]);
   });
@@ -205,9 +209,9 @@ describe("I-UI-008: team details show the backend's squad and manager, and remov
     openAsAdmin(`/club-admin/teams/${TEAM}`);
     expect(await screen.findByRole("heading", { name: "Squad (2)" })).toBeTruthy();
     const managerCard = screen.getByRole("heading", { name: "Team manager" }).parentElement!;
-    expect(managerCard.textContent).toContain(`Player ID: ${AVA}`);
+    expect(managerCard.textContent).toContain("Player ID: PLR001");
     expect(managerCard.textContent).toContain("ava@club.example");
-    const avaRow = screen.getByText(AVA, { selector: "p" }).closest("div")!.parentElement!;
+    const avaRow = screen.getByText("PLR001", { selector: "p" }).closest("div")!.parentElement!;
     expect(within(avaRow).getByText("Team manager")).toBeTruthy();
   });
 
@@ -268,7 +272,7 @@ describe("I-UI-009: assigning a team manager", () => {
         ],
       }),
       [`PUT teams/${TEAM}/manager`]: ({ body }) => {
-        stored = team({ managerName: "Dan Evans", manager: { playerId: (body as { playerId: string }).playerId, name: "Dan Evans", email: "dan@club.example" } });
+        stored = team({ managerName: "Dan Evans", manager: { playerId: (body as { playerId: string }).playerId, playerCode: null, name: "Dan Evans", email: "dan@club.example" } });
         return { data: stored };
       },
     });
@@ -316,7 +320,7 @@ describe("I-UI-010: adding a player searches the registry first, then saves the 
     const calls = fakeBackend({
       "GET notifications": () => ({ data: [] }),
       "GET registry/players": () => ({ data: [] }),
-      "POST players": () => ({ status: 409, error: { code: "POSSIBLE_DUPLICATE", message: "A player with this name and date of birth is already registered", playerId: "chloe" } }),
+      "POST players": () => ({ status: 409, error: { code: "POSSIBLE_DUPLICATE", message: "A player with this name and date of birth is already registered", playerId: "chloe", playerCode: "PLR005" } }),
     });
     openAsAdmin("/club-admin/players/add");
     fireEvent.change(await screen.findByLabelText(/Full name/), { target: { value: "Chloe Cooper" } });
@@ -326,7 +330,7 @@ describe("I-UI-010: adding a player searches the registry first, then saves the 
     fireEvent.change(screen.getByLabelText(/Gender/), { target: { value: "FEMALE" } });
     fireEvent.click(screen.getByRole("button", { name: "Create player" }));
     expect((await screen.findByRole("alert")).textContent).toBe(
-      "Chloe Cooper (chloe) already has a record with this date of birth. Go back to the results and add that player instead.",
+      "Chloe Cooper (PLR005) already has a record with this date of birth. Go back to the results and add that player instead.",
     );
     expect(changes(calls)).toEqual([["POST", "players", { firstName: "Chloe", lastName: "Cooper", dateOfBirth: "1983-05-05", gender: "FEMALE" }]]);
   });

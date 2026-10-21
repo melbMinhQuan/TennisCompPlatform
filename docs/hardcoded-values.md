@@ -115,12 +115,14 @@ Removing it means deleting the `data/mock-*` files (except `competition-standing
 2a) and deciding what `/dashboard` shows to a visitor who isn't logged in: redirect to
 `/login`, or an empty state.
 
-**b. What should "Player ID" show?** It shows the database UUID
-(`55b918f7-2679-…`), because the workbook codes such as `PLR005` are not stored in the
-database. The seed derives UUIDs from them. Options: keep the UUID, hide the row, or add a
-readable member number to `Player`.
-It appears in [`PlayerProfile.tsx:44`](../frontend/components/PlayerProfile.tsx#L44) and
-[`CompetitionEntryCard.tsx:21`](../frontend/components/competitions/CompetitionEntryCard.tsx#L21).
+**b. Done (20 October 2026): "Player ID" shows the readable code.** The team chose the
+workbook code (`PLR005`) over the database UUID. The seed stores it in `player.code` and the
+APIs return it as `code` beside `id`. A player or club added any other way, such as through the
+Add player page, gets the next free code (`PLR113` after `PLR112`) from a database trigger. Only a
+row added before that trigger existed has none, and the page shows its UUID instead (`displayId` in
+[`utils/formatters.ts`](../frontend/utils/formatters.ts)).
+Links and requests still use the UUID. It appears on the profile card, the competition entry
+card and every club administrator page that lists players, and their search boxes match it.
 
 **c. Done: notifications list and "UTR Best Rank".** The notifications card shows the four
 newest and View All loads the rest. UTR Best Rank shows the best singles percentile as
@@ -150,8 +152,9 @@ signed in until they log out or close the tab. Decide whether players should get
 
 Parked on 18 October 2026, while connecting the club administrator pages:
 
-**g. Club ID and Team ID show the database UUID**, as Player ID does (see b): on the dashboard's
-club card, a team's page and every player row.
+**g. Team ID still shows the database UUID.** Club ID (`CLB01`) and Player ID now show the
+readable code (see b). Teams have codes in the workbook (`TEAM003`) but no column for them yet,
+so a team's page still shows its UUID. Decide whether to add `team.code` the same way.
 
 **h. "End membership" is not saved.** There is no route for it: what ending a membership does to
 the player's squads and primary club waits on client decision A07. The button stays on the
@@ -165,3 +168,32 @@ Hiding or disabling the buttons for COMPLETED and ARCHIVED seasons would need a 
 players, so the Notifications page is empty with real data, and marking notices read is tested
 only against a fake backend (I-UI-007). Adding club admin rows to the seed would let the
 end-to-end tests cover it (see [club-admin-notifications.md](club-admin-notifications.md)).
+
+Parked on 21 October 2026, while adding junior privacy ([junior-privacy.md](junior-privacy.md)):
+
+**k. The age check uses the season's first day.** A section's age limit is checked against the
+junior's age when the season starts. Some competitions use 1 January or 31 December of the year
+instead; confirm with the association. It is one line in `sectionEligibility`
+([`junior-privacy.ts`](../backend/src/common/junior-privacy.ts)).
+
+**l. Only the association's ADMINISTRATOR sees every junior's details.** The records secretary
+gets a 403 too, although they also check eligibility in practice. Decide whether they should.
+
+**m. Parent contacts cannot be entered in the app.** They come from the workbook only: the Add
+player form has no parent or guardian fields, so a junior added by a club administrator has no
+contact on record and their team manager is told so. A form and route to record them are needed.
+
+**n. Adding a junior to your club shows you all their details.** Another club sees a junior's name
+only, but once an administrator adds them to their own club (which is audited as JOIN_CLUB), the
+junior is their member and every detail is visible. Decide whether that should need the parent's or
+the home club's agreement first.
+
+**o. A junior's login is shared with their parent.** There is no separate parent account; a parent
+with two children uses each child's login. A parent who manages a team has a login of their own.
+
+**p. Team managers see only juniors' parent contacts.** An adult teammate's phone and email stay
+hidden from the manager, as before. Decide whether managers should be able to contact adults too.
+
+**q. No junior can be a team manager.** A manager sees every junior's parent contact, so anyone
+under 18 is refused, including 16- and 17-year-olds who might captain a junior team. Decide
+whether older juniors may, and whether they would then see parent contacts.

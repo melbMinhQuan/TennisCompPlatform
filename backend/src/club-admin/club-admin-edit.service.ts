@@ -9,7 +9,7 @@ import type { ClubPlayerDetail, ClubTeamDetail } from './club-admin.types'
 import { isCurrentMembership, localToday } from './membership'
 
 /** Why a player cannot join a squad or manage a team. */
-type Ineligible = 'PLAYER_NOT_FOUND' | 'INACTIVE_PLAYER' | 'NOT_CLUB_MEMBER' | 'ALREADY_IN_TEAM' | 'NO_LOGIN_ACCOUNT'
+type Ineligible = 'PLAYER_NOT_FOUND' | 'INACTIVE_PLAYER' | 'NOT_CLUB_MEMBER' | 'ALREADY_IN_TEAM' | 'NO_LOGIN_ACCOUNT' | 'UNDER_18'
 
 // A user holds one role row. Losing a team-manager role turns it back into a
 // plain player role rather than revoking it, so they can still sign in as a player.
@@ -142,10 +142,12 @@ export class ClubAdminEditService {
 
   /**
    * Makes a player the team's manager, replacing any current one, who becomes
-   * a plain player again. The manager must be an ACTIVE player with a current
-   * membership of the club and a login account, since the role belongs to the
-   * account. A user holds one role, so someone who already holds another role,
-   * or manages a team in a season still running, is refused.
+   * a plain player again. The manager must be an ACTIVE adult player with a
+   * current membership of the club and a login account, since the role belongs
+   * to the account. A junior is refused: a manager sees every junior's parent
+   * contact (docs/junior-privacy.md). A user holds one role, so someone who
+   * already holds another role, or manages a team in a season still running,
+   * is refused.
    */
   async assignManager(clubId: string, adminUserId: string, teamId: string, playerId: string): Promise<ClubTeamDetail> {
     await readOrUnavailable(async () => {
@@ -158,8 +160,9 @@ export class ClubAdminEditService {
       const reason: Ineligible | null =
         person.status !== 'ACTIVE' ? 'INACTIVE_PLAYER'
           : !person.clubMemberships.some(m => isCurrentMembership(m, localToday())) ? 'NOT_CLUB_MEMBER'
-            : !person.user ? 'NO_LOGIN_ACCOUNT'
-              : null
+            : person.isJunior ? 'UNDER_18'
+              : !person.user ? 'NO_LOGIN_ACCOUNT'
+                : null
       if (reason) {
         throw new UnprocessableEntityException({ statusCode: 422, code: 'MANAGER_NOT_ELIGIBLE', message: 'This player cannot manage the team', reason })
       }
@@ -246,11 +249,13 @@ export class ClubAdminEditService {
           firstName: { equals: input.firstName, mode: 'insensitive' },
           lastName: { equals: input.lastName, mode: 'insensitive' },
         },
-        select: { id: true },
+        select: { id: true, code: true },
       })
       if (existing) {
+        // The readable Player ID too, so the page names the record the way people know it (PLR029).
         throw new ConflictException({
-          statusCode: 409, code: 'POSSIBLE_DUPLICATE', message: 'A player with this name and date of birth is already registered', playerId: existing.id,
+          statusCode: 409, code: 'POSSIBLE_DUPLICATE', message: 'A player with this name and date of birth is already registered',
+          playerId: existing.id, playerCode: existing.code,
         })
       }
       const today = localToday()

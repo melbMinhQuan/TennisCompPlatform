@@ -34,4 +34,8 @@ describe("FE-009: club membership lines and order", () => {
     const teams = [team("last-year", "COMPLETED"), team("this-year", "ACTIVE"), team("archived", "ARCHIVED")].sort(currentFirst);
     expect(teams.map((t) => t.id + pastLabel(t))).toEqual(["this-year", "last-year · Past season", "archived · Past season"]);
   });
+
+  test("a season that has not started is coming, not past", () => {
+    expect(pastLabel(team("next-summer", "UPCOMING"))).toBe(" · Coming season");
+  });
 });

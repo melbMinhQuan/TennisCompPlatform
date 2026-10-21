@@ -11,7 +11,8 @@ import {
 } from "../components/MatchesUI";
 import HelpTopicLink from "../components/club-admin/HelpTopicLink";
 import MatchLoadState from "../components/MatchLoadState";
-import { shortClubName } from "../utils/formatters";
+import { displayId, shortClubName } from "../utils/formatters";
+import JuniorBadge from "../components/junior/JuniorBadge";
 
 type StatusFilter = "ACTIVE" | "INACTIVE" | "ALL";
 const PAGE_SIZE = 10;
@@ -28,7 +29,7 @@ export default function ClubAdminPlayersPage() {
     const query = search.trim().toLowerCase();
     return (data ?? []).filter((player) =>
       (filter === "ALL" || player.membership.status === filter) &&
-      (!query || `${player.firstName} ${player.lastName}`.toLowerCase().includes(query) || player.id.toLowerCase().includes(query))
+      (!query || `${player.firstName} ${player.lastName}`.toLowerCase().includes(query) || displayId(player).toLowerCase().includes(query))
     );
   }, [data, search, filter]);
 
@@ -89,8 +90,8 @@ export default function ClubAdminPlayersPage() {
           ) : visible.map(({ membership, teamNames, ...player }) => (
             <div key={player.id} className="border-b border-[#dbe4ef] py-3 last:border-b-0 md:flex md:items-center md:justify-between md:gap-4">
               <div className="min-w-0">
-                <p className="font-semibold">{player.firstName} {player.lastName}</p>
-                <p className="mt-0.5 text-sm text-muted">{player.id} · {teamNames.join(", ") || "No team yet"}</p>
+                <p className="font-semibold">{player.firstName} {player.lastName}{player.isJunior && <JuniorBadge />}</p>
+                <p className="mt-0.5 text-sm text-muted">{displayId(player)} · {teamNames.join(", ") || "No team yet"}</p>
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-2 md:mt-0 md:justify-end">
                 <span className={`rounded-md px-2.5 py-1 text-xs font-semibold ${membership.status === "ACTIVE" ? "bg-[#e5f4ec] text-[#197354]" : "bg-[#f0f1f3] text-[#526579]"}`}>

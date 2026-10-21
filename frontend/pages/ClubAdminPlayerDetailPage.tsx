@@ -9,7 +9,10 @@ import {
   matchLightButtonClass,
   pageTitleClass,
 } from "../components/MatchesUI";
-import { shortClubName } from "../utils/formatters";
+import { displayId, shortClubName } from "../utils/formatters";
+import GuardianContact from "../components/junior/GuardianContact";
+import JuniorBadge from "../components/junior/JuniorBadge";
+import JuniorNotice from "../components/junior/JuniorNotice";
 
 const secondaryButton = matchLightButtonClass;
 
@@ -99,12 +102,35 @@ export default function ClubAdminPlayerDetailPage() {
 
       <h1 className={`mt-6 ${pageTitleClass}`}>
         {fullName}
+        {player.isJunior && <JuniorBadge />}
       </h1>
 
       <p className="mt-4 text-sm text-[#d2dfed] md:text-muted">
-        Player ID {player.id} · One record shared by every
+        Player ID {displayId(player)} · One record shared by every
         club they play for.
       </p>
+
+      {player.isJunior && <JuniorNotice audience="club" className="mt-4" />}
+
+      {/* Personal details: only this club's administrator gets this page (docs/junior-privacy.md). */}
+      <div className="mt-4 rounded-2xl bg-white p-5 text-[#1a3049] md:p-6">
+        <h2 className="border-b border-[#dbe4ef] pb-2 text-lg font-bold">
+          Personal details
+        </h2>
+        <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-3">
+          {[
+            ["Date of birth", formatDate(player.dateOfBirth)],
+            ["Email", player.email ?? "Not supplied"],
+            ["Phone", player.phone ?? "Not supplied"],
+          ].map(([label, value]) => (
+            <div key={label}>
+              <dt className="text-xs text-muted">{label}</dt>
+              <dd className="mt-1 font-semibold [overflow-wrap:anywhere]">{value}</dd>
+            </div>
+          ))}
+        </dl>
+        {player.isJunior && <GuardianContact guardian={player.guardian} className="mt-4 border-t border-[#dbe4ef] pt-4" />}
+      </div>
 
       
     {/* Membership Summary */}

@@ -14,8 +14,8 @@ const fixture = (overrides: Partial<MatchFixture>): MatchFixture => ({
 describe("FE-005: profile card mapping", () => {
   test("lists every club, the teams and the association from the dashboard API", () => {
     const profile = {
-      id: "player-1", avatarUrl: null, displayName: "Chloe Cooper", status: "ACTIVE", dateOfBirth: "1983-05-05",
-      age: 43, gender: "FEMALE", email: "chloe@club.example", phone: null,
+      id: "player-1", code: "PLR005", avatarUrl: null, displayName: "Chloe Cooper", status: "ACTIVE", dateOfBirth: "1983-05-05",
+      age: 43, gender: "FEMALE", email: "chloe@club.example", phone: null, isJunior: false, guardian: null,
       primaryClub: { id: "c1", name: "Glen Waverley TC" }, primaryAssociation: { id: "a1", name: "Waverley Tennis" },
       clubs: [{ id: "c1", name: "Glen Waverley TC" }, { id: "c2", name: "Syndal TC" }],
       teams: [{ id: "t1", name: "Mount Waverley A" }],
@@ -24,8 +24,17 @@ describe("FE-005: profile card mapping", () => {
     expect(card.clubs).toEqual(["Glen Waverley TC", "Syndal TC"]);
     expect(card.teams).toEqual(["Mount Waverley A"]);
     expect(card.association).toBe("Waverley Tennis");
-    expect(card.playerId).toBe("player-1");
+    expect(card.playerId).toBe("PLR005");
     expect(card.phone).toBeNull();
+  });
+
+  test("falls back to the database ID for a player with no readable Player ID", () => {
+    const profile = {
+      id: "player-1", code: null, avatarUrl: null, displayName: "New Player", status: "ACTIVE", dateOfBirth: "1990-01-01",
+      age: 36, gender: "FEMALE", email: "new@club.example", phone: null, isJunior: false, guardian: null,
+      primaryClub: null, primaryAssociation: null, clubs: [], teams: [],
+    } satisfies DashboardData["profile"];
+    expect(toPlayerProfile(profile).playerId).toBe("player-1");
   });
 });
 

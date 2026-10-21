@@ -8,8 +8,12 @@ const { parseQuery, ageOn, paginate } = require('../dist/dashboard/dashboard.que
 // In-memory query fixtures only: never insert test records into the user's database.
 const competition = { id: '11111111-1111-4111-8111-111111111111', name: 'Test competition' }
 const section = { season: { competition } }
-const alice = { id: 'alice', firstName: 'Alice', lastName: 'One' }
-const bob = { id: 'bob', firstName: 'Bob', lastName: 'Two' }
+const alice = { id: 'alice', code: 'PLR001', firstName: 'Alice', lastName: 'One', isJunior: false, guardianName: null, guardianEmail: null, guardianPhone: null }
+const bob = { id: 'bob', code: null, firstName: 'Bob', lastName: 'Two', isJunior: false, guardianName: null, guardianEmail: null, guardianPhone: null }
+const maya = {
+  id: 'maya', code: 'PLR114', firstName: 'Maya', lastName: 'Okafor',
+  isJunior: true, guardianName: 'Adaeze Okafor', guardianEmail: 'adaeze.okafor@families.example', guardianPhone: '0413 201 701',
+}
 function player(person, teamId) {
   return {
     ...person, userId: `${person.id}-login`, status: 'ACTIVE', dateOfBirth: new Date('2000-03-01'), gender: 'OTHER', email: null, phone: null,
@@ -22,6 +26,7 @@ const users = {
   'alice@example.test': { email: 'alice@example.test', profile: player(alice, 'team-a') },
   'bob@example.test': { email: 'bob@example.test', profile: player(bob, 'team-b') },
   'unlinked@example.test': { email: 'unlinked@example.test', profile: null },
+  'maya.okafor@juniors.example': { email: 'maya.okafor@juniors.example', profile: player(maya, 'team-j') },
 }
 function fixture(id, team, date, status = 'SCHEDULED') {
   return { id, homeTeamId: team, awayTeamId: 'visitors', homeTeam: { id: team, name: team }, awayTeam: { id: 'visitors', name: 'Visitors' },
@@ -82,6 +87,7 @@ test('I-DASH-001: HTTP dashboard resolves normalized email and selects only nece
   const { status, body } = await get('', { email: '  ALICE@EXAMPLE.TEST ' })
   assert.equal(status, 200)
   assert.equal(body.data.profile.displayName, 'Alice One')
+  assert.equal(body.data.profile.code, 'PLR001')
   assert.equal(body.data.profile.email, 'alice@example.test')
   assert.equal(body.data.profile.primaryClub.name, 'Alice club')
   assert.equal(body.data.utr.rating, 7.85)
@@ -101,6 +107,7 @@ test('I-DASH-001: HTTP dashboard resolves normalized email and selects only nece
 test('I-DASH-002: another email selects a different profile, teams and fixtures', async () => {
   const { body } = await get('', { email: 'bob@example.test' })
   assert.equal(body.data.profile.id, 'bob')
+  assert.equal(body.data.profile.code, null)
   assert.equal(body.data.profile.primaryClub.name, 'Bob club')
   assert.deepEqual(body.data.upcomingMatches.items.map(i => i.id), ['b-1'])
   assert.equal(body.data.careerSummary.bestUtrRank, null) // never ranked
@@ -195,4 +202,17 @@ test('DASH-001: age boundary and query types', () => {
   assert.throws(() => parseQuery({ email: ['alice@example.test', 'bob@example.test'] }))
   assert.throws(() => parseQuery({ email: 'alice@example.test', from: '2026-12-01', to: '2026-01-01' }))
   assert.deepEqual(paginate([], 20, ['empty']), { available: true, items: [], nextCursor: null, hasMore: false })
+})
+
+test('JUNIOR-007: a junior, or their parent on the junior\'s login, sees the junior\'s own details and parent contact', async () => {
+  const { status, body } = await get('', { email: 'maya.okafor@juniors.example' })
+  assert.equal(status, 200)
+  const { displayName, email, dateOfBirth, isJunior, guardian } = body.data.profile
+  assert.deepEqual({ displayName, email, dateOfBirth, isJunior, guardian }, {
+    displayName: 'Maya Okafor', email: 'maya.okafor@juniors.example', dateOfBirth: '2000-03-01', isJunior: true,
+    guardian: { name: 'Adaeze Okafor', email: 'adaeze.okafor@families.example', phone: '0413 201 701' },
+  })
+  // An adult's profile has no parent contact.
+  const adult = (await get()).body.data.profile
+  assert.deepEqual([adult.isJunior, adult.guardian], [false, null])
 })

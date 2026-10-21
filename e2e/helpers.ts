@@ -26,6 +26,12 @@ export async function logInAsClubAdmin(page: Page, email = MARGARET) {
   await expect(page).toHaveURL(/\/club-admin$/);
 }
 
+/** Logs in as the association's administrator and waits for the juniors page. */
+export async function logInAsAssociationAdmin(page: Page, email: string) {
+  await submitLogin(page, email, DEV_PASSWORD);
+  await expect(page).toHaveURL(/\/association-admin$/);
+}
+
 /**
  * Opens a page from the sidebar. The login lives only in page memory, so moving around
  * must be by clicking, never page.goto(), or the player is logged out.

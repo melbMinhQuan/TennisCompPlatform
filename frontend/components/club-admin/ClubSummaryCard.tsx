@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import type { ClubAdminDashboardData } from "../../api/club-admin-dashboard";
 import { darkCardClass } from "../MatchesUI";
+import { displayId } from "../../utils/formatters";
 
 type ClubSummaryCardProps = {
   data: ClubAdminDashboardData;
@@ -39,7 +40,7 @@ export default function ClubSummaryCard({ data, seasonId, onSeasonChange, teamCo
             {data.club.name}
           </h2>
           <span className="mt-2 inline-flex rounded-md bg-white/10 px-2 py-0.5 text-xs font-medium text-[#d3e0ee]">
-            Club ID {data.club.id}
+            Club ID {displayId(data.club)}
           </span>
         </div>
         <div className="w-full sm:w-auto sm:min-w-64">

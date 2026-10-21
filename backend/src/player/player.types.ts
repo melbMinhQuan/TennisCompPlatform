@@ -1,3 +1,4 @@
+import type { GuardianContact } from '../common/junior-privacy'
 /**
  * Response shapes for /api/v1/player. Each mirrors the frontend contract of the
  * same name in frontend/api/ (and frontend/types/competition.ts), so the pages
@@ -8,6 +9,8 @@ export type MembershipStatus = 'ACTIVE' | 'INACTIVE'
 
 export interface PlayerIdentity {
   id: string
+  // The readable Player ID (PLR005); null only for a player added before codes were automatic.
+  code: string | null
   displayName: string
 }
 
@@ -35,7 +38,7 @@ export interface CompetitionEntry {
   season: string
   section: string
   seasonStatus: SeasonStatus
-  player: { id: string; name: string }
+  player: { id: string; code: string | null; name: string }
   club: string
   team: string
   format: string
@@ -106,12 +109,33 @@ export interface PlayerMemberships {
   associations: (Membership & { associationId: string; name: string })[]
   clubs: (Membership & { clubId: string; associationId: string; associationName: string; name: string })[]
   teams: MembershipTeam[]
+  // The team this user manages (TEAM_MANAGER), which they need not play in; empty for anyone else.
+  managedTeams: MembershipTeam[]
+}
+
+export interface TeamMember {
+  id: string
+  name: string
+  status: 'ACTIVE' | 'EMERGENCY' | 'INACTIVE'
+  isCurrentPlayer: boolean
+}
+
+/**
+ * What the team's manager sees of a member as well: whether they are a junior,
+ * and a junior's parent or guardian to contact about matches. Nobody else on
+ * the team list gets these fields (docs/junior-privacy.md).
+ */
+export interface ManagedTeamMember extends TeamMember {
+  isJunior: boolean
+  guardian: GuardianContact | null
 }
 
 export interface TeamDetails extends MembershipTeam {
   clubName: string
   associationName: string
-  members: { id: string; name: string; status: 'ACTIVE' | 'EMERGENCY' | 'INACTIVE'; isCurrentPlayer: boolean }[]
+  // True when the viewer is this team's manager, so members carry ManagedTeamMember's fields.
+  viewerIsManager: boolean
+  members: (TeamMember | ManagedTeamMember)[]
 }
 
 export interface SupportTeamContact {
@@ -126,7 +150,7 @@ export interface SupportTeamContact {
 }
 
 export interface SupportContacts {
-  /** Every team the player is on in a season that is being played now, newest season first. */
+  /** Every team the player is on in a season being played now or about to start, newest season first. */
   teams: SupportTeamContact[]
   /** @deprecated The first of `teams`, kept until the frontend reads `teams`. */
   team: SupportTeamContact | null

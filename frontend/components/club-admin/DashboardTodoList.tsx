@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import type { ClubAdminDashboardData } from "../../api/club-admin-dashboard";
+import { isOpenSeason } from "../../types/season";
 import { matchCardClass, matchLightButtonClass } from "../MatchesUI";
 
 type Team = ClubAdminDashboardData["teams"][number];
@@ -7,7 +8,7 @@ type Season = ClubAdminDashboardData["seasons"][number];
 
 type Props = { attention: Team[]; season: Season | undefined };
 
-/** Teams in the selected active season that are missing a manager or players. */
+/** Teams in the selected season, being played or still to start, that are missing a manager or players. */
 export default function DashboardTodoList({ attention, season }: Props) {
   return (
     <section className={matchCardClass} aria-labelledby="todo-heading">
@@ -17,7 +18,7 @@ export default function DashboardTodoList({ attention, season }: Props) {
 
       {attention.length === 0 ? (
         <p className="mt-3 flex flex-wrap items-center gap-2 text-sm leading-6 text-muted">
-          {season?.status === "ACTIVE" ? (
+          {isOpenSeason(season?.status) ? (
             <>
               <span className="rounded-md bg-[#e5f4ec] px-2.5 py-1 text-xs font-semibold text-[#197354]">All set</span>
               Nothing needs your attention. Every {season.label} team has a team manager and players.

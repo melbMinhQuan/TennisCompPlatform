@@ -1,5 +1,6 @@
 import type { CompetitionEntry } from "../../types/competition";
 import { matchCardClass, matchLabelClass } from "../MatchesUI";
+import { displayId } from "../../utils/formatters";
 
 /** "Your entry": the club and team the player represents in this competition. */
 export default function CompetitionEntryCard({ competition }: { competition: CompetitionEntry }) {
@@ -18,7 +19,7 @@ export default function CompetitionEntryCard({ competition }: { competition: Com
       <p className="mt-2 text-base font-semibold">{competition.team}</p>
 
       <p className="mt-3 text-sm leading-6 text-muted">
-        Player ID {competition.player.id} · {competition.player.name}
+        Player ID {displayId(competition.player)} · {competition.player.name}
       </p>
     </section>
   );

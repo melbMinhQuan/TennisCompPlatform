@@ -76,7 +76,7 @@ export class MatchesService {
           season: seasonLabel(team.section.season),
           section: team.section.name,
           seasonStatus: team.section.season.status,
-          player: { id: player.id, name: player.displayName },
+          player: { id: player.id, code: player.code, name: player.displayName },
           club: team.club.name,
           team: team.name,
           format: formats.get(team.sectionId) ?? formatLabel(null),

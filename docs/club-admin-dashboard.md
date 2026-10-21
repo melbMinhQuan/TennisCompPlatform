@@ -21,7 +21,7 @@ Every value below is read from the running database by the backend when the page
 | Recent result activity | `AuditLog` → own-club `MatchResult` → `Fixture` → home/away `Team`; most recent across seasons |
 | Fixtures, venue and results | `Fixture`, `Venue`, `MatchResult`; available schema, but no scheduled fixture after 3 Oct 2026 for this club in this workbook |
 
-The seeded database shows Glen Waverley with 26 active club memberships, two Winter 2026 teams, six active squad players in each, assigned managers and zero current setup tasks (checked by E2E-011). The unread tile, the sidebar badge and the Notifications page count the same list, loaded once per visit by `context/ClubAdminNotifications.tsx` (see `club-admin-notifications.md`), so marking a notice read updates all three. Historical teams do not create current setup tasks. Counts and selected team rows share one data source, as does the sidebar unread badge. There is no separate notices card: the unread count is shown in the summary card and the sidebar, which link to Notifications (US-22 is a Should).
+The seeded database shows Glen Waverley with 34 active club memberships (26 adults, seven juniors and a parent who manages a junior team), two Winter 2026 teams, six active squad players in each, assigned managers and zero current setup tasks (checked by E2E-011). The unread tile, the sidebar badge and the Notifications page count the same list, loaded once per visit by `context/ClubAdminNotifications.tsx` (see `club-admin-notifications.md`), so marking a notice read updates all three. Historical teams do not create current setup tasks. Counts and selected team rows share one data source, as does the sidebar unread badge. There is no separate notices card: the unread count is shown in the summary card and the sidebar, which link to Notifications (US-22 is a Should).
 
 The Figma numbers (128 members, eight teams, two tasks, three notices), CL-004 identifier and “Summer 2026/27 entries are open” are illustrative. The page shows the real counts, and the club's database ID as its Club ID (an open decision, see [hardcoded-values.md](hardcoded-values.md) §4). The team selector lists every season the club has a team in. The backend labels a season that crosses the new year from its dates ("Summer 2025/26").
 
@@ -51,7 +51,7 @@ above, with these choices:
 **Not returned:** `notices` and `fixtures`. The page never reads them: unread notices are counted
 in `unreadCount`, and fixtures come from `GET fixtures`.
 
-Checked against a database seeded with `seed:competition`: Glen Waverley shows 26 active members,
+Checked against a database seeded with `seed:competition`: Glen Waverley shows 34 active members,
 Winter 2026 teams with 6 squad players each and managers Diego Brooks and Ethan Campbell, and the
 same newest activity items as the workbook (Round 12 · Forest Hill B vs Glen Waverley B first).
 

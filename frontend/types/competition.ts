@@ -13,6 +13,8 @@ export type CompetitionEntry = {
 
   player: {
     id: string;
+    /** The readable Player ID (PLR005); null only for a player added before codes were automatic. */
+    code: string | null;
     name: string;
   };
 
