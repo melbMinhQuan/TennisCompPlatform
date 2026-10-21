@@ -182,7 +182,7 @@ figure is low on purpose: pages are tested end to end, which coverage does not c
 logic in `api/`, `context/` and `utils/` has a stricter minimum of its own. The club
 administrator pages are also rendered against a fake backend (`frontend/tests/club-admin-pages.test.tsx`).
 
-**CI/CD:** GitHub Actions (`.github/workflows/ci.yml`) runs on every push and pull request:
+**CI/CD:** GitHub Actions (`.github/workflows/ci.yml`) runs on every push, to any branch; a pull request shows the run for its latest commit:
 
 - **test-and-build:** checks the test-data workbook (`data:check`) and that `TestingPlan.xlsx`
   lists every test (`test:plan`), type-checks the end-to-end tests, runs the backend and frontend tests with coverage (figures on the run's summary page),

@@ -1,5 +1,6 @@
-# Runs on every push and every pull request into main: installs the project the
-# same way a new teammate would, then checks, tests and builds both applications.
+# Runs on every push, to any branch: installs the project the same way a new teammate
+# would, then checks, tests and builds both applications. A pull request shows the result
+# of the run for its latest commit, so pull requests need no second run of their own.
 # On a push to main, a fully green run then releases: the backend first, then the
 # frontend, each checked live, then the whole live site in a browser. Any failing
 # check stops the release there.
@@ -9,8 +10,6 @@ name: CI
 
 on:
   push:
-  pull_request:
-    branches: [main]
 
 jobs:
   test-and-build:

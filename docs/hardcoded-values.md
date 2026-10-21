@@ -169,31 +169,37 @@ players, so the Notifications page is empty with real data, and marking notices 
 only against a fake backend (I-UI-007). Adding club admin rows to the seed would let the
 end-to-end tests cover it (see [club-admin-notifications.md](club-admin-notifications.md)).
 
+**k. A suspended or pending account is told "Incorrect email or password."** Login refuses any
+account whose `User.status` is not ACTIVE, with the same answer as a wrong password, and checks
+the status only after the password, so a guess never learns an account's status (AUTH-008).
+Decide whether someone with the right password should instead be told their account is
+suspended or not yet active.
+
 Parked on 21 October 2026, while adding junior privacy ([junior-privacy.md](junior-privacy.md)):
 
-**k. The age check uses the season's first day.** A section's age limit is checked against the
+**l. The age check uses the season's first day.** A section's age limit is checked against the
 junior's age when the season starts. Some competitions use 1 January or 31 December of the year
 instead; confirm with the association. It is one line in `sectionEligibility`
 ([`junior-privacy.ts`](../backend/src/common/junior-privacy.ts)).
 
-**l. Only the association's ADMINISTRATOR sees every junior's details.** The records secretary
+**m. Only the association's ADMINISTRATOR sees every junior's details.** The records secretary
 gets a 403 too, although they also check eligibility in practice. Decide whether they should.
 
-**m. Parent contacts cannot be entered in the app.** They come from the workbook only: the Add
+**n. Parent contacts cannot be entered in the app.** They come from the workbook only: the Add
 player form has no parent or guardian fields, so a junior added by a club administrator has no
 contact on record and their team manager is told so. A form and route to record them are needed.
 
-**n. Adding a junior to your club shows you all their details.** Another club sees a junior's name
+**o. Adding a junior to your club shows you all their details.** Another club sees a junior's name
 only, but once an administrator adds them to their own club (which is audited as JOIN_CLUB), the
 junior is their member and every detail is visible. Decide whether that should need the parent's or
 the home club's agreement first.
 
-**o. A junior's login is shared with their parent.** There is no separate parent account; a parent
+**p. A junior's login is shared with their parent.** There is no separate parent account; a parent
 with two children uses each child's login. A parent who manages a team has a login of their own.
 
-**p. Team managers see only juniors' parent contacts.** An adult teammate's phone and email stay
+**q. Team managers see only juniors' parent contacts.** An adult teammate's phone and email stay
 hidden from the manager, as before. Decide whether managers should be able to contact adults too.
 
-**q. No junior can be a team manager.** A manager sees every junior's parent contact, so anyone
+**r. No junior can be a team manager.** A manager sees every junior's parent contact, so anyone
 under 18 is refused, including 16- and 17-year-olds who might captain a junior team. Decide
 whether older juniors may, and whether they would then see parent contacts.

@@ -76,4 +76,4 @@ email is not on a reserved `.example` domain.
 | JUNIOR-UI-001..007 | Each page shows what it is sent, and says why | `frontend/tests/junior-privacy.test.tsx` |
 | E2E-019..024 | Each role logs in and looks, in Chrome | `e2e/junior-privacy.spec.ts` |
 
-Open questions about these rules are listed in [hardcoded-values.md](hardcoded-values.md) §4 (k to q).
+Open questions about these rules are listed in [hardcoded-values.md](hardcoded-values.md) §4 (l to r).

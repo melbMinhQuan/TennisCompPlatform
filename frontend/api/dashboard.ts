@@ -1,6 +1,6 @@
-import type { BestUtrRank, DashboardData, NotificationItem, Page, ResultItem, ScheduleItem } from '../../backend/src/dashboard/dashboard.types'
+import type { BestUtrRank, DashboardData, NotificationItem, Page } from '../../backend/src/dashboard/dashboard.types'
 import { request } from './client'
-export type { BestUtrRank, DashboardData, NotificationItem, Page, ResultItem, ScheduleItem }
+export type { BestUtrRank, DashboardData, NotificationItem, Page }
 
 const ALL_NOTIFICATIONS_LIMIT = '100'
 
@@ -24,11 +24,4 @@ export async function login(email: string, password: string, signal: AbortSignal
 export async function getDashboard(email: string, signal: AbortSignal) {
   const query = new URLSearchParams({ email })
   return (await request<{ data: DashboardData }>(`/api/v1/player-dashboard?${query}`, signal)).data
-}
-
-export async function getMatches(email: string, view: 'schedule' | 'results', signal: AbortSignal, cursor?: string) {
-  const query = new URLSearchParams({ email, limit: '10' })
-  if (view === 'schedule') query.set('scope', 'all')
-  if (cursor) query.set('cursor', cursor)
-  return (await request<{ data: Page<ScheduleItem | ResultItem> }>(`/api/v1/player-dashboard/${view}?${query}`, signal)).data
 }
