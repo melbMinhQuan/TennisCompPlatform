@@ -43,9 +43,11 @@ export type MatchResult = {
   sets: { playerGames: number; opponentGames: number }[];
 };
 
-// Logged out: the sample preview (Chloe Cooper, from the workbook). Logged in: always
-// the backend (GET /api/v1/player/{resource}), whose response is { data: [...] }.
-// API errors are shown to the player; they never fall back to the sample data.
+/**
+ * Returns the sample preview (Chloe Cooper, from the workbook) without an identity.
+ * Otherwise loads GET /api/v1/player/{resource}, whose response is { data: [...] }.
+ * API errors are shown to the player; they never fall back to the sample data.
+ */
 async function load<T extends unknown[]>(
   resource: string,
   mock: T,
@@ -59,6 +61,7 @@ async function load<T extends unknown[]>(
   return data;
 }
 
+/** Returns player competition entries, or sample entries without an identity. */
 export const getCompetitions = (
   signal: AbortSignal,
   identity?: string,
@@ -71,6 +74,7 @@ export const getCompetitions = (
     identity,
   );
 
+/** Returns player team fixtures, or sample fixtures without an identity. */
 export const getFixtures = (
   signal: AbortSignal,
   identity?: string,
@@ -83,6 +87,7 @@ export const getFixtures = (
     identity,
   );
 
+/** Returns finalised player rubbers, or sample results without an identity. */
 export const getResults = (
   signal: AbortSignal,
   identity?: string,

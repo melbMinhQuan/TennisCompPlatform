@@ -4,8 +4,10 @@ import { getPlayerData } from "./client";
 // The shape is the workbook snapshot's; the backend returns the same fields.
 export type StandingsData = typeof snapshot;
 
-// Logged out: the workbook snapshot. Logged in: GET /api/v1/player/standings,
-// which returns { data: StandingsData }. Errors never fall back to the snapshot.
+/**
+ * Returns the workbook snapshot without an identity; otherwise loads GET /api/v1/player/standings.
+ * The API returns { data: StandingsData }; errors never fall back to the snapshot.
+ */
 export async function getStandings(
   signal: AbortSignal,
   identity?: string,

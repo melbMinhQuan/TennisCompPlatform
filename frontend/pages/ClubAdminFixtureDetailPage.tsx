@@ -8,7 +8,7 @@ import MatchLoadState from "../components/MatchLoadState";
 import { matchCardClass, matchLightButtonClass, pageClass, pageIntroClass, pageTitleClass } from "../components/MatchesUI";
 import { formatFixtureDateWithYear, formatTime } from "../utils/date-helpers";
 
-const termClass = "text-xs font-medium uppercase text-muted";
+const TERM_CLASS = "text-xs font-medium uppercase text-muted";
 
 /** One fixture involving the administrator's club, with its scorecard when a result is recorded. */
 export default function ClubAdminFixtureDetailPage() {
@@ -59,14 +59,14 @@ export default function ClubAdminFixtureDetailPage() {
         </p>
         <dl className="mt-5 grid gap-4 sm:grid-cols-2">
           <div>
-            <dt className={termClass}>Date and time</dt>
+            <dt className={TERM_CLASS}>Date and time</dt>
             <dd className="mt-1 text-sm">
               {formatFixtureDateWithYear(fixture.date)} · {formatTime(fixture.time)}
               <span className="block text-xs text-muted">Venue local time</span>
             </dd>
           </div>
           <div>
-            <dt className={termClass}>Venue</dt>
+            <dt className={TERM_CLASS}>Venue</dt>
             <dd className="mt-1 text-sm">
               {fixture.venue?.name ?? "Venue to be confirmed"}
               <span className="block text-muted">{fixture.venue?.address ?? "Address to be confirmed"}</span>
