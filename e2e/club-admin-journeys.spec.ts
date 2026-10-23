@@ -113,8 +113,11 @@ test.describe("changing my club, saved to the database", () => {
     await logInAsClubAdmin(page, KAREN);
     await openFromClubAdminMenu(page, "Teams");
     await main(page).getByRole("link", { name: "+ Create team" }).click();
+    const createTeamForm = main(page).locator("form").filter({ has: page.getByRole("button", { name: "Create team", exact: true }) });
+    await expect(createTeamForm).toBeVisible();
     // Weekend Junior's next season is open for entries too.
-    await page.getByLabel(/^Competition/).selectOption({ label: "Weekend Senior" });
+    await createTeamForm.getByLabel(/^Competition/).selectOption({ label: "Weekend Senior" });
+    await expect(createTeamForm.getByLabel(/^Competition/).locator("option:checked")).toHaveText("Weekend Senior");
     await expect(page.getByLabel(/^Season/).locator("option:checked")).toHaveText("Summer 2026/27");
     await page.getByLabel(/^Section/).selectOption({ label: "Section 2" });
     await page.getByLabel(/^Name/).fill(teamName);
