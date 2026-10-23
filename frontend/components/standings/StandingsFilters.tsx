@@ -1,13 +1,13 @@
 import StandingsSelect from "./StandingsSelect";
 import { STANDINGS_CARD_CLASS, unique, type Section } from "./standings-helpers";
 
-type StandingsFiltersProps = {
+interface StandingsFiltersProps {
   sections: Section[];
   section?: Section;
   /** Picks the best section out of the matching candidates. */
   onChooseSection: (candidates: Section[]) => void;
   onSectionChange: (sectionId: string) => void;
-};
+}
 
 /** Association → competition → season → section filters. */
 export default function StandingsFilters(props: StandingsFiltersProps) {

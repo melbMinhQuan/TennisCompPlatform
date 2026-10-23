@@ -1,11 +1,11 @@
 import { STANDINGS_CONTROL_CLASS } from "./standings-helpers";
 
-type StandingsSelectProps = {
+interface StandingsSelectProps {
   label: string;
   value: string;
   onChange: (value: string) => void;
   options: { id: string; name: string }[];
-};
+}
 
 export default function StandingsSelect({ label, value, onChange, options }: StandingsSelectProps) {
   return (
