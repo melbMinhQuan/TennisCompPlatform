@@ -34,8 +34,11 @@ export type SupportContactsData = {
   } | null;
 };
 
-// Logged out: the sample contacts. Logged in: GET /api/v1/player/support-contacts,
-// which returns { data: SupportContactsData }. Errors never fall back to the sample.
+/**
+ * Logged out: returns a clone of the sample contacts.
+ * Logged in: loads GET /api/v1/player/support-contacts, which returns { data: SupportContactsData }.
+ * Errors propagate through the shared player client and never fall back to the sample.
+ */
 export async function getSupportContacts(
   signal: AbortSignal,
   identity?: string,

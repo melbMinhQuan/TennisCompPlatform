@@ -32,8 +32,11 @@ export type PlayerMemberships = {
   managedTeams: MembershipTeam[];
 };
 
-// Logged out: the sample preview. Logged in: GET /api/v1/player/memberships,
-// which returns { data: PlayerMemberships }. Errors never fall back to the sample.
+/**
+ * Logged out: returns a clone of the sample membership preview.
+ * Logged in: loads GET /api/v1/player/memberships, which returns { data: PlayerMemberships }.
+ * Errors propagate through the shared player client and never fall back to the sample.
+ */
 export async function getPlayerMemberships(
   signal: AbortSignal,
   identity?: string,
