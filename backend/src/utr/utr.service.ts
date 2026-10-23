@@ -25,6 +25,7 @@ export class UtrService {
     return this.provider.getRatings(token ?? undefined)
   }
 
+  /** The sample rating, for local development only. Throws 503 unless UTR_PROVIDER is mock outside production. */
   async getDemoRating() {
     if (this.mode !== 'mock' || process.env.NODE_ENV === 'production') {
       throw new ServiceUnavailableException('UTR demo is disabled')

@@ -1,7 +1,7 @@
 const { test, before, after } = require('node:test')
 const assert = require('node:assert/strict')
 const bcrypt = require('bcryptjs')
-const { Logger } = require('@nestjs/common')
+const { Logger, ValidationPipe } = require('@nestjs/common')
 const { Test } = require('@nestjs/testing')
 const { AuthService } = require('../dist/auth/auth.service')
 const { AuthModule } = require('../dist/auth/auth.module')
@@ -105,6 +105,7 @@ before(async () => {
   const module = await Test.createTestingModule({ imports: [PrismaModule, AuthModule] })
     .overrideProvider(PrismaService).useValue(prisma).compile()
   app = module.createNestApplication({ logger: false })
+  app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true })) // as main.ts does
   await app.listen(0, '127.0.0.1')
   url = await app.getUrl()
 })
@@ -128,6 +129,6 @@ test('I-AUTH-003: an email or password that is not text is a 400, not a server e
   for (const body of [{ email: 42, password: PASSWORD }, { email: 'player@club.example', password: ['x'] }, { email: { $ne: '' }, password: PASSWORD }]) {
     const { status, body: answer } = await post(body)
     assert.equal(status, 400, JSON.stringify(body))
-    assert.equal(answer.message, 'Email and password must be text')
+    assert.deepEqual(answer.message, ['Email and password must be text'])
   }
 })

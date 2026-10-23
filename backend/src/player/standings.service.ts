@@ -5,7 +5,7 @@ import { PlayerLookupService } from './player-lookup.service'
 import { calendarDate, decimalNumber, fullName, seasonLabel } from './player-mappers'
 import type { StandingsData } from './player.types'
 
-const playerName = { select: { firstName: true, lastName: true } } as const
+const PLAYER_NAME_SELECT = { select: { firstName: true, lastName: true } } as const
 
 @Injectable()
 export class StandingsService {
@@ -30,10 +30,10 @@ export class StandingsService {
           include: { season: { include: { competition: { include: { association: true } } } } },
         }),
         this.prisma.ladderEntry.findMany({ include: { team: { select: { name: true } } }, orderBy: [{ sectionId: 'asc' }, { position: 'asc' }] }),
-        this.prisma.playerStanding.findMany({ include: { player: playerName }, orderBy: [{ sectionId: 'asc' }, { position: 'asc' }] }),
+        this.prisma.playerStanding.findMany({ include: { player: PLAYER_NAME_SELECT }, orderBy: [{ sectionId: 'asc' }, { position: 'asc' }] }),
         // Singles first: the page opens on the first cohort, and singles is the default discipline everywhere else.
         this.prisma.rankingCohort.findMany({ orderBy: [{ discipline: 'asc' }, { name: 'asc' }] }),
-        this.prisma.rankingEntry.findMany({ include: { player: playerName }, orderBy: [{ cohortId: 'asc' }, { asOf: 'desc' }, { rank: 'asc' }] }),
+        this.prisma.rankingEntry.findMany({ include: { player: PLAYER_NAME_SELECT }, orderBy: [{ cohortId: 'asc' }, { asOf: 'desc' }, { rank: 'asc' }] }),
         this.prisma.playerAward.findMany({
           where: { awardType: { in: ['SECTION_WINNER', 'RUNNER_UP'] }, teamId: { not: null } },
           select: { awardType: true, teamId: true, team: { select: { sectionId: true } } },

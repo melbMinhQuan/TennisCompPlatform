@@ -20,7 +20,9 @@ Base: `http://localhost:3000/api/v1`. All routes require `email`.
 The table paths are relative to `/api/v1`. Schedule/results accept `limit` (default
 20, maximum 100), `cursor`, `from`, `to`, and `competitionId`. Only schedule uses
 `scope=upcoming|all`. Profile preview cursors continue the corresponding default
-full-list query. Dates/filter/cursor errors return `400 INVALID_QUERY`.
+full-list query. Invalid query parameters (email, limit, dates, scope, competitionId,
+discipline) are rejected by `DashboardQueryDto` with a standard `400` whose `message`
+lists the problems; a cursor that does not belong to the list returns `400 INVALID_QUERY`.
 
 ```bash
 curl --get 'http://localhost:3000/api/v1/player-dashboard' \

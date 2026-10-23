@@ -12,18 +12,18 @@ const path = require('node:path')
 
 const file = process.argv[2] || path.join(__dirname, 'competition_data.xlsx')
 const wb = XLSX.readFile(file)
-const S = {}
-for (const n of wb.SheetNames) S[n] = XLSX.utils.sheet_to_json(wb.Sheets[n], { defval: '' })
+const sheets = {}
+for (const sheetName of wb.SheetNames) sheets[sheetName] = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval: '' })
 const schema = fs.readFileSync(path.join(__dirname, 'schema.prisma'), 'utf8')
 
 const problems = []
-const bad = m => problems.push(m)
-const ids = n => new Set((S[n] ?? []).map(r => r.id))
+const bad = message => problems.push(message)
+const ids = sheetName => new Set((sheets[sheetName] ?? []).map(row => row.id))
 
 // ── unique ids
-for (const [name, rows] of Object.entries(S)) {
+for (const [name, rows] of Object.entries(sheets)) {
   if (name === 'README' || !rows.length || !('id' in rows[0])) continue
-  const list = rows.map(r => r.id)
+  const list = rows.map(row => row.id)
   if (new Set(list).size !== list.length) bad(`${name}: duplicate id`)
 }
 
@@ -60,23 +60,23 @@ const FK = [
 ]
 for (const [sheet, col, target] of FK) {
   const valid = ids(target)
-  for (const row of S[sheet] ?? []) {
+  for (const row of sheets[sheet] ?? []) {
     if (row[col] !== '' && !valid.has(row[col])) bad(`${sheet}.${col} = "${row[col]}" not in ${target}`)
   }
 }
 
 // ── _lookup_user_email must name a row in the User sheet
-const accounts = new Set(S.User.map(u => u.email))
+const accounts = new Set(sheets.User.map(user => user.email))
 for (const sheet of ['Player', 'Notification', 'UserRole']) {
-  for (const r of S[sheet]) {
-    if (!accounts.has(r._lookup_user_email)) bad(`${sheet}: no User row for ${r._lookup_user_email}`)
+  for (const row of sheets[sheet]) {
+    if (!accounts.has(row._lookup_user_email)) bad(`${sheet}: no User row for ${row._lookup_user_email}`)
   }
 }
 
 // ── enum members, read from schema.prisma
 const enums = {}
-for (const m of schema.matchAll(/enum\s+(\w+)\s*\{([^}]*)\}/g)) {
-  enums[m[1]] = m[2].split('\n').map(l => l.replace(/\/\/.*/, '').trim()).filter(Boolean)
+for (const enumMatch of schema.matchAll(/enum\s+(\w+)\s*\{([^}]*)\}/g)) {
+  enums[enumMatch[1]] = enumMatch[2].split('\n').map(line => line.replace(/\/\/.*/, '').trim()).filter(Boolean)
 }
 const ENUM_COLS = [
   ['User', 'status', 'UserStatus'], ['Association', 'status', 'AssociationStatus'],
@@ -99,8 +99,8 @@ const ENUM_COLS = [
 for (const [sheet, col, name] of ENUM_COLS) {
   const allowed = enums[name]
   if (!allowed) { bad(`schema.prisma has no enum ${name}`); continue }
-  for (const r of S[sheet] ?? []) {
-    if (r[col] !== '' && !allowed.includes(String(r[col]))) bad(`${sheet}.${col} = "${r[col]}" is not a ${name}`)
+  for (const row of sheets[sheet] ?? []) {
+    if (row[col] !== '' && !allowed.includes(String(row[col]))) bad(`${sheet}.${col} = "${row[col]}" is not a ${name}`)
   }
 }
 
@@ -129,8 +129,8 @@ const REQUIRED = [
   ['AuditLog', ['entity_type', 'action', 'changed_at']],
 ]
 for (const [sheet, cols] of REQUIRED) {
-  for (const r of S[sheet] ?? []) {
-    for (const c of cols) if (r[c] === '' || r[c] === undefined) bad(`${sheet}.${c} blank on ${r.id}`)
+  for (const row of sheets[sheet] ?? []) {
+    for (const column of cols) if (row[column] === '' || row[column] === undefined) bad(`${sheet}.${column} blank on ${row.id}`)
   }
 }
 
@@ -146,8 +146,8 @@ const UNIQUE = [
 ]
 for (const [sheet, cols] of UNIQUE) {
   const seen = new Set()
-  for (const r of S[sheet] ?? []) {
-    const key = cols.map(c => r[c]).join('|')
+  for (const row of sheets[sheet] ?? []) {
+    const key = cols.map(column => row[column]).join('|')
     if (seen.has(key)) bad(`${sheet}: duplicate ${cols.join('+')} = ${key}`)
     seen.add(key)
   }
@@ -155,97 +155,97 @@ for (const [sheet, cols] of UNIQUE) {
 
 // ── a completed rubber's winner comes from its sets, so winner_side stays blank
 const setsOf = new Map()
-for (const s of S.RubberSet) {
-  if (!setsOf.has(s.rubber_id)) setsOf.set(s.rubber_id, [])
-  setsOf.get(s.rubber_id).push(s)
+for (const rubberSet of sheets.RubberSet) {
+  if (!setsOf.has(rubberSet.rubber_id)) setsOf.set(rubberSet.rubber_id, [])
+  setsOf.get(rubberSet.rubber_id).push(rubberSet)
 }
-const winnerOf = r => {
-  if (r.winner_side) return r.winner_side
-  const sets = setsOf.get(r.id) ?? []
-  const h = sets.filter(s => s.home_games > s.away_games).length
-  return h > sets.length - h ? 'HOME' : 'AWAY'
+const winnerOf = rubber => {
+  if (rubber.winner_side) return rubber.winner_side
+  const sets = setsOf.get(rubber.id) ?? []
+  const homeSets = sets.filter(rubberSet => rubberSet.home_games > rubberSet.away_games).length
+  return homeSets > sets.length - homeSets ? 'HOME' : 'AWAY'
 }
-for (const r of S.Rubber) {
-  const sets = setsOf.get(r.id) ?? []
-  if (r.outcome_type === 'COMPLETED') {
-    if (r.winner_side !== '') bad(`${r.id}: completed rubber stores winner_side; it should be derived`)
-    if (!sets.length) bad(`${r.id}: completed rubber with no sets`)
+for (const rubber of sheets.Rubber) {
+  const sets = setsOf.get(rubber.id) ?? []
+  if (rubber.outcome_type === 'COMPLETED') {
+    if (rubber.winner_side !== '') bad(`${rubber.id}: completed rubber stores winner_side; it should be derived`)
+    if (!sets.length) bad(`${rubber.id}: completed rubber with no sets`)
   }
-  if (['WALKOVER', 'FORFEIT'].includes(r.outcome_type)) {
-    if (sets.length) bad(`${r.id}: ${r.outcome_type} should have no sets`)
-    if (!r.winner_side) bad(`${r.id}: ${r.outcome_type} needs an explicit winner_side`)
+  if (['WALKOVER', 'FORFEIT'].includes(rubber.outcome_type)) {
+    if (sets.length) bad(`${rubber.id}: ${rubber.outcome_type} should have no sets`)
+    if (!rubber.winner_side) bad(`${rubber.id}: ${rubber.outcome_type} needs an explicit winner_side`)
   }
-  for (const s of sets) if (s.home_games === s.away_games) bad(`${s.id}: tied set`)
-  const want = r.rubber_type === 'SINGLES' ? 1 : 2
+  for (const rubberSet of sets) if (rubberSet.home_games === rubberSet.away_games) bad(`${rubberSet.id}: tied set`)
+  const want = rubber.rubber_type === 'SINGLES' ? 1 : 2
   for (const side of ['HOME', 'AWAY']) {
-    const n = S.RubberPlayer.filter(p => p.rubber_id === r.id && p.side === side).length
-    if (n !== want) bad(`${r.id}: ${side} has ${n} players, expected ${want}`)
+    const playerCount = sheets.RubberPlayer.filter(rubberPlayer => rubberPlayer.rubber_id === rubber.id && rubberPlayer.side === side).length
+    if (playerCount !== want) bad(`${rubber.id}: ${side} has ${playerCount} players, expected ${want}`)
   }
 }
 
 // ── result totals match the rubbers
 const rubbersOf = new Map()
-for (const r of S.Rubber) {
-  if (!rubbersOf.has(r.match_result_id)) rubbersOf.set(r.match_result_id, [])
-  rubbersOf.get(r.match_result_id).push(r)
+for (const rubber of sheets.Rubber) {
+  if (!rubbersOf.has(rubber.match_result_id)) rubbersOf.set(rubber.match_result_id, [])
+  rubbersOf.get(rubber.match_result_id).push(rubber)
 }
-for (const res of S.MatchResult) {
+for (const res of sheets.MatchResult) {
   const rs = rubbersOf.get(res.id) ?? []
-  const h = rs.filter(r => winnerOf(r) === 'HOME').length
-  const a = rs.length - h
-  if (h !== res.home_rubbers || a !== res.away_rubbers) bad(`${res.id}: rubbers ${h}-${a} != ${res.home_rubbers}-${res.away_rubbers}`)
-  const expected = h > a ? 'HOME_WIN' : h < a ? 'AWAY_WIN' : 'DRAW'
+  const homeWins = rs.filter(rubber => winnerOf(rubber) === 'HOME').length
+  const awayWins = rs.length - homeWins
+  if (homeWins !== res.home_rubbers || awayWins !== res.away_rubbers) bad(`${res.id}: rubbers ${homeWins}-${awayWins} != ${res.home_rubbers}-${res.away_rubbers}`)
+  const expected = homeWins > awayWins ? 'HOME_WIN' : homeWins < awayWins ? 'AWAY_WIN' : 'DRAW'
   if (res.outcome !== expected) bad(`${res.id}: outcome ${res.outcome} != ${expected}`)
 }
 
 // ── only completed fixtures carry a result
-for (const f of S.Fixture) {
-  const n = S.MatchResult.filter(m => m.fixture_id === f.id).length
-  if (f.status === 'COMPLETED' && n !== 1) bad(`${f.id}: COMPLETED with ${n} results`)
-  if (f.status !== 'COMPLETED' && n !== 0) bad(`${f.id}: ${f.status} but has a result`)
-  if (f.home_team_id === f.away_team_id) bad(`${f.id}: team plays itself`)
+for (const fixture of sheets.Fixture) {
+  const resultCount = sheets.MatchResult.filter(matchResult => matchResult.fixture_id === fixture.id).length
+  if (fixture.status === 'COMPLETED' && resultCount !== 1) bad(`${fixture.id}: COMPLETED with ${resultCount} results`)
+  if (fixture.status !== 'COMPLETED' && resultCount !== 0) bad(`${fixture.id}: ${fixture.status} but has a result`)
+  if (fixture.home_team_id === fixture.away_team_id) bad(`${fixture.id}: team plays itself`)
 }
 
 // ── ladder recount
-for (const sec of S.SectionGrade) {
-  const entries = S.LadderEntry.filter(l => l.section_id === sec.id)
+for (const sec of sheets.SectionGrade) {
+  const entries = sheets.LadderEntry.filter(ladderEntry => ladderEntry.section_id === sec.id)
   if (!entries.length) continue
-  for (const e of entries) {
+  for (const entry of entries) {
     let played = 0, won = 0, rf = 0, points = 0
-    for (const f of S.Fixture.filter(x => x.section_id === sec.id && x.is_finals !== true)) {
-      const res = S.MatchResult.find(m => m.fixture_id === f.id)
+    for (const sectionFixture of sheets.Fixture.filter(fixture => fixture.section_id === sec.id && fixture.is_finals !== true)) {
+      const res = sheets.MatchResult.find(matchResult => matchResult.fixture_id === sectionFixture.id)
       // Only a confirmed result moves the ladder; one still awaiting
       // confirmation or under correction must not.
       if (!res || res.status !== 'FINALISED') continue
-      const home = f.home_team_id === e.team_id, away = f.away_team_id === e.team_id
+      const home = sectionFixture.home_team_id === entry.team_id, away = sectionFixture.away_team_id === entry.team_id
       if (!home && !away) continue
       played++
       const mine = home ? res.home_rubbers : res.away_rubbers
       rf += mine; points += mine
-      if ((res.outcome === 'HOME_WIN' ? f.home_team_id : f.away_team_id) === e.team_id) { won++; points += 4 }
+      if ((res.outcome === 'HOME_WIN' ? sectionFixture.home_team_id : sectionFixture.away_team_id) === entry.team_id) { won++; points += 4 }
     }
-    if (played !== e.played) bad(`${e.id}: played ${e.played} != ${played}`)
-    if (won !== e.won) bad(`${e.id}: won ${e.won} != ${won}`)
-    if (rf !== e.rubbers_for) bad(`${e.id}: rubbers_for ${e.rubbers_for} != ${rf}`)
-    if (points !== e.points) bad(`${e.id}: points ${e.points} != ${points}`)
-    if (e.won + e.lost + e.drawn !== e.played) bad(`${e.id}: W/L/D != played`)
+    if (played !== entry.played) bad(`${entry.id}: played ${entry.played} != ${played}`)
+    if (won !== entry.won) bad(`${entry.id}: won ${entry.won} != ${won}`)
+    if (rf !== entry.rubbers_for) bad(`${entry.id}: rubbers_for ${entry.rubbers_for} != ${rf}`)
+    if (points !== entry.points) bad(`${entry.id}: points ${entry.points} != ${points}`)
+    if (entry.won + entry.lost + entry.drawn !== entry.played) bad(`${entry.id}: W/L/D != played`)
   }
-  const pos = entries.map(e => e.position).sort((a, b) => a - b)
+  const pos = entries.map(entry => entry.position).sort((left, right) => left - right)
   if (pos.join() !== entries.map((_, i) => i + 1).join()) bad(`${sec.id}: ladder positions not 1..${entries.length}`)
 }
 
 // ── players only appear for a team they are registered to, unless they are an
 // emergency, who by definition is not on the roster
-const registered = new Set(S.TeamPlayer.map(t => `${t.team_id}|${t.player_id}`))
-for (const rp of S.RubberPlayer) {
+const registered = new Set(sheets.TeamPlayer.map(teamPlayer => `${teamPlayer.team_id}|${teamPlayer.player_id}`))
+for (const rp of sheets.RubberPlayer) {
   if (rp.is_emergency === true) continue
-  const r = S.Rubber.find(x => x.id === rp.rubber_id)
-  const res = S.MatchResult.find(x => x.id === r.match_result_id)
-  const f = S.Fixture.find(x => x.id === res.fixture_id)
-  const team = rp.side === 'HOME' ? f.home_team_id : f.away_team_id
+  const playedRubber = sheets.Rubber.find(rubber => rubber.id === rp.rubber_id)
+  const res = sheets.MatchResult.find(matchResult => matchResult.id === playedRubber.match_result_id)
+  const playedFixture = sheets.Fixture.find(fixture => fixture.id === res.fixture_id)
+  const team = rp.side === 'HOME' ? playedFixture.home_team_id : playedFixture.away_team_id
   if (!registered.has(`${team}|${rp.player_id}`)) bad(`${rp.id}: ${rp.player_id} not registered to ${team}`)
 }
 
 console.log(problems.length ? `INTEGRITY: ${problems.length} problem(s)` : 'Integrity: all checks passed')
-for (const p of problems.slice(0, 25)) console.log('  x ' + p)
+for (const problem of problems.slice(0, 25)) console.log('  x ' + problem)
 process.exitCode = problems.length ? 1 : 0

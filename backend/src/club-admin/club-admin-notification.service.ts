@@ -58,6 +58,7 @@ export class ClubAdminNotificationService {
     }))
   }
 
+  /** One notification as the club admin inbox shows it, with the match it is about when it has one. */
   private item(row: Notification, matches: Map<string, string>): ClubAdminNotification {
     return {
       id: row.id, type: row.type, title: row.title, message: row.message,
