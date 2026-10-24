@@ -141,6 +141,7 @@ Other ways to open the database:
 | `npm test` | Unit and integration tests (no database needed) |
 | `npm run test:coverage --workspace=backend` (or `=frontend`) | The same tests with a coverage report; fails below the minimums |
 | `npm run test:e2e` | End-to-end tests in Chrome (database must be running and seeded) |
+| `npm run lint --workspace=backend` | Checks the backend against coding_standards.docx (types, `===`, unused code, naming); runs in CI |
 | `npm run data:check --workspace=backend` | Checks the test-data workbook against the schema and the competition rules |
 | `npm run test:database --workspace=backend` | Tests on a real local database, rolled back afterwards: seeding twice, matching players |
 | `npm run players:duplicates --workspace=backend` | Lists profiles that are probably one person registered twice ([docs/player-matching.md](docs/player-matching.md)) |

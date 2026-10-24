@@ -7,6 +7,7 @@ import { fullName, seasonLabel } from '../player/player-mappers'
 import { PrismaService } from '../prisma/prisma.service'
 import type { AssociationJunior, AssociationJuniors } from './association-admin.types'
 
+/** What a junior's row needs: login email, clubs, and only the teams in this association's competitions. */
 const juniorInclude = (associationId: string) => Prisma.validator<Prisma.PlayerInclude>()({
   user: { select: { email: true } },
   clubMemberships: { include: { club: { select: { name: true } } } },
@@ -26,6 +27,10 @@ type Junior = Prisma.PlayerGetPayload<{ include: ReturnType<typeof juniorInclude
 export class AssociationAdminService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * Every junior in the association or its clubs, with their age and whether it fits each
+   * section they play in. Throws 503 when the database cannot be read.
+   */
   async juniors(associationId: string, adminUserId: string): Promise<AssociationJuniors> {
     return readOrUnavailable(async () => {
       const [association, admin, juniors] = await Promise.all([
@@ -51,6 +56,7 @@ export class AssociationAdminService {
     }, 'Juniors are unavailable right now')
   }
 
+  /** One junior as the association administrator sees them: every detail, plus age eligibility per team. */
   private junior(junior: Junior, today: string): AssociationJunior {
     const dateOfBirth = calendarDate(junior.dateOfBirth)!
     return {
@@ -59,7 +65,7 @@ export class AssociationAdminService {
       email: junior.user?.email ?? null, phone: junior.phone, guardian: guardianContact(junior),
       clubs: junior.clubMemberships
         .map(membership => ({ clubId: membership.clubId, name: membership.club.name, isPrimary: membership.isPrimary, status: membership.status }))
-        .sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary) || a.name.localeCompare(b.name)),
+        .sort((left, right) => Number(right.isPrimary) - Number(left.isPrimary) || left.name.localeCompare(right.name)),
       teams: junior.teamPlayers
         .map(({ team, status }) => {
           const seasonStart = calendarDate(team.section.season.startDate)
@@ -71,7 +77,7 @@ export class AssociationAdminService {
             ...sectionEligibility(dateOfBirth, team.section, seasonStart),
           }
         })
-        .sort((a, b) => (b.seasonStart ?? '').localeCompare(a.seasonStart ?? '') || a.teamName.localeCompare(b.teamName)),
+        .sort((left, right) => (right.seasonStart ?? '').localeCompare(left.seasonStart ?? '') || left.teamName.localeCompare(right.teamName)),
     }
   }
 }

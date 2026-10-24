@@ -43,6 +43,10 @@ jobs:
       - name: Check the testing plan lists every test (TestingPlan.xlsx)
         run: npm run test:plan
 
+      # The checks and naming rules from coding_standards.docx (backend/eslint.config.mjs).
+      - name: Lint the backend
+        run: npm run lint --workspace=backend
+
       - name: Type-check the end-to-end tests
         run: npx tsc -p e2e
 

@@ -373,7 +373,9 @@ writes require an authenticated owner; another player's email must not grant acc
 }
 ```
 
-Errors: `400 INVALID_QUERY`, `404 USER_NOT_FOUND`, `404 PLAYER_PROFILE_NOT_LINKED`,
+Errors: `400` for an invalid query parameter (validated by `DashboardQueryDto`; `message`
+is a list of problems), `400 INVALID_QUERY` for a cursor that does not match the list,
+`404 USER_NOT_FOUND`, `404 PLAYER_PROFILE_NOT_LINKED`,
 `404 RESOURCE_NOT_FOUND`, `503 DATA_UNAVAILABLE`. Future protected endpoints also
 use `401 UNAUTHENTICATED` and `403 FORBIDDEN`; writes to unavailable features return
 `501 FEATURE_NOT_AVAILABLE`. Error responses share the shape above. Login retains

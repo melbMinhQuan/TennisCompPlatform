@@ -27,12 +27,12 @@ export function parseWrittenName(written: string): WrittenName | null {
 }
 
 /** Why two first names are forms of one name in NICKNAMES, or null. */
-function nicknameFit(x: string, y: string): string | null {
+function nicknameFit(firstForm: string, secondForm: string): string | null {
   for (const [name, forms] of Object.entries(NICKNAMES)) {
     const all = [name, ...forms]
-    if (!all.includes(x) || !all.includes(y)) continue
-    if (x === name || y === name) return `${title(x === name ? y : x)} is a nickname for ${title(name)}`
-    return `${title(x)} and ${title(y)} are both short for ${title(name)}`
+    if (!all.includes(firstForm) || !all.includes(secondForm)) continue
+    if (firstForm === name || secondForm === name) return `${title(firstForm === name ? secondForm : firstForm)} is a nickname for ${title(name)}`
+    return `${title(firstForm)} and ${title(secondForm)} are both short for ${title(name)}`
   }
   return null
 }
@@ -42,23 +42,23 @@ function nicknameFit(x: string, y: string): string | null {
  * letter is an initial; otherwise one name may be the start of the other or its nickname.
  */
 export function firstNameFit(written: string, registered: string): string | null {
-  const w = compact(written)
-  const r = compact(registered)
-  if (!w || !r) return null
-  if (w === r) return 'same first name'
-  if (w.length === 1) return r.startsWith(w) ? `first initial ${w.toUpperCase()}` : null
-  const [short, long] = w.length <= r.length ? [w, r] : [r, w]
+  const writtenName = compact(written)
+  const registeredName = compact(registered)
+  if (!writtenName || !registeredName) return null
+  if (writtenName === registeredName) return 'same first name'
+  if (writtenName.length === 1) return registeredName.startsWith(writtenName) ? `first initial ${writtenName.toUpperCase()}` : null
+  const [short, long] = writtenName.length <= registeredName.length ? [writtenName, registeredName] : [registeredName, writtenName]
   if (short.length >= 3 && long.startsWith(short)) return `${title(short)} is short for ${title(long)}`
-  return nicknameFit(w, r)
+  return nicknameFit(writtenName, registeredName)
 }
 
 /** Why a written surname fits a registered one; a missing surname fits anyone. */
 export function lastNameFit(written: string, registered: string): string | null {
-  const w = compact(written)
-  const r = compact(registered)
-  if (!w || !r) return 'surname missing'
-  if (w === r) return 'same surname'
-  return w.length === 1 && r.startsWith(w) ? `surname initial ${w.toUpperCase()}` : null
+  const writtenName = compact(written)
+  const registeredName = compact(registered)
+  if (!writtenName || !registeredName) return 'surname missing'
+  if (writtenName === registeredName) return 'same surname'
+  return writtenName.length === 1 && registeredName.startsWith(writtenName) ? `surname initial ${writtenName.toUpperCase()}` : null
 }
 
 /** Every reason a written name fits a registered player, or null when it cannot be them. */

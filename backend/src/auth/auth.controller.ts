@@ -1,5 +1,6 @@
-import { BadRequestException, Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common'
+import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common'
 import { AuthService } from './auth.service'
+import { LoginDto } from './login.dto'
 
 @Controller('auth')
 export class AuthController {
@@ -7,11 +8,7 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  login(@Body('email') email: unknown = '', @Body('password') password: unknown = '') {
-    // A missing field is a failed login (as an empty form is); anything that is not text is a bad request.
-    if (typeof email !== 'string' || typeof password !== 'string') {
-      throw new BadRequestException({ statusCode: 400, message: 'Email and password must be text' })
-    }
-    return this.authService.login(email, password)
+  login(@Body() credentials: LoginDto) {
+    return this.authService.login(credentials.email, credentials.password)
   }
 }

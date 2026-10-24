@@ -26,14 +26,14 @@ const DEV_PASSWORD = 'WaverleyDev#2026'
 
 let seed = 20260922
 const rnd = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff)
-const pick = a => a[Math.floor(rnd() * a.length)]
+const pick = items => items[Math.floor(rnd() * items.length)]
 const int = (lo, hi) => lo + Math.floor(rnd() * (hi - lo + 1))
-const pad = (n, w) => String(n).padStart(w, '0')
+const pad = (number, width) => String(number).padStart(width, '0')
 
-const day = (iso, n) => {
-  const d = new Date(`${iso}T00:00:00Z`)
-  d.setUTCDate(d.getUTCDate() + n)
-  return d.toISOString().slice(0, 10)
+const day = (iso, days) => {
+  const date = new Date(`${iso}T00:00:00Z`)
+  date.setUTCDate(date.getUTCDate() + days)
+  return date.toISOString().slice(0, 10)
 }
 const dow = iso => new Date(`${iso}T00:00:00Z`).getUTCDay()
 
@@ -44,19 +44,19 @@ const dow = iso => new Date(`${iso}T00:00:00Z`).getUTCDay()
  * 11 pm local, which is what the first version of this file got wrong.
  */
 function offsetHours(iso) {
-  const firstSunday = (y, m) => {
-    const first = new Date(Date.UTC(y, m, 1))
-    return new Date(Date.UTC(y, m, 1 + ((7 - first.getUTCDay()) % 7)))
+  const firstSunday = (year, month) => {
+    const first = new Date(Date.UTC(year, month, 1))
+    return new Date(Date.UTC(year, month, 1 + ((7 - first.getUTCDay()) % 7)))
   }
-  const d = new Date(`${iso}T00:00:00Z`)
-  const y = d.getUTCFullYear()
-  return d >= firstSunday(y, 9) || d < firstSunday(y, 3) ? 11 : 10
+  const date = new Date(`${iso}T00:00:00Z`)
+  const year = date.getUTCFullYear()
+  return date >= firstSunday(year, 9) || date < firstSunday(year, 3) ? 11 : 10
 }
 /** Local wall-clock time on a given date -> UTC ISO instant. */
 function utc(iso, hhmm) {
-  const [h, m] = hhmm.split(':').map(Number)
-  const t = Date.UTC(...iso.split('-').map(Number).map((v, i) => (i === 1 ? v - 1 : v)), h - offsetHours(iso), m)
-  return new Date(t).toISOString().replace('.000', '')
+  const [hours, minutes] = hhmm.split(':').map(Number)
+  const timestamp = Date.UTC(...iso.split('-').map(Number).map((part, i) => (i === 1 ? part - 1 : part)), hours - offsetHours(iso), minutes)
+  return new Date(timestamp).toISOString().replace('.000', '')
 }
 
 // ───────────────────────────────────────────────────────────── associations
@@ -68,23 +68,23 @@ const ASSOCS = [
 
 const SUBURBS = ['Glen Waverley', 'Mount Waverley', 'Syndal', 'Pinewood', 'Wheelers Hill',
   'Mulgrave', 'Ashwood', 'Burwood', 'Chadstone', 'Notting Hill', 'Forest Hill', 'Vermont South']
-const slug = s => s.toLowerCase().replace(/\s+/g, '')
+const slug = text => text.toLowerCase().replace(/\s+/g, '')
 
-const clubs = SUBURBS.map((s, i) => ({
+const clubs = SUBURBS.map((suburb, i) => ({
   id: `CLB${pad(i + 1, 2)}`,
   association_id: i < 10 ? 'ASSOC01' : 'ASSOC02',
-  name: `${s} Tennis Club`,
-  address: `${int(1, 200)} ${pick(['Park', 'Station', 'High', 'Church', 'Reserve'])} Road, ${s} VIC ${3100 + i * 3}`,
-  email: `admin@${slug(s)}tc.example`,
+  name: `${suburb} Tennis Club`,
+  address: `${int(1, 200)} ${pick(['Park', 'Station', 'High', 'Church', 'Reserve'])} Road, ${suburb} VIC ${3100 + i * 3}`,
+  email: `admin@${slug(suburb)}tc.example`,
   phone: `03 9${int(100, 899)} ${int(1000, 9999)}`,
   status: 'ACTIVE',
 }))
 
 const COURTS = [6, 8, 4, 10, 6, 8, 4, 6, 8, 4, 6, 10]
-const venues = clubs.map((c, i) => ({
-  id: `VEN${pad(i + 1, 2)}`, club_id: c.id,
-  name: `${c.name.replace(' Tennis Club', '')} Tennis Centre`,
-  address: c.address, time_zone: TZ, court_count: COURTS[i], status: 'ACTIVE',
+const venues = clubs.map((club, i) => ({
+  id: `VEN${pad(i + 1, 2)}`, club_id: club.id,
+  name: `${club.name.replace(' Tennis Club', '')} Tennis Centre`,
+  address: club.address, time_zone: TZ, court_count: COURTS[i], status: 'ACTIVE',
 }))
 venues.push({ id: 'VEN99', club_id: '', name: 'Waverley Tennis Regional Centre', address: '500 Springvale Road, Glen Waverley VIC 3150', time_zone: TZ, court_count: 16, status: 'ACTIVE' })
 
@@ -186,16 +186,16 @@ const players = NAMES.map((fullName, i) => {
   }
 })
 
-const users = players.map((p, i) => ({
+const users = players.map((player, i) => ({
   id: `USR${pad(i + 1, 3)}`,
-  email: p._lookup_user_email,
+  email: player._lookup_user_email,
   password_hash: passwordHash,
   status: 'ACTIVE',
   last_login_at: i % 4 === 0 ? utc(day(TODAY, -(i % 20) - 1), '19:30') : '',
 }))
 
-const utrRating = i => 3.2 + ((i * 53) % 780) / 100
-const utrOf = new Map(players.map((p, i) => [p.id, utrRating(i)]))
+const utrRating = index => 3.2 + ((index * 53) % 780) / 100
+const utrOf = new Map(players.map((player, i) => [player.id, utrRating(i)]))
 
 // ───────────────────────────────────────────────────────────────── seasons
 // Seasons inside one competition never overlap: Summer starts after the Winter
@@ -218,31 +218,31 @@ const SEASONS = [
 ]
 
 /** "Winter 2026", or "Summer 2026/27" for a season that runs into the next year. */
-const seasonName = s => {
-  const endYear = Number(String(s.end_date).slice(0, 4))
-  return endYear > s.year ? `${s.season_type} ${s.year}/${String(endYear).slice(2)}` : `${s.season_type} ${s.year}`
+const seasonName = season => {
+  const endYear = Number(String(season.end_date).slice(0, 4))
+  return endYear > season.year ? `${season.season_type} ${season.year}/${String(endYear).slice(2)}` : `${season.season_type} ${season.year}`
 }
 
 const sections = []
 const teams = []
-for (const s of SEASONS) {
-  for (let n = 0; n < s.sections; n++) {
+for (const season of SEASONS) {
+  for (let sectionIndex = 0; sectionIndex < season.sections; sectionIndex++) {
     const sectionId = `SEC${pad(sections.length + 1, 2)}`
-    const teamCount = s.teamsPerSection ?? 8
-    sections.push({ id: sectionId, season_id: s.id, name: `Section ${n + 1}`, gender: '', age_group: 'Adult', min_age: 18, max_age: '', team_count: teamCount })
-    for (let t = 0; t < teamCount; t++) {
-      const club = clubs[(n * 8 + t) % clubs.length]
+    const teamCount = season.teamsPerSection ?? 8
+    sections.push({ id: sectionId, season_id: season.id, name: `Section ${sectionIndex + 1}`, gender: '', age_group: 'Adult', min_age: 18, max_age: '', team_count: teamCount })
+    for (let teamIndex = 0; teamIndex < teamCount; teamIndex++) {
+      const club = clubs[(sectionIndex * 8 + teamIndex) % clubs.length]
       teams.push({
         id: `TEAM${pad(teams.length + 1, 3)}`, club_id: club.id, section_id: sectionId,
-        home_venue_id: venues.find(v => v.club_id === club.id).id,
-        name: `${club.name.replace(' Tennis Club', '')} ${String.fromCharCode(65 + n)}`,
-        _season: s.id,
+        home_venue_id: venues.find(venue => venue.club_id === club.id).id,
+        name: `${club.name.replace(' Tennis Club', '')} ${String.fromCharCode(65 + sectionIndex)}`,
+        _season: season.id,
       })
     }
   }
 }
-const sectionsOf = seasonId => sections.filter(x => x.season_id === seasonId)
-const teamsOf = sectionId => teams.filter(t => t.section_id === sectionId)
+const sectionsOf = seasonId => sections.filter(section => section.season_id === seasonId)
+const teamsOf = sectionId => teams.filter(team => team.section_id === sectionId)
 
 // ───────────────────────────────────────────────────── rosters & memberships
 // Six players per team. A team's singles order is fixed for the season by
@@ -250,11 +250,11 @@ const teamsOf = sectionId => teams.filter(t => t.section_id === sectionId)
 const ROSTER = 6
 const rosterOf = new Map()
 for (const section of sections) {
-  teamsOf(section.id).forEach((team, t) => {
+  teamsOf(section.id).forEach((team, teamIndex) => {
     const base = teams.indexOf(team) * ROSTER
     const squad = Array.from({ length: ROSTER }, (_, k) => players[(base + k) % players.length])
-    rosterOf.set(team.id, [...squad].sort((a, b) => utrOf.get(b.id) - utrOf.get(a.id)))
-    void t
+    rosterOf.set(team.id, [...squad].sort((left, right) => utrOf.get(right.id) - utrOf.get(left.id)))
+    void teamIndex
   })
 }
 
@@ -273,23 +273,23 @@ function joinDate(playerId, clubId, seasonStart) {
 for (const season of SEASONS) {
   for (const section of sectionsOf(season.id)) {
     for (const team of teamsOf(section.id)) {
-      for (const p of rosterOf.get(team.id)) {
-        const key = `${p.id}|${team.club_id}`
+      for (const rosterPlayer of rosterOf.get(team.id)) {
+        const key = `${rosterPlayer.id}|${team.club_id}`
         if (!seenMembership.has(key)) {
           seenMembership.add(key)
           // Exactly one primary club per player: the first they joined. Later
           // clubs are secondary, which is how a player comes to represent
           // different clubs in different competitions.
-          const hasPrimary = clubMemberships.some(m => m.player_id === p.id && m.is_primary === true)
+          const hasPrimary = clubMemberships.some(clubMembership => clubMembership.player_id === rosterPlayer.id && clubMembership.is_primary === true)
           clubMemberships.push({
-            id: `CM${pad(clubMemberships.length + 1, 3)}`, player_id: p.id, club_id: team.club_id,
+            id: `CM${pad(clubMemberships.length + 1, 3)}`, player_id: rosterPlayer.id, club_id: team.club_id,
             is_primary: !hasPrimary,
-            start_date: joinDate(p.id, team.club_id, season.start_date) ?? day(season.start_date, -60),
+            start_date: joinDate(rosterPlayer.id, team.club_id, season.start_date) ?? day(season.start_date, -60),
             end_date: '', status: 'ACTIVE',
           })
         }
         teamPlayers.push({
-          id: `TP${pad(teamPlayers.length + 1, 4)}`, team_id: team.id, player_id: p.id,
+          id: `TP${pad(teamPlayers.length + 1, 4)}`, team_id: team.id, player_id: rosterPlayer.id,
           status: 'ACTIVE', register_at: utc(day(season.start_date, -19), '09:00'),
         })
       }
@@ -300,14 +300,14 @@ for (const season of SEASONS) {
 // A quarter of the squad also holds a secondary membership at another club, so
 // "a player may belong to more than one club" and represent different clubs in
 // different competitions is exercised.
-players.forEach((p, i) => {
+players.forEach((player, i) => {
   if (i % 4) return
-  const own = clubMemberships.find(m => m.player_id === p.id)
-  const other = clubs.find(c => c.id !== own?.club_id && c.association_id === 'ASSOC02') ?? clubs[11]
-  if (!own || seenMembership.has(`${p.id}|${other.id}`)) return
-  seenMembership.add(`${p.id}|${other.id}`)
+  const own = clubMemberships.find(clubMembership => clubMembership.player_id === player.id)
+  const other = clubs.find(club => club.id !== own?.club_id && club.association_id === 'ASSOC02') ?? clubs[11]
+  if (!own || seenMembership.has(`${player.id}|${other.id}`)) return
+  seenMembership.add(`${player.id}|${other.id}`)
   clubMemberships.push({
-    id: `CM${pad(clubMemberships.length + 1, 3)}`, player_id: p.id, club_id: other.id,
+    id: `CM${pad(clubMemberships.length + 1, 3)}`, player_id: player.id, club_id: other.id,
     is_primary: false, start_date: '2025-02-10', end_date: '', status: 'ACTIVE',
   })
 })
@@ -316,19 +316,19 @@ players.forEach((p, i) => {
 // association. That is what makes a cross-association look-alike possible, and
 // it is exactly the case the duplicate-profile rules have to handle.
 const duplicateNames = new Map()
-for (const p of players) {
-  const key = `${p.first_name} ${p.last_name}`
+for (const player of players) {
+  const key = `${player.first_name} ${player.last_name}`
   if (!duplicateNames.has(key)) duplicateNames.set(key, [])
-  duplicateNames.get(key).push(p)
+  duplicateNames.get(key).push(player)
 }
-const otherAssociationClub = clubs.find(c => c.association_id === 'ASSOC02')
+const otherAssociationClub = clubs.find(club => club.association_id === 'ASSOC02')
 for (const pair of duplicateNames.values()) {
   if (pair.length !== 2) continue
-  const p = pair[1]
-  if (seenMembership.has(`${p.id}|${otherAssociationClub.id}`)) continue
-  seenMembership.add(`${p.id}|${otherAssociationClub.id}`)
+  const player = pair[1]
+  if (seenMembership.has(`${player.id}|${otherAssociationClub.id}`)) continue
+  seenMembership.add(`${player.id}|${otherAssociationClub.id}`)
   clubMemberships.push({
-    id: `CM${pad(clubMemberships.length + 1, 3)}`, player_id: p.id, club_id: otherAssociationClub.id,
+    id: `CM${pad(clubMemberships.length + 1, 3)}`, player_id: player.id, club_id: otherAssociationClub.id,
     is_primary: false, start_date: '2025-03-01', end_date: '', status: 'ACTIVE',
   })
 }
@@ -336,14 +336,14 @@ for (const pair of duplicateNames.values()) {
 // Association membership follows club membership: belonging to a club means
 // belonging to the association that club sits in. Leaving a member of an
 // ASSOC02 club without an ASSOC02 membership is a contradiction.
-const associationOfClub = new Map(clubs.map(c => [c.id, c.association_id]))
-for (const p of players) {
+const associationOfClub = new Map(clubs.map(club => [club.id, club.association_id]))
+for (const player of players) {
   const theirs = [...new Set(
-    clubMemberships.filter(m => m.player_id === p.id).map(m => associationOfClub.get(m.club_id)),
+    clubMemberships.filter(clubMembership => clubMembership.player_id === player.id).map(clubMembership => associationOfClub.get(clubMembership.club_id)),
   )]
   if (!theirs.includes('ASSOC01')) theirs.unshift('ASSOC01')
   theirs.forEach((associationId, i) => associationMemberships.push({
-    id: `AM${pad(associationMemberships.length + 1, 3)}`, player_id: p.id,
+    id: `AM${pad(associationMemberships.length + 1, 3)}`, player_id: player.id,
     association_id: associationId, is_primary: i === 0, status: 'ACTIVE',
   }))
 }
@@ -351,14 +351,14 @@ for (const p of players) {
 // Emergencies must have no team at all in the competition they fill in for,
 // because ELIG03 forbids playing for another club in the same competition.
 const freeForEmergency = new Map()
-for (const competitionId of [...new Set(SEASONS.map(s => s.competition_id))]) {
+for (const competitionId of [...new Set(SEASONS.map(season => season.competition_id))]) {
   const sectionIds = new Set(sections
-    .filter(sec => SEASONS.some(s => s.id === sec.season_id && s.competition_id === competitionId))
+    .filter(sec => SEASONS.some(season => season.id === sec.season_id && season.competition_id === competitionId))
     .map(sec => sec.id))
   const committed = new Set(teamPlayers
-    .filter(tp => sectionIds.has(teams.find(t => t.id === tp.team_id).section_id))
+    .filter(tp => sectionIds.has(teams.find(team => team.id === tp.team_id).section_id))
     .map(tp => tp.player_id))
-  freeForEmergency.set(competitionId, players.filter(p => !committed.has(p.id)))
+  freeForEmergency.set(competitionId, players.filter(player => !committed.has(player.id)))
 }
 
 /** Reviews correction requests; also holds the RECORDS_SECRETARY role below. */
@@ -366,27 +366,27 @@ const recordsSecretary = players[1].id
 
 // ─────────────────────────────────────────────────────────────── UTR data
 const utrSnapshots = []
-players.forEach((p, i) => {
+players.forEach((player, i) => {
   for (const [discipline, offset] of [['SINGLES', 0], ['DOUBLES', -0.35]]) {
-    ;['2026-06-01', '2026-07-01', '2026-08-01', '2026-09-01'].forEach((d, k) => {
-      const drift = ((i + k * 3) % 7 - 3) / 100
+    ;['2026-06-01', '2026-07-01', '2026-08-01', '2026-09-01'].forEach((date, monthIndex) => {
+      const drift = ((i + monthIndex * 3) % 7 - 3) / 100
       utrSnapshots.push({
-        id: `SNAP${pad(utrSnapshots.length + 1, 4)}`, player_id: p.id, discipline,
-        rating: Math.max(1, utrRating(i) + offset + drift + (k - 3) * 0.06).toFixed(2),
-        recorded_at: utc(d, '10:00'), source: 'UTR_API',
+        id: `SNAP${pad(utrSnapshots.length + 1, 4)}`, player_id: player.id, discipline,
+        rating: Math.max(1, utrRating(i) + offset + drift + (monthIndex - 3) * 0.06).toFixed(2),
+        recorded_at: utc(date, '10:00'), source: 'UTR_API',
       })
     })
   }
 })
 const latestSnapshot = (playerId, discipline) => {
-  const rows = utrSnapshots.filter(s => s.player_id === playerId && s.discipline === discipline)
+  const rows = utrSnapshots.filter(utrSnapshot => utrSnapshot.player_id === playerId && utrSnapshot.discipline === discipline)
   return rows[rows.length - 1]
 }
 // UtrLink carries the current rating, and it must be the same number the newest
 // snapshot reports - two different UTRs for one player is a defect, not a feature.
-const utrLinks = players.map((p, i) => ({
-  id: `UTR${pad(i + 1, 3)}`, player_id: p.id, utr_account_id: `UTR-${100000 + i * 7}`,
-  utr_rating: latestSnapshot(p.id, 'SINGLES').rating,
+const utrLinks = players.map((player, i) => ({
+  id: `UTR${pad(i + 1, 3)}`, player_id: player.id, utr_account_id: `UTR-${100000 + i * 7}`,
+  utr_rating: latestSnapshot(player.id, 'SINGLES').rating,
   last_synced_at: utc('2026-09-01', '10:05'), status: 'ACTIVE',
 }))
 
@@ -395,13 +395,13 @@ const cohorts = [
   { id: 'COH02', name: 'Waverley Tennis adult doubles', description: 'Adult players with a doubles rating in a Waverley Tennis competition.', association_id: 'ASSOC01', discipline: 'DOUBLES' },
 ]
 const rankingEntries = []
-for (const c of cohorts) {
+for (const cohort of cohorts) {
   const ranked = players
-    .map(p => ({ player_id: p.id, rating: Number(latestSnapshot(p.id, c.discipline).rating) }))
-    .sort((a, b) => b.rating - a.rating)
-  ranked.forEach((r, i) => rankingEntries.push({
-    id: `RANK${pad(rankingEntries.length + 1, 4)}`, cohort_id: c.id, player_id: r.player_id,
-    rank: i + 1, rating: r.rating.toFixed(2),
+    .map(player => ({ player_id: player.id, rating: Number(latestSnapshot(player.id, cohort.discipline).rating) }))
+    .sort((left, right) => right.rating - left.rating)
+  ranked.forEach((rankedPlayer, i) => rankingEntries.push({
+    id: `RANK${pad(rankingEntries.length + 1, 4)}`, cohort_id: cohort.id, player_id: rankedPlayer.player_id,
+    rank: i + 1, rating: rankedPlayer.rating.toFixed(2),
     percentile_rank: (((ranked.length - (i + 1)) / ranked.length) * 100).toFixed(2),
     as_of: utc('2026-09-01', '10:05'),
   }))
@@ -419,7 +419,7 @@ const auditLog = []
 
 function roundRobin(ids) {
   const list = ids.slice(), rounds = []
-  for (let r = 0; r < list.length - 1; r++) {
+  for (let roundIndex = 0; roundIndex < list.length - 1; roundIndex++) {
     const pairs = []
     for (let i = 0; i < list.length / 2; i++) pairs.push([list[i], list[list.length - 1 - i]])
     rounds.push(pairs)
@@ -430,9 +430,9 @@ function roundRobin(ids) {
 
 /** Legal tennis set scores only: 6-0..6-4, 7-5, or 7-6 decided on a tiebreak. */
 function setScore() {
-  const r = rnd()
-  if (r < 0.12) return { w: 7, l: 6, tb: true }
-  if (r < 0.28) return { w: 7, l: 5, tb: false }
+  const roll = rnd()
+  if (roll < 0.12) return { w: 7, l: 6, tb: true }
+  if (roll < 0.28) return { w: 7, l: 5, tb: false }
   return { w: 6, l: int(0, 4), tb: false }
 }
 
@@ -442,7 +442,7 @@ function buildFixtures(season) {
     const list = teamsOf(section.id)
     // A section with no teams yet has nothing to draw.
     if (!list.length) continue
-    const base = roundRobin(list.map(t => t.id))
+    const base = roundRobin(list.map(team => team.id))
     // First Saturday (or Monday for night tennis) on or after the start date.
     let first = season.start_date
     while (dow(first) !== season.playDay) first = day(first, 1)
@@ -450,15 +450,15 @@ function buildFixtures(season) {
     for (let round = 1; round <= 14; round++) {
       const cycle = base[(round - 1) % 7]
       const secondHalf = round > 7
-      const d = day(first, (round - 1) * 7)
-      for (const [a, b] of cycle) {
-        const homeId = secondHalf ? b : a, awayId = secondHalf ? a : b
-        const home = teams.find(t => t.id === homeId)
-        const played = season.complete || d < TODAY
+      const date = day(first, (round - 1) * 7)
+      for (const [firstTeamId, secondTeamId] of cycle) {
+        const homeId = secondHalf ? secondTeamId : firstTeamId, awayId = secondHalf ? firstTeamId : secondTeamId
+        const home = teams.find(team => team.id === homeId)
+        const played = season.complete || date < TODAY
         const fixture = {
           id: `FIX${pad(fixtures.length + 1, 4)}`, section_id: section.id,
           home_team_id: homeId, away_team_id: awayId, venue_id: home.home_venue_id,
-          round_number: round, round_label: '', schedule_date: d, schedule_time: season.startTime,
+          round_number: round, round_label: '', schedule_date: date, schedule_time: season.startTime,
           status: played ? 'COMPLETED' : 'SCHEDULED', is_finals: false,
         }
         fixtures.push(fixture)
@@ -479,11 +479,11 @@ function buildResult(fixture, season, round) {
   let homeWon = 0
 
   // Rotate which four of the six play, keeping the singles order of merit.
-  const four = r => {
-    const o = (round - 1) % ROSTER
-    return Array.from({ length: 4 }, (_, i) => r[(o + i) % ROSTER]).sort((a, b) => utrOf.get(b.id) - utrOf.get(a.id))
+  const four = roster => {
+    const offset = (round - 1) % ROSTER
+    return Array.from({ length: 4 }, (_, i) => roster[(offset + i) % ROSTER]).sort((left, right) => utrOf.get(right.id) - utrOf.get(left.id))
   }
-  const h = four(home), a = four(away)
+  const homeFour = four(home), awayFour = four(away)
 
   // Occasionally a side is a player short and a last-minute emergency steps in.
   // ELIG03 forbids an emergency from playing for another club in the same
@@ -495,8 +495,8 @@ function buildResult(fixture, season, round) {
     return free[(Number(fixture.id.slice(3)) + (side === 'HOME' ? 0 : 1)) % free.length]
   }
   const subs = { HOME: emergencyFor('HOME'), AWAY: emergencyFor('AWAY') }
-  if (subs.HOME) h[3] = subs.HOME
-  if (subs.AWAY) a[3] = subs.AWAY
+  if (subs.HOME) homeFour[3] = subs.HOME
+  if (subs.AWAY) awayFour[3] = subs.AWAY
 
   // PDF: the doubles rubber is played first, then the two singles.
   const layout = [
@@ -505,7 +505,7 @@ function buildResult(fixture, season, round) {
     { number: 3, type: 'SINGLES', slots: [1], at: addMinutes(season.startTime, 90) },
   ]
 
-  for (const r of layout) {
+  for (const rubberLayout of layout) {
     const rubberId = `RUB${pad(rubbers.length + 1, 4)}`
     const homeWins = rnd() < 0.5
     if (homeWins) homeWon++
@@ -514,21 +514,21 @@ function buildResult(fixture, season, round) {
 
     rubbers.push({
       id: rubberId, match_result_id: resultId, match_format_id: season.format,
-      rubber_number: r.number, rubber_type: r.type,
+      rubber_number: rubberLayout.number, rubber_type: rubberLayout.type,
       // Only stored where it cannot be derived from the sets. A completed
       // rubber's winner is read from its scores instead.
       winner_side: outcome === 'COMPLETED' ? '' : (homeWins ? 'HOME' : 'AWAY'),
       outcome_type: outcome,
-      played_at: utc(fixture.schedule_date, r.at),
+      played_at: utc(fixture.schedule_date, rubberLayout.at),
       incomplete_reason: outcome === 'COMPLETED' ? '' : `Opponent ${outcome.toLowerCase()}`,
     })
 
-    r.slots.forEach((slot, order) => {
-      for (const [side, squad] of [['HOME', h], ['AWAY', a]]) {
-        const p = squad[slot]
+    rubberLayout.slots.forEach((slot, order) => {
+      for (const [side, squad] of [['HOME', homeFour], ['AWAY', awayFour]]) {
+        const player = squad[slot]
         rubberPlayers.push({
-          id: `RP${pad(rubberPlayers.length + 1, 5)}`, rubber_id: rubberId, player_id: p.id,
-          side, player_order: order + 1, is_emergency: subs[side]?.id === p.id,
+          id: `RP${pad(rubberPlayers.length + 1, 5)}`, rubber_id: rubberId, player_id: player.id,
+          side, player_order: order + 1, is_emergency: subs[side]?.id === player.id,
         })
       }
     })
@@ -538,13 +538,13 @@ function buildResult(fixture, season, round) {
     // format that is decided on one (MF13). Never more than the format allows.
     const full = season.setsToWin === 1 ? 1 : (rnd() < 0.55 ? 2 : 3)
     const setCount = outcome === 'RETIRED' ? 1 : full
-    for (let n = 1; n <= setCount; n++) {
-      const winnerTakesSet = setCount === 3 ? n !== 2 : true
-      const { w, l, tb } = setScore()
+    for (let setNumber = 1; setNumber <= setCount; setNumber++) {
+      const winnerTakesSet = setCount === 3 ? setNumber !== 2 : true
+      const { w: winnerGames, l: loserGames, tb } = setScore()
       const homeTakes = homeWins === winnerTakesSet
       rubberSets.push({
-        id: `SET${pad(rubberSets.length + 1, 5)}`, rubber_id: rubberId, set_number: n,
-        home_games: homeTakes ? w : l, away_games: homeTakes ? l : w, is_tiebreak: tb,
+        id: `SET${pad(rubberSets.length + 1, 5)}`, rubber_id: rubberId, set_number: setNumber,
+        home_games: homeTakes ? winnerGames : loserGames, away_games: homeTakes ? loserGames : winnerGames, is_tiebreak: tb,
         home_tiebreak_points: tb ? (homeTakes ? 7 : int(2, 5)) : '',
         away_tiebreak_points: tb ? (homeTakes ? int(2, 5) : 7) : '',
       })
@@ -631,9 +631,9 @@ function buildResult(fixture, season, round) {
 }
 
 function addMinutes(hhmm, mins) {
-  const [h, m] = hhmm.split(':').map(Number)
-  const t = h * 60 + m + mins
-  return `${pad(Math.floor(t / 60), 2)}:${pad(t % 60, 2)}`
+  const [hours, minutes] = hhmm.split(':').map(Number)
+  const totalMinutes = hours * 60 + minutes + mins
+  return `${pad(Math.floor(totalMinutes / 60), 2)}:${pad(totalMinutes % 60, 2)}`
 }
 
 // ────────────────────────────────────────────────────────── ladders first
@@ -643,42 +643,42 @@ const playerStandings = []
 
 function buildLadder(section) {
   const list = teamsOf(section.id)
-  const tally = new Map(list.map(t => [t.id, { played: 0, won: 0, lost: 0, drawn: 0, rf: 0, ra: 0, sf: 0, sa: 0, gf: 0, ga: 0, points: 0 }]))
+  const tally = new Map(list.map(team => [team.id, { played: 0, won: 0, lost: 0, drawn: 0, rf: 0, ra: 0, sf: 0, sa: 0, gf: 0, ga: 0, points: 0 }]))
   for (const res of matchResults) {
-    const f = fixtures.find(x => x.id === res.fixture_id)
-    if (f.section_id !== section.id || f.is_finals) continue
+    const resultFixture = fixtures.find(fixture => fixture.id === res.fixture_id)
+    if (resultFixture.section_id !== section.id || resultFixture.is_finals) continue
     // A result only counts once the opponent has confirmed it. One still
     // awaiting confirmation, or under correction, must not move the ladder.
     if (res.status !== 'FINALISED') continue
-    const h = tally.get(f.home_team_id), a = tally.get(f.away_team_id)
-    h.played++; a.played++
-    h.rf += res.home_rubbers; h.ra += res.away_rubbers
-    a.rf += res.away_rubbers; a.ra += res.home_rubbers
-    h.points += res.home_rubbers; a.points += res.away_rubbers
-    if (res.outcome === 'HOME_WIN') { h.won++; a.lost++; h.points += 4 } else { a.won++; h.lost++; a.points += 4 }
-    for (const r of rubbers.filter(x => x.match_result_id === res.id)) {
-      for (const s of rubberSets.filter(x => x.rubber_id === r.id)) {
-        h.gf += s.home_games; h.ga += s.away_games
-        a.gf += s.away_games; a.ga += s.home_games
-        if (s.home_games > s.away_games) { h.sf++; a.sa++ } else { a.sf++; h.sa++ }
+    const homeTally = tally.get(resultFixture.home_team_id), awayTally = tally.get(resultFixture.away_team_id)
+    homeTally.played++; awayTally.played++
+    homeTally.rf += res.home_rubbers; homeTally.ra += res.away_rubbers
+    awayTally.rf += res.away_rubbers; awayTally.ra += res.home_rubbers
+    homeTally.points += res.home_rubbers; awayTally.points += res.away_rubbers
+    if (res.outcome === 'HOME_WIN') { homeTally.won++; awayTally.lost++; homeTally.points += 4 } else { awayTally.won++; homeTally.lost++; awayTally.points += 4 }
+    for (const resultRubber of rubbers.filter(rubber => rubber.match_result_id === res.id)) {
+      for (const resultSet of rubberSets.filter(rubberSet => rubberSet.rubber_id === resultRubber.id)) {
+        homeTally.gf += resultSet.home_games; homeTally.ga += resultSet.away_games
+        awayTally.gf += resultSet.away_games; awayTally.ga += resultSet.home_games
+        if (resultSet.home_games > resultSet.away_games) { homeTally.sf++; awayTally.sa++ } else { awayTally.sf++; homeTally.sa++ }
       }
     }
   }
   // Tie-break order: points, then rubber percentage, then game percentage, then name.
-  const ordered = list.slice().sort((x, y) => {
-    const tx = tally.get(x.id), ty = tally.get(y.id)
+  const ordered = list.slice().sort((left, right) => {
+    const tx = tally.get(left.id), ty = tally.get(right.id)
     return ty.points - tx.points
       || (ty.rf / (ty.rf + ty.ra || 1)) - (tx.rf / (tx.rf + tx.ra || 1))
       || (ty.gf / (ty.gf + ty.ga || 1)) - (tx.gf / (tx.gf + tx.ga || 1))
-      || x.name.localeCompare(y.name)
+      || left.name.localeCompare(right.name)
   })
   ordered.forEach((team, i) => {
-    const t = tally.get(team.id)
+    const teamTally = tally.get(team.id)
     ladderEntries.push({
       id: `LAD${pad(ladderEntries.length + 1, 3)}`, section_id: section.id, team_id: team.id,
-      position: i + 1, played: t.played, won: t.won, lost: t.lost, drawn: t.drawn,
-      rubbers_for: t.rf, rubbers_against: t.ra, sets_for: t.sf, sets_against: t.sa,
-      games_for: t.gf, games_against: t.ga, points: t.points,
+      position: i + 1, played: teamTally.played, won: teamTally.won, lost: teamTally.lost, drawn: teamTally.drawn,
+      rubbers_for: teamTally.rf, rubbers_against: teamTally.ra, sets_for: teamTally.sf, sets_against: teamTally.sa,
+      games_for: teamTally.gf, games_against: teamTally.ga, points: teamTally.points,
       calculated_at: utc(TODAY, '03:00'),
     })
   })
@@ -688,39 +688,39 @@ function buildLadder(section) {
 function buildStandings(section) {
   const per = new Map()
   for (const rp of rubberPlayers) {
-    const r = rubbers.find(x => x.id === rp.rubber_id)
-    const res = matchResults.find(x => x.id === r.match_result_id)
-    const f = fixtures.find(x => x.id === res.fixture_id)
+    const playedRubber = rubbers.find(rubber => rubber.id === rp.rubber_id)
+    const res = matchResults.find(matchResult => matchResult.id === playedRubber.match_result_id)
+    const playedFixture = fixtures.find(fixture => fixture.id === res.fixture_id)
     // Same basis as the ladder: confirmed home-and-away results only, so the
     // two tables can never disagree about which matches happened.
-    if (f.section_id !== section.id || f.is_finals || res.status !== 'FINALISED') continue
+    if (playedFixture.section_id !== section.id || playedFixture.is_finals || res.status !== 'FINALISED') continue
     if (!per.has(rp.player_id)) per.set(rp.player_id, { rp: 0, rw: 0, rl: 0, sw: 0, sl: 0, gw: 0, gl: 0 })
-    const s = per.get(rp.player_id)
-    s.rp++
-    if (winnerOf(r) === rp.side) s.rw++; else s.rl++
-    for (const set of rubberSets.filter(x => x.rubber_id === r.id)) {
+    const standing = per.get(rp.player_id)
+    standing.rp++
+    if (winnerOf(playedRubber) === rp.side) standing.rw++; else standing.rl++
+    for (const set of rubberSets.filter(rubberSet => rubberSet.rubber_id === playedRubber.id)) {
       const mine = rp.side === 'HOME' ? set.home_games : set.away_games
       const theirs = rp.side === 'HOME' ? set.away_games : set.home_games
-      s.gw += mine; s.gl += theirs
-      if (mine > theirs) s.sw++; else s.sl++
+      standing.gw += mine; standing.gl += theirs
+      if (mine > theirs) standing.sw++; else standing.sl++
     }
   }
   ;[...per.entries()]
-    .sort((a, b) => (b[1].rw / b[1].rp) - (a[1].rw / a[1].rp) || b[1].rw - a[1].rw || a[0].localeCompare(b[0]))
-    .forEach(([playerId, s], i) => playerStandings.push({
+    .sort((left, right) => (right[1].rw / right[1].rp) - (left[1].rw / left[1].rp) || right[1].rw - left[1].rw || left[0].localeCompare(right[0]))
+    .forEach(([playerId, standing], i) => playerStandings.push({
       id: `PS${pad(playerStandings.length + 1, 4)}`, section_id: section.id, player_id: playerId,
-      position: i + 1, rubbers_played: s.rp, rubbers_won: s.rw, rubbers_lost: s.rl,
-      sets_won: s.sw, sets_lost: s.sl, games_won: s.gw, games_lost: s.gl,
-      win_percentage: ((s.rw / s.rp) * 100).toFixed(2), calculated_at: utc(TODAY, '03:00'),
+      position: i + 1, rubbers_played: standing.rp, rubbers_won: standing.rw, rubbers_lost: standing.rl,
+      sets_won: standing.sw, sets_lost: standing.sl, games_won: standing.gw, games_lost: standing.gl,
+      win_percentage: ((standing.rw / standing.rp) * 100).toFixed(2), calculated_at: utc(TODAY, '03:00'),
     }))
 }
 
 /** A completed rubber's winner comes from its sets; otherwise it is recorded. */
 function winnerOf(rubber) {
   if (rubber.winner_side) return rubber.winner_side
-  const sets = rubberSets.filter(s => s.rubber_id === rubber.id)
-  const h = sets.filter(s => s.home_games > s.away_games).length
-  return h > sets.length - h ? 'HOME' : 'AWAY'
+  const sets = rubberSets.filter(rubberSet => rubberSet.rubber_id === rubber.id)
+  const homeSets = sets.filter(rubberSet => rubberSet.home_games > rubberSet.away_games).length
+  return homeSets > sets.length - homeSets ? 'HOME' : 'AWAY'
 }
 
 /**
@@ -733,20 +733,20 @@ function winnerOf(rubber) {
  * ladder position cannot decide that once a grand final has been played.
  */
 function buildFinals(season, section) {
-  const ladder = ladderEntries.filter(l => l.section_id === section.id).sort((a, b) => a.position - b.position)
+  const ladder = ladderEntries.filter(ladderEntry => ladderEntry.section_id === section.id).sort((left, right) => left.position - right.position)
   if (ladder.length < 4) return null
-  const lastRound = fixtures.filter(f => f.section_id === section.id && !f.is_finals)
-    .reduce((m, f) => (f.schedule_date > m ? f.schedule_date : m), '')
-  const [first, second, third, fourth] = ladder.slice(0, 4).map(l => l.team_id)
+  const lastRound = fixtures.filter(fixture => fixture.section_id === section.id && !fixture.is_finals)
+    .reduce((latest, fixture) => (fixture.schedule_date > latest ? fixture.schedule_date : latest), '')
+  const [first, second, third, fourth] = ladder.slice(0, 4).map(ladderEntry => ladderEntry.team_id)
 
   let played = 0
   const play = (label, home, away, offset) => {
-    const d = day(lastRound, offset)
-    const done = d < TODAY
+    const date = day(lastRound, offset)
+    const done = date < TODAY
     const fixture = {
       id: `FIX${pad(fixtures.length + 1, 4)}`, section_id: section.id,
       home_team_id: home, away_team_id: away, venue_id: 'VEN99',
-      round_number: '', round_label: label, schedule_date: d, schedule_time: season.startTime,
+      round_number: '', round_label: label, schedule_date: date, schedule_time: season.startTime,
       status: done ? 'COMPLETED' : 'SCHEDULED', is_finals: true,
     }
     fixtures.push(fixture)
@@ -776,7 +776,7 @@ for (const season of SEASONS) buildFixtures(season)
 for (const section of sections) { buildLadder(section); buildStandings(section) }
 // Finals need the ladder, so completed seasons get theirs once it exists.
 const premierships = []
-for (const season of SEASONS.filter(s => s.complete)) {
+for (const season of SEASONS.filter(season => season.complete)) {
   for (const section of sectionsOf(season.id)) {
     const outcome = buildFinals(season, section)
     if (outcome) premierships.push({ season, section, ...outcome })
@@ -787,35 +787,35 @@ for (const season of SEASONS.filter(s => s.complete)) {
 // Every change is logged on or before the day it took effect, and never in
 // the future relative to the generation date.
 const scheduleChanges = []
-const upcoming = fixtures.filter(f => f.status === 'SCHEDULED' && !f.is_finals)
+const upcoming = fixtures.filter(fixture => fixture.status === 'SCHEDULED' && !fixture.is_finals)
 
-upcoming.slice(0, 3).forEach(f => {
-  const previous = f.schedule_date
-  f.schedule_date = day(previous, 1)
+upcoming.slice(0, 3).forEach(upcomingFixture => {
+  const previous = upcomingFixture.schedule_date
+  upcomingFixture.schedule_date = day(previous, 1)
   scheduleChanges.push({
-    id: `FSC${pad(scheduleChanges.length + 1, 3)}`, fixture_id: f.id, change_type: 'DATE_TIME_CHANGED',
-    previous_date: previous, previous_time: f.schedule_time, new_date: f.schedule_date, new_time: f.schedule_time,
+    id: `FSC${pad(scheduleChanges.length + 1, 3)}`, fixture_id: upcomingFixture.id, change_type: 'DATE_TIME_CHANGED',
+    previous_date: previous, previous_time: upcomingFixture.schedule_time, new_date: upcomingFixture.schedule_date, new_time: upcomingFixture.schedule_time,
     previous_venue_id: '', new_venue_id: '',
     reason: 'Home courts already booked on the Saturday; moved to the Sunday by agreement.',
-    changed_by: rosterOf.get(f.home_team_id)[0].id, changed_at: utc(day(TODAY, -4), '09:15'),
+    changed_by: rosterOf.get(upcomingFixture.home_team_id)[0].id, changed_at: utc(day(TODAY, -4), '09:15'),
   })
 })
-upcoming.slice(3, 5).forEach(f => {
-  const previous = f.venue_id
-  f.venue_id = 'VEN99'
+upcoming.slice(3, 5).forEach(upcomingFixture => {
+  const previous = upcomingFixture.venue_id
+  upcomingFixture.venue_id = 'VEN99'
   scheduleChanges.push({
-    id: `FSC${pad(scheduleChanges.length + 1, 3)}`, fixture_id: f.id, change_type: 'VENUE_CHANGED',
+    id: `FSC${pad(scheduleChanges.length + 1, 3)}`, fixture_id: upcomingFixture.id, change_type: 'VENUE_CHANGED',
     previous_date: '', previous_time: '', new_date: '', new_time: '',
     previous_venue_id: previous, new_venue_id: 'VEN99',
     reason: 'Home courts unavailable; moved to the regional centre.',
-    changed_by: rosterOf.get(f.home_team_id)[0].id, changed_at: utc(day(TODAY, -3), '16:40'),
+    changed_by: rosterOf.get(upcomingFixture.home_team_id)[0].id, changed_at: utc(day(TODAY, -3), '16:40'),
   })
 })
 // Washed out on the day, with no replacement date agreed yet.
-fixtures.filter(f => f.status === 'COMPLETED' && !f.is_finals && f.schedule_date === day(TODAY, -3)).slice(0, 2).forEach(f => {
-  const previous = f.schedule_date
-  f.status = 'POSTPONED'; f.schedule_date = ''; f.schedule_time = ''
-  const res = matchResults.findIndex(r => r.fixture_id === f.id)
+fixtures.filter(fixture => fixture.status === 'COMPLETED' && !fixture.is_finals && fixture.schedule_date === day(TODAY, -3)).slice(0, 2).forEach(fixture => {
+  const previous = fixture.schedule_date
+  fixture.status = 'POSTPONED'; fixture.schedule_date = ''; fixture.schedule_time = ''
+  const res = matchResults.findIndex(matchResult => matchResult.fixture_id === fixture.id)
   if (res >= 0) {
     const removed = matchResults.splice(res, 1)[0]
     for (let i = rubbers.length - 1; i >= 0; i--) if (rubbers[i].match_result_id === removed.id) {
@@ -829,11 +829,11 @@ fixtures.filter(f => f.status === 'COMPLETED' && !f.is_finals && f.schedule_date
     for (let i = auditLog.length - 1; i >= 0; i--) if (auditLog[i].entity_id === removed.id) auditLog.splice(i, 1)
   }
   scheduleChanges.push({
-    id: `FSC${pad(scheduleChanges.length + 1, 3)}`, fixture_id: f.id, change_type: 'POSTPONED',
+    id: `FSC${pad(scheduleChanges.length + 1, 3)}`, fixture_id: fixture.id, change_type: 'POSTPONED',
     previous_date: previous, previous_time: '13:00', new_date: '', new_time: '',
     previous_venue_id: '', new_venue_id: '',
     reason: 'Washed out on the day; replacement date to be confirmed by the Records Secretary.',
-    changed_by: rosterOf.get(f.home_team_id)[0].id, changed_at: utc(previous, '13:20'),
+    changed_by: rosterOf.get(fixture.home_team_id)[0].id, changed_at: utc(previous, '13:20'),
   })
 })
 
@@ -848,9 +848,9 @@ for (const section of sections) { buildLadder(section); buildStandings(section) 
 const awards = []
 for (const { season, section, premiers, runnersUp, decidedOn } of premierships) {
   for (const [teamId, type, label] of [[premiers, 'SECTION_WINNER', 'Premiers'], [runnersUp, 'RUNNER_UP', 'Runners-up']]) {
-    for (const p of rosterOf.get(teamId)) {
+    for (const player of rosterOf.get(teamId)) {
       awards.push({
-        id: `AWD${pad(awards.length + 1, 3)}`, player_id: p.id,
+        id: `AWD${pad(awards.length + 1, 3)}`, player_id: player.id,
         award_type: type,
         title: `${seasonName(season)} ${section.name} ${label}`,
         competition_id: season.competition_id, season_id: season.id, team_id: teamId,
@@ -866,21 +866,21 @@ for (const { season, section, premiers, runnersUp, decidedOn } of premierships) 
 // rather than hard-coded, so it stays a real pair if the roster changes.
 const merge = (() => {
   const byName = new Map()
-  for (const p of players) {
-    const key = `${p.first_name} ${p.last_name}`
+  for (const player of players) {
+    const key = `${player.first_name} ${player.last_name}`
     if (!byName.has(key)) byName.set(key, [])
-    byName.get(key).push(p)
+    byName.get(key).push(player)
   }
   const associationsOf = id => new Set(
-    associationMemberships.filter(m => m.player_id === id).map(m => m.association_id))
+    associationMemberships.filter(associationMembership => associationMembership.player_id === id).map(associationMembership => associationMembership.association_id))
   for (const [name, pair] of byName) {
     if (pair.length !== 2) continue
-    const [a, b] = pair
-    const crossAssociation = [...associationsOf(a.id)].some(x => !associationsOf(b.id).has(x))
-      || [...associationsOf(b.id)].some(x => !associationsOf(a.id).has(x))
+    const [firstPlayer, secondPlayer] = pair
+    const crossAssociation = [...associationsOf(firstPlayer.id)].some(associationId => !associationsOf(secondPlayer.id).has(associationId))
+      || [...associationsOf(secondPlayer.id)].some(associationId => !associationsOf(firstPlayer.id).has(associationId))
     if (!crossAssociation) continue
     return [{
-      id: 'PMR01', status: 'PENDING', player_a_id: a.id, player_b_id: b.id,
+      id: 'PMR01', status: 'PENDING', player_a_id: firstPlayer.id, player_b_id: secondPlayer.id,
       requesting_association_id: 'ASSOC02',
       note: `Two profiles named ${name} are registered across both associations; confirm they are the same person before merging.`,
       resolved_at: '',
@@ -907,40 +907,40 @@ function notify(player, teamName, type, title, message, details, targetId, creat
 }
 
 scheduleChanges.forEach((change, i) => {
-  const f = fixtures.find(x => x.id === change.fixture_id)
+  const changedFixture = fixtures.find(fixture => fixture.id === change.fixture_id)
   for (const side of ['home_team_id', 'away_team_id']) {
-    const team = teams.find(t => t.id === f[side])
-    for (const p of rosterOf.get(team.id)) {
+    const team = teams.find(team => team.id === changedFixture[side])
+    for (const rosterPlayer of rosterOf.get(team.id)) {
       if (change.change_type === 'VENUE_CHANGED') {
-        notify(p, team.name, 'VENUE_CHANGED', 'Start Venue Changed',
+        notify(rosterPlayer, team.name, 'VENUE_CHANGED', 'Start Venue Changed',
           `Your ${team.name} match has moved to a different venue.`,
-          { previousVenue: venues.find(v => v.id === change.previous_venue_id)?.name ?? null,
-            newVenue: venues.find(v => v.id === change.new_venue_id)?.name ?? null, timeZone: TZ },
-          f.id, change.changed_at, false)
+          { previousVenue: venues.find(venue => venue.id === change.previous_venue_id)?.name ?? null,
+            newVenue: venues.find(venue => venue.id === change.new_venue_id)?.name ?? null, timeZone: TZ },
+          changedFixture.id, change.changed_at, false)
       } else if (change.change_type === 'POSTPONED') {
-        notify(p, team.name, 'MATCH_DATE_CHANGED', 'Match Postponed',
+        notify(rosterPlayer, team.name, 'MATCH_DATE_CHANGED', 'Match Postponed',
           `Your ${team.name} match was washed out. A replacement date will be confirmed.`,
           { previousDate: change.previous_date, newDate: null, previousTime: change.previous_time, newTime: null, timeZone: TZ },
-          f.id, change.changed_at, i % 3 === 0)
+          changedFixture.id, change.changed_at, i % 3 === 0)
       } else {
-        notify(p, team.name, 'MATCH_DATE_CHANGED', 'Match Date Changed',
+        notify(rosterPlayer, team.name, 'MATCH_DATE_CHANGED', 'Match Date Changed',
           `Your ${team.name} match has been rescheduled.`,
           { previousDate: change.previous_date, newDate: change.new_date, previousTime: change.previous_time, newTime: change.new_time, timeZone: TZ },
-          f.id, change.changed_at, i % 3 === 0)
+          changedFixture.id, change.changed_at, i % 3 === 0)
       }
     }
   }
 })
 
 // Reminders for the next scheduled round, issued before the generation date.
-for (const f of fixtures.filter(x => x.status === 'SCHEDULED' && !x.is_finals).slice(0, 4)) {
+for (const reminderFixture of fixtures.filter(fixture => fixture.status === 'SCHEDULED' && !fixture.is_finals).slice(0, 4)) {
   for (const side of ['home_team_id', 'away_team_id']) {
-    const team = teams.find(t => t.id === f[side])
-    for (const p of rosterOf.get(team.id)) {
-      notify(p, team.name, 'MATCH_REMINDER', 'Match Reminder',
-        `${team.name} play on ${f.schedule_date} at ${f.schedule_time}.`,
-        { scheduledDate: f.schedule_date, scheduledTime: f.schedule_time, timeZone: TZ },
-        f.id, utc(day(TODAY, -1), '08:00'), false)
+    const team = teams.find(team => team.id === reminderFixture[side])
+    for (const rosterPlayer of rosterOf.get(team.id)) {
+      notify(rosterPlayer, team.name, 'MATCH_REMINDER', 'Match Reminder',
+        `${team.name} play on ${reminderFixture.schedule_date} at ${reminderFixture.schedule_time}.`,
+        { scheduledDate: reminderFixture.schedule_date, scheduledTime: reminderFixture.schedule_time, timeZone: TZ },
+        reminderFixture.id, utc(day(TODAY, -1), '08:00'), false)
     }
   }
 }
@@ -956,9 +956,9 @@ const ADMIN_NAMES = [
 ]
 const adminPlayers = ADMIN_NAMES.map((fullName, i) => {
   const [first, last] = fullName.split(' ')
-  const n = players.length + i + 1
+  const number = players.length + i + 1
   return {
-    id: `PLR${pad(n, 3)}`,
+    id: `PLR${pad(number, 3)}`,
     _lookup_user_email: `${slug(first)}.${slug(last)}@admin.example`,
     first_name: first, last_name: last,
     // Adults only: born 1962-1984, so every admin is well over 18.
@@ -968,21 +968,21 @@ const adminPlayers = ADMIN_NAMES.map((fullName, i) => {
     avatar_url: '', is_junior: false, status: 'ACTIVE',
   }
 })
-const adminUsers = adminPlayers.map((p, i) => ({
+const adminUsers = adminPlayers.map((adminPlayer, i) => ({
   id: `USR${pad(players.length + i + 1, 3)}`,
-  email: p._lookup_user_email,
+  email: adminPlayer._lookup_user_email,
   password_hash: passwordHash,
   status: 'ACTIVE',
   last_login_at: '',
 }))
 const adminOf = new Map(clubs.map((club, i) => [club.id, adminPlayers[i]]))
-for (const [clubId, p] of adminOf) {
+for (const [clubId, admin] of adminOf) {
   clubMemberships.push({
-    id: `CM${pad(clubMemberships.length + 1, 3)}`, player_id: p.id, club_id: clubId,
+    id: `CM${pad(clubMemberships.length + 1, 3)}`, player_id: admin.id, club_id: clubId,
     is_primary: true, start_date: '2024-07-01', end_date: '', status: 'ACTIVE',
   })
   associationMemberships.push({
-    id: `AM${pad(associationMemberships.length + 1, 3)}`, player_id: p.id,
+    id: `AM${pad(associationMemberships.length + 1, 3)}`, player_id: admin.id,
     association_id: associationOfClub.get(clubId), is_primary: true, status: 'ACTIVE',
   })
 }
@@ -996,11 +996,11 @@ for (const [clubId, p] of adminOf) {
 // the plain unique index on user_role.user_id holds at every step of a sync.
 const userRoles = []
 const hasRole = new Set()
-const free = p => p && !hasRole.has(p._lookup_user_email)
-const add = (p, role, ctx, extra) => {
-  hasRole.add(p._lookup_user_email)
+const free = player => player && !hasRole.has(player._lookup_user_email)
+const add = (player, role, ctx, extra) => {
+  hasRole.add(player._lookup_user_email)
   userRoles.push({
-    id: `UR${p.id.slice(3)}`, _lookup_user_email: p._lookup_user_email,
+    id: `UR${player.id.slice(3)}`, _lookup_user_email: player._lookup_user_email,
     role_type: role, context_type: ctx,
     association_id: '', club_id: '', team_id: '', competition_id: '', ...extra,
     granted_at: utc('2026-02-01', '09:00'),
@@ -1009,11 +1009,11 @@ const add = (p, role, ctx, extra) => {
 add(players[0], 'ADMINISTRATOR', 'ASSOCIATION', { association_id: 'ASSOC01' })
 add(players[1], 'RECORDS_SECRETARY', 'ASSOCIATION', { association_id: 'ASSOC01' })
 for (const [clubId, admin] of adminOf) add(admin, 'CLUB_ADMIN', 'CLUB', { club_id: clubId })
-for (const team of teams.filter(t => t._season === 'SEA03')) {
+for (const team of teams.filter(team => team._season === 'SEA03')) {
   const manager = rosterOf.get(team.id).find(free)
   if (manager) add(manager, 'TEAM_MANAGER', 'TEAM', { team_id: team.id })
 }
-for (const p of players.filter(free)) add(p, 'PLAYER', 'GLOBAL', {})
+for (const player of players.filter(free)) add(player, 'PLAYER', 'GLOBAL', {})
 
 // ──────────────────────────────────────────────────────────────── juniors
 // Weekend Junior's next season: three teams entered and their squads
@@ -1028,8 +1028,8 @@ const JUNIOR_SEASON = {
 }
 SEASONS.push(JUNIOR_SEASON)
 // The age limit applies on the season's first day (min_age/max_age).
-const juniorSections = [['18 & Under', 18, 2], ['12 & Under', 12, 1]].map(([name, maxAge, teamCount], n) => ({
-  id: `SEC${pad(sections.length + n + 1, 2)}`, season_id: JUNIOR_SEASON.id, name, gender: '', age_group: 'Junior',
+const juniorSections = [['18 & Under', 18, 2], ['12 & Under', 12, 1]].map(([name, maxAge, teamCount], sectionIndex) => ({
+  id: `SEC${pad(sections.length + sectionIndex + 1, 2)}`, season_id: JUNIOR_SEASON.id, name, gender: '', age_group: 'Junior',
   min_age: '', max_age: maxAge, team_count: teamCount,
 }))
 sections.push(...juniorSections)
@@ -1037,10 +1037,10 @@ const juniorTeams = {}
 for (const [key, clubId, section, label] of [
   ['GW18', 'CLB01', juniorSections[0], '18U'], ['MW18', 'CLB02', juniorSections[0], '18U'], ['GW12', 'CLB01', juniorSections[1], '12U'],
 ]) {
-  const club = clubs.find(c => c.id === clubId)
+  const club = clubs.find(club => club.id === clubId)
   juniorTeams[key] = {
     id: `TEAM${pad(teams.length + 1, 3)}`, club_id: clubId, section_id: section.id,
-    home_venue_id: venues.find(v => v.club_id === clubId).id,
+    home_venue_id: venues.find(venue => venue.club_id === clubId).id,
     name: `${club.name.replace(' Tennis Club', '')} ${label}`, _season: JUNIOR_SEASON.id,
   }
   teams.push(juniorTeams[key])
@@ -1080,37 +1080,37 @@ const juniors = JUNIOR_ROWS.map(([first, last, dateOfBirth, teamKey, guardianInd
     _team: teamKey,
   }
 })
-const managingParents = GUARDIANS.filter(g => g.manages).map((g, i) => ({
+const managingParents = GUARDIANS.filter(guardian => guardian.manages).map((guardian, i) => ({
   id: `PLR${pad(firstFreeNumber + juniors.length + i, 3)}`,
-  _lookup_user_email: g.email,
-  first_name: g.first, last_name: g.last,
+  _lookup_user_email: guardian.email,
+  first_name: guardian.first, last_name: guardian.last,
   date_of_birth: `${1978 + i * 3}-${pad(4 + i, 2)}-${pad(10 + i, 2)}`,
   gender: ['FEMALE', 'MALE'][i % 2],
-  phone: g.phone, avatar_url: '', is_junior: false, status: 'ACTIVE',
-  _team: g.manages,
+  phone: guardian.phone, avatar_url: '', is_junior: false, status: 'ACTIVE',
+  _team: guardian.manages,
 }))
-const juniorUsers = [...juniors, ...managingParents].map(p => ({
-  id: `USR${p.id.slice(3)}`, email: p._lookup_user_email, password_hash: passwordHash, status: 'ACTIVE', last_login_at: '',
+const juniorUsers = [...juniors, ...managingParents].map(person => ({
+  id: `USR${person.id.slice(3)}`, email: person._lookup_user_email, password_hash: passwordHash, status: 'ACTIVE', last_login_at: '',
 }))
-for (const p of [...juniors, ...managingParents]) {
-  const team = juniorTeams[p._team]
+for (const person of [...juniors, ...managingParents]) {
+  const team = juniorTeams[person._team]
   clubMemberships.push({
-    id: `CM${pad(clubMemberships.length + 1, 3)}`, player_id: p.id, club_id: team.club_id,
+    id: `CM${pad(clubMemberships.length + 1, 3)}`, player_id: person.id, club_id: team.club_id,
     is_primary: true, start_date: '2025-08-02', end_date: '', status: 'ACTIVE',
   })
   associationMemberships.push({
-    id: `AM${pad(associationMemberships.length + 1, 3)}`, player_id: p.id,
+    id: `AM${pad(associationMemberships.length + 1, 3)}`, player_id: person.id,
     association_id: associationOfClub.get(team.club_id), is_primary: true, status: 'ACTIVE',
   })
 }
-for (const p of juniors) {
+for (const junior of juniors) {
   teamPlayers.push({
-    id: `TP${pad(teamPlayers.length + 1, 4)}`, team_id: juniorTeams[p._team].id, player_id: p.id,
+    id: `TP${pad(teamPlayers.length + 1, 4)}`, team_id: juniorTeams[junior._team].id, player_id: junior.id,
     status: 'ACTIVE', register_at: utc('2026-09-15', '09:00'),
   })
-  add(p, 'PLAYER', 'GLOBAL', {})
+  add(junior, 'PLAYER', 'GLOBAL', {})
 }
-for (const p of managingParents) add(p, 'TEAM_MANAGER', 'TEAM', { team_id: juniorTeams[p._team].id })
+for (const managingParent of managingParents) add(managingParent, 'TEAM_MANAGER', 'TEAM', { team_id: juniorTeams[managingParent._team].id })
 const withoutTeamKey = rows => rows.map(({ _team, ...rest }) => (void _team, rest))
 
 // ──────────────────────────────────────────────────────────────── README
@@ -1145,8 +1145,8 @@ const README = [
 ].map(([field, value]) => ({ field, value }))
 
 // ───────────────────────────────────────────────────────────────── write
-const strip = rows => rows.map(r => {
-  const { _season, ...rest } = r
+const strip = rows => rows.map(row => {
+  const { _season, ...rest } = row
   void _season
   return rest
 })
@@ -1155,7 +1155,7 @@ const book = XLSX.utils.book_new()
 const sheets = [
   ['README', README], ['User', [...users, ...adminUsers, ...juniorUsers]], ['Association', ASSOCS], ['Club', clubs], ['Venue', venues],
   ['Competition', competitions], ['MatchFormat', matchFormats], ['EligibilityRule', eligibilityRules],
-  ['Season', SEASONS.map(({ format, setsToWin, playDay, startTime, sections: _s, teamsPerSection, complete, ...r }) => (void format, void setsToWin, void playDay, void startTime, void _s, void teamsPerSection, void complete, r))],
+  ['Season', SEASONS.map(({ format, setsToWin, playDay, startTime, sections: _s, teamsPerSection, complete, ...seasonColumns }) => (void format, void setsToWin, void playDay, void startTime, void _s, void teamsPerSection, void complete, seasonColumns))],
   ['SectionGrade', sections], ['Team', strip(teams)], ['Player', [...players, ...adminPlayers, ...withoutTeamKey([...juniors, ...managingParents])]],
   ['ClubMembership', clubMemberships], ['AssociationMembership', associationMemberships],
   ['TeamPlayer', teamPlayers], ['UtrLink', utrLinks], ['UtrRatingSnapshot', utrSnapshots],
@@ -1170,8 +1170,8 @@ const sheets = [
 // A NULL has to be a genuinely empty cell. Writing "" produces a text cell
 // holding an empty string, which the import would then try to store as a value
 // - and "" is not a legal enum member, date or number.
-const blankToNull = rows => rows.map(r => Object.fromEntries(
-  Object.entries(r).map(([k, v]) => [k, v === '' ? null : v]),
+const blankToNull = rows => rows.map(row => Object.fromEntries(
+  Object.entries(row).map(([columnName, cellValue]) => [columnName, cellValue === '' ? null : cellValue]),
 ))
 
 for (const [name, rows] of sheets) {
@@ -1179,7 +1179,7 @@ for (const [name, rows] of sheets) {
   // a bug rather than a state to write out.
   if (!rows.length) throw new Error(`Sheet "${name}" has no rows; a generation rule produced nothing`)
   const ws = XLSX.utils.json_to_sheet(blankToNull(rows))
-  ws['!cols'] = Object.keys(rows[0]).map(k => ({ wch: Math.min(48, Math.max(k.length + 2, 12)) }))
+  ws['!cols'] = Object.keys(rows[0]).map(row => ({ wch: Math.min(48, Math.max(row.length + 2, 12)) }))
   XLSX.utils.book_append_sheet(book, ws, name)
 }
 XLSX.writeFile(book, OUT)

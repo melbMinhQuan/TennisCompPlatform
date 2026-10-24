@@ -5,10 +5,10 @@ import { calendarDate, clockTime, fullName, seasonLabel } from '../player/player
 import { PrismaService } from '../prisma/prisma.service'
 import type { ClubAdminFixture } from './club-admin.types'
 
-const side = { select: { id: true, name: true, clubId: true } } as const
-const fixtureInclude = Prisma.validator<Prisma.FixtureInclude>()({
-  homeTeam: side,
-  awayTeam: side,
+const SIDE_SELECT = { select: { id: true, name: true, clubId: true } } as const
+const FIXTURE_INCLUDE = Prisma.validator<Prisma.FixtureInclude>()({
+  homeTeam: SIDE_SELECT,
+  awayTeam: SIDE_SELECT,
   venue: { select: { name: true, address: true } },
   section: { include: { season: { include: { competition: { select: { name: true } } } } } },
   _count: { select: { scheduleChanges: true } },
@@ -24,7 +24,7 @@ const fixtureInclude = Prisma.validator<Prisma.FixtureInclude>()({
     },
   },
 })
-type ClubFixture = Prisma.FixtureGetPayload<{ include: typeof fixtureInclude }>
+type ClubFixture = Prisma.FixtureGetPayload<{ include: typeof FIXTURE_INCLUDE }>
 
 /** Fixtures where either side is one of the club's teams. */
 const involving = (clubId: string) => ({ OR: [{ homeTeam: { clubId } }, { awayTeam: { clubId } }] })
@@ -44,7 +44,7 @@ export class ClubAdminFixtureService {
     return readOrUnavailable(async () => {
       const fixtures = await this.prisma.fixture.findMany({
         where: involving(clubId),
-        include: fixtureInclude,
+        include: FIXTURE_INCLUDE,
         // Postgres sorts NULL dates last.
         orderBy: [{ scheduleDate: 'asc' }, { scheduleTime: 'asc' }, { id: 'asc' }],
       })
@@ -55,12 +55,13 @@ export class ClubAdminFixtureService {
   /** One fixture; one the club does not play in is a 404, the same as one that does not exist. */
   async detail(clubId: string, fixtureId: string): Promise<ClubAdminFixture> {
     return readOrUnavailable(async () => {
-      const fixture = await this.prisma.fixture.findFirst({ where: { id: fixtureId, ...involving(clubId) }, include: fixtureInclude })
+      const fixture = await this.prisma.fixture.findFirst({ where: { id: fixtureId, ...involving(clubId) }, include: FIXTURE_INCLUDE })
       if (!fixture) throw new NotFoundException({ statusCode: 404, code: 'FIXTURE_NOT_FOUND', message: 'Fixture not found' })
       return this.toFixture(fixture, clubId)
     }, 'Fixture details are unavailable right now')
   }
 
+  /** A fixture as the club admin pages show it, from the club's side, with its result when there is one. */
   private toFixture(fixture: ClubFixture, clubId: string): ClubAdminFixture {
     const season = fixture.section.season
     const result = fixture.matchResult

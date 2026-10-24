@@ -20,7 +20,7 @@ export interface GuardianContact {
   phone: string | null
 }
 
-type GuardianFields = {
+interface GuardianFields {
   isJunior: boolean
   guardianName: string | null
   guardianEmail: string | null

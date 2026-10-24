@@ -6,7 +6,7 @@ export interface UtrProvider {
 }
 
 // Fixture follows Engage's response shape. It is never written into player records.
-const sample = {
+const SAMPLE_RATINGS = {
   UTR: { Singles: 6.25, Doubles: 5.75, UnverifiedSingles: null, UnverifiedDoubles: null, Estimated: null },
 }
 
@@ -35,7 +35,7 @@ export function mapRatings(body: unknown, source: UtrRatings['source']): UtrRati
 }
 
 export class MockUtrProvider implements UtrProvider {
-  async getRatings(): Promise<UtrRatings> { return mapRatings(sample, 'mock') }
+  async getRatings(): Promise<UtrRatings> { return mapRatings(SAMPLE_RATINGS, 'mock') }
 }
 
 export class EngageUtrProvider implements UtrProvider {
