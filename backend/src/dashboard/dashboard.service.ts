@@ -3,22 +3,25 @@ import { Prisma } from '@prisma/client'
 import { PrismaService } from '../prisma/prisma.service'
 import { guardianContact } from '../common/junior-privacy'
 import { rubberWinner } from '../common/rubber-winner'
-import { ageOn, calendarDate, compareDates, DashboardQuery, inDateRange, melbourneToday, paginate } from './dashboard.query'
+import type { DashboardQueryDto } from './dashboard-query.dto'
+import { ageOn, calendarDate, compareDates, inDateRange, melbourneToday, paginate } from './dashboard.query'
 import type { BestUtrRank, DashboardData, NotificationItem, Page, ResultItem, ScheduleItem } from './dashboard.types'
 
-const playerInclude = Prisma.validator<Prisma.PlayerInclude>()({
+const PLAYER_INCLUDE = Prisma.validator<Prisma.PlayerInclude>()({
   clubMemberships: { where: { status: 'ACTIVE' }, include: { club: true }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] },
   associationMemberships: { where: { status: 'ACTIVE' }, include: { association: true }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] },
   teamPlayers: { where: { status: 'ACTIVE' }, include: { team: true }, orderBy: { id: 'asc' } },
   utrLink: true,
 })
-type Player = Prisma.PlayerGetPayload<{ include: typeof playerInclude }>
+type Player = Prisma.PlayerGetPayload<{ include: typeof PLAYER_INCLUDE }>
 
-const fixtureInclude = Prisma.validator<Prisma.FixtureInclude>()({
+const FIXTURE_INCLUDE = Prisma.validator<Prisma.FixtureInclude>()({
   homeTeam: true, awayTeam: true,
   section: { include: { season: { include: { competition: true } } } },
 })
+/** Just the id and name of a related record, or null. */
 const reference = (value: { id: string; name: string } | null | undefined) => value ? { id: value.id, name: value.name } : null
+/** "Round 3" for a round number, or null. */
 const round = (value: number | null) => value === null ? null : `Round ${value}`
 
 @Injectable()
@@ -36,7 +39,7 @@ export class DashboardService {
   /** The demo resolves by email; future auth can call the same player-based methods. */
   async resolvePlayer(email: string) {
     const user = await this.prisma.user.findUnique({
-      where: { email }, select: { email: true, profile: { include: playerInclude } },
+      where: { email }, select: { email: true, profile: { include: PLAYER_INCLUDE } },
     })
     if (!user) throw new NotFoundException({ statusCode: 404, code: 'USER_NOT_FOUND', message: 'Account not found' })
     if (!user.profile) throw new NotFoundException({
@@ -46,27 +49,28 @@ export class DashboardService {
     return { player: user.profile, loginEmail: user.email }
   }
 
-  async dashboard(query: DashboardQuery): Promise<DashboardData> {
+  /** Everything the player dashboard shows on first load: profile, next fixtures, recent results, notifications and rating. */
+  async dashboard(query: DashboardQueryDto): Promise<DashboardData> {
     const { player, loginEmail } = await this.resolvePlayer(query.email)
     const [fixtures, results, titlesWon, bestUtrRank, notifications] = await Promise.all([
       this.fixtures(player), this.results(player.id), this.titles(player.id), this.bestUtrRank(player.id),
       // The card previews the four newest; View All pages through the rest.
       this.notificationPage(player.userId, { ...query, limit: 4, cursor: undefined }),
     ])
-    const club = player.clubMemberships.find(m => m.isPrimary)?.club
-    const association = player.associationMemberships.find(m => m.isPrimary)?.association
+    const club = player.clubMemberships.find(clubMembership => clubMembership.isPrimary)?.club
+    const association = player.associationMemberships.find(associationMembership => associationMembership.isPrimary)?.association
     const link = player.utrLink?.status === 'ACTIVE' ? player.utrLink : null
     const birth = calendarDate(player.dateOfBirth)!
     // The aggregate preview always uses default filters so its cursor works on View all.
-    const preview: DashboardQuery = { email: query.email, limit: 3, scope: 'upcoming', discipline: 'SINGLES', cursor: undefined, from: undefined, to: undefined, competitionId: undefined }
+    const preview: DashboardQueryDto = { email: query.email, limit: 3, scope: 'upcoming', discipline: 'SINGLES', cursor: undefined, from: undefined, to: undefined, competitionId: undefined }
     return {
       profile: {
         id: player.id, code: player.code, avatarUrl: null, displayName: `${player.firstName} ${player.lastName}`.trim(),
         status: player.status, dateOfBirth: birth, age: ageOn(birth, melbourneToday()), gender: player.gender,
         email: loginEmail, phone: player.phone, isJunior: player.isJunior, guardian: guardianContact(player),
         primaryClub: reference(club), primaryAssociation: reference(association),
-        clubs: [...player.clubMemberships].sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary)).map(m => reference(m.club)!),
-        teams: player.teamPlayers.map(m => reference(m.team)!).sort((a, b) => a.name.localeCompare(b.name)),
+        clubs: [...player.clubMemberships].sort((left, right) => Number(right.isPrimary) - Number(left.isPrimary)).map(membership => reference(membership.club)!),
+        teams: player.teamPlayers.map(teamPlayer => reference(teamPlayer.team)!).sort((left, right) => left.name.localeCompare(right.name)),
       },
       utr: {
         rating: link?.utrRating === null || !link ? null : Number(link.utrRating),
@@ -81,58 +85,60 @@ export class DashboardService {
     }
   }
 
+  /** Every fixture of the player's teams, soonest first. */
   async fixtures(player: Player): Promise<ScheduleItem[]> {
-    const teamIds = player.teamPlayers.map(m => m.teamId)
+    const teamIds = player.teamPlayers.map(teamPlayer => teamPlayer.teamId)
     if (!teamIds.length) return []
     const rows = await this.prisma.fixture.findMany({
       where: { OR: [{ homeTeamId: { in: teamIds } }, { awayTeamId: { in: teamIds } }] },
-      include: fixtureInclude,
+      include: FIXTURE_INCLUDE,
     })
-    return rows.map<ScheduleItem>(f => {
+    return rows.map<ScheduleItem>(row => {
       // If both teams contain this player, do not guess their side.
-      const isHome = teamIds.includes(f.homeTeamId), isAway = teamIds.includes(f.awayTeamId)
-      const opponent = isHome === isAway ? null : isHome ? f.awayTeam : f.homeTeam
+      const isHome = teamIds.includes(row.homeTeamId), isAway = teamIds.includes(row.awayTeamId)
+      const opponent = isHome === isAway ? null : isHome ? row.awayTeam : row.homeTeam
       return {
-        id: f.id, kind: 'TEAM_FIXTURE', competition: reference(f.section.season.competition)!,
-        event: null, round: round(f.roundNumber), scheduledDate: calendarDate(f.scheduleDate),
-        scheduledTime: f.scheduleTime?.toISOString().slice(11, 16) ?? null,
+        id: row.id, kind: 'TEAM_FIXTURE', competition: reference(row.section.season.competition)!,
+        event: null, round: round(row.roundNumber), scheduledDate: calendarDate(row.scheduleDate),
+        scheduledTime: row.scheduleTime?.toISOString().slice(11, 16) ?? null,
         timeZone: 'Australia/Melbourne', venue: null,
         opponents: opponent ? [{ ...reference(opponent)!, kind: 'TEAM' }] : [],
-        participationConfirmed: false, status: f.status, rescheduled: null,
+        participationConfirmed: false, status: row.status, rescheduled: null,
       }
-    }).sort((a, b) => compareDates(a.scheduledDate, b.scheduledDate) || compareDates(a.scheduledTime, b.scheduledTime) || a.id.localeCompare(b.id))
+    }).sort((left, right) => compareDates(left.scheduledDate, right.scheduledDate) || compareDates(left.scheduledTime, right.scheduledTime) || left.id.localeCompare(right.id))
   }
 
+  /** The player's finalised rubbers, newest first, from their side of the net. */
   async results(playerId: string): Promise<ResultItem[]> {
     const rows = await this.prisma.rubber.findMany({
       where: { rubberPlayers: { some: { playerId } }, matchResult: { status: 'FINALISED' } },
       include: {
         rubberPlayers: { include: { player: { select: { id: true, firstName: true, lastName: true } } } },
         rubberSets: { orderBy: [{ setNumber: 'asc' }, { id: 'asc' }] },
-        matchResult: { include: { fixture: { include: fixtureInclude } } },
+        matchResult: { include: { fixture: { include: FIXTURE_INCLUDE } } },
       },
     })
-    return rows.map<ResultItem>(r => {
-      const fixture = r.matchResult.fixture
-      const sides = new Set(r.rubberPlayers.filter(p => p.playerId === playerId).map(p => p.side))
+    return rows.map<ResultItem>(row => {
+      const fixture = row.matchResult.fixture
+      const sides = new Set(row.rubberPlayers.filter(rubberPlayer => rubberPlayer.playerId === playerId).map(rubberPlayer => rubberPlayer.side))
       const side = sides.size === 1 ? [...sides][0] : null
-      const sets = r.rubberSets.map(s => ({
-        number: s.setNumber,
-        playerGames: side === null ? null : side === 'HOME' ? s.homeGames : s.awayGames,
-        opponentGames: side === null ? null : side === 'HOME' ? s.awayGames : s.homeGames,
+      const sets = row.rubberSets.map(rubberSet => ({
+        number: rubberSet.setNumber,
+        playerGames: side === null ? null : side === 'HOME' ? rubberSet.homeGames : rubberSet.awayGames,
+        opponentGames: side === null ? null : side === 'HOME' ? rubberSet.awayGames : rubberSet.homeGames,
       }))
-      const completeScore = sets.length && sets.every(s => s.playerGames !== null && s.opponentGames !== null)
-      const winner = side === null ? null : rubberWinner(r.winnerSide, r.rubberSets)
+      const completeScore = sets.length && sets.every(setScore => setScore.playerGames !== null && setScore.opponentGames !== null)
+      const winner = side === null ? null : rubberWinner(row.winnerSide, row.rubberSets)
       return {
-        id: r.id, kind: 'RUBBER', fixtureId: fixture.id, date: calendarDate(fixture.scheduleDate), playedAt: null,
+        id: row.id, kind: 'RUBBER', fixtureId: fixture.id, date: calendarDate(fixture.scheduleDate), playedAt: null,
         competition: reference(fixture.section.season.competition)!,
-        event: r.rubberType === 'SINGLES' ? 'Singles' : 'Doubles', round: round(fixture.roundNumber),
-        opponents: side === null ? [] : r.rubberPlayers.filter(p => p.side !== side).map(p => ({
-          id: p.player.id, kind: 'PLAYER', name: `${p.player.firstName} ${p.player.lastName}`.trim(),
+        event: row.rubberType === 'SINGLES' ? 'Singles' : 'Doubles', round: round(fixture.roundNumber),
+        opponents: side === null ? [] : row.rubberPlayers.filter(rubberPlayer => rubberPlayer.side !== side).map(rubberPlayer => ({
+          id: rubberPlayer.player.id, kind: 'PLAYER', name: `${rubberPlayer.player.firstName} ${rubberPlayer.player.lastName}`.trim(),
         })),
-        outcome: winner === null ? null : winner === side ? 'WIN' : 'LOSS', score: completeScore ? sets.map(s => `${s.playerGames}-${s.opponentGames}`).join(' ') : null, sets,
+        outcome: winner === null ? null : winner === side ? 'WIN' : 'LOSS', score: completeScore ? sets.map(setScore => `${setScore.playerGames}-${setScore.opponentGames}`).join(' ') : null, sets,
       }
-    }).sort((a, b) => compareDates(a.date, b.date, true) || a.id.localeCompare(b.id))
+    }).sort((left, right) => compareDates(left.date, right.date, true) || left.id.localeCompare(right.id))
   }
 
   /**
@@ -176,7 +182,8 @@ export class DashboardService {
     return this.prisma.playerAward.count({ where: { playerId, awardType: { in: ['SECTION_WINNER', 'COMPETITION_WINNER'] } } })
   }
 
-  schedulePage(playerId: string, items: ScheduleItem[], query: DashboardQuery) {
+  /** One page of fixtures after the scope, competition and date filters. */
+  schedulePage(playerId: string, items: ScheduleItem[], query: DashboardQueryDto) {
     const today = melbourneToday()
     const filtered = items.filter(item =>
       (query.scope === 'all' || (item.status === 'SCHEDULED' && (!item.scheduledDate || item.scheduledDate >= today))) &&
@@ -184,23 +191,26 @@ export class DashboardService {
     return paginate(filtered, query.limit, [playerId, 'schedule', query.scope, query.from, query.to, query.competitionId], query.cursor)
   }
 
-  resultPage(playerId: string, items: ResultItem[], query: DashboardQuery) {
+  /** One page of results after the competition and date filters. */
+  resultPage(playerId: string, items: ResultItem[], query: DashboardQueryDto) {
     const filtered = items.filter(item => (!query.competitionId || item.competition.id === query.competitionId) && inDateRange(item.date, query))
     return paginate(filtered, query.limit, [playerId, 'results', query.from, query.to, query.competitionId], query.cursor)
   }
 
-  async schedule(query: DashboardQuery) {
+  /** The player's schedule page (GET /schedule). */
+  async schedule(query: DashboardQueryDto) {
     const { player } = await this.resolvePlayer(query.email)
     return this.schedulePage(player.id, await this.fixtures(player), query)
   }
 
-  async resultList(query: DashboardQuery) {
+  /** The player's results page (GET /results). */
+  async resultList(query: DashboardQueryDto) {
     const { player } = await this.resolvePlayer(query.email)
     return this.resultPage(player.id, await this.results(player.id), query)
   }
 
   /** The player's in-app notifications, newest first, with the total unread count. */
-  async notifications(query: DashboardQuery) {
+  async notifications(query: DashboardQueryDto) {
     const { player } = await this.resolvePlayer(query.email)
     return this.notificationPage(player.userId, query)
   }
@@ -209,7 +219,7 @@ export class DashboardService {
    * One page of a login's IN_APP notifications. EMAIL rows are the same events
    * delivered by mail, so they are never listed or counted as unread.
    */
-  async notificationPage(userId: string | null, query: DashboardQuery): Promise<Page<NotificationItem> & { unreadCount: number }> {
+  async notificationPage(userId: string | null, query: DashboardQueryDto): Promise<Page<NotificationItem> & { unreadCount: number }> {
     if (!userId) return { available: true, items: [], nextCursor: null, hasMore: false, unreadCount: 0 }
     const where = { userId, channel: 'IN_APP' as const }
     const [rows, unreadCount] = await Promise.all([
@@ -225,7 +235,11 @@ export class DashboardService {
     return { ...paginate(items, query.limit, [userId, 'notifications'], query.cursor), unreadCount }
   }
 
-  async unavailable(query: DashboardQuery) {
+  /**
+   * An honest "not available" for data the platform does not have yet (UTR history), after
+   * checking the email belongs to a real player so unknown emails still get a 404.
+   */
+  async unavailable(query: DashboardQueryDto) {
     await this.resolvePlayer(query.email)
     return { available: false as const, items: [], nextCursor: null, hasMore: false }
   }

@@ -3,14 +3,14 @@ import { readOrUnavailable } from '../common/data-unavailable'
 import { teamManagerNames } from '../common/role-holder'
 import { seasonLabel } from '../player/player-mappers'
 import { PrismaService } from '../prisma/prisma.service'
-import { isClubAdmin, playerRole } from './club-admin.service'
+import { isClubAdmin, PLAYER_ROLE } from './club-admin.service'
 import type { ClubAdminDashboard } from './club-admin.types'
 import { isCurrentMembership, localToday } from './membership'
 
 /** How many result events the Recent activity card shows. */
 const ACTIVITY_LIMIT = 5
 
-const fixtureSides = { homeTeam: { select: { name: true } }, awayTeam: { select: { name: true } } } as const
+const FIXTURE_SIDES = { homeTeam: { select: { name: true } }, awayTeam: { select: { name: true } } } as const
 
 /** "Round 12 · Forest Hill B vs Glen Waverley B"; the finals label in place of a round number. */
 function matchLabel(fixture: { roundNumber: number | null; roundLabel: string | null; homeTeam: { name: string }; awayTeam: { name: string } }) {
@@ -27,12 +27,16 @@ function matchLabel(fixture: { roundNumber: number | null; roundLabel: string | 
 export class ClubAdminDashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * The club administrator's home page: club details, active member count, seasons, teams with
+   * squad sizes and managers, unread notifications and recent result activity.
+   */
   async dashboard(clubId: string, adminUserId: string): Promise<ClubAdminDashboard> {
     return readOrUnavailable(async () => {
       const [club, admin, memberships, teams, unreadCount, activity] = await Promise.all([
         this.prisma.club.findUniqueOrThrow({ where: { id: clubId }, include: { association: { select: { name: true } } } }),
         this.prisma.user.findUniqueOrThrow({ where: { id: adminUserId }, select: { email: true, profile: { select: { firstName: true } } } }),
-        this.prisma.clubMembership.findMany({ where: { clubId }, include: { player: { include: playerRole } } }),
+        this.prisma.clubMembership.findMany({ where: { clubId }, include: { player: { include: PLAYER_ROLE } } }),
         this.prisma.team.findMany({
           where: { clubId },
           include: {
@@ -59,8 +63,8 @@ export class ClubAdminDashboardService {
           .map(membership => membership.playerId)).size,
         seasons: [...seasons.values()]
           // Oldest first; undated seasons go last.
-          .sort((a, b) => (a.startDate?.getTime() ?? Infinity) - (b.startDate?.getTime() ?? Infinity)
-            || (a.year ?? Infinity) - (b.year ?? Infinity) || a.competition.name.localeCompare(b.competition.name))
+          .sort((left, right) => (left.startDate?.getTime() ?? Infinity) - (right.startDate?.getTime() ?? Infinity)
+            || (left.year ?? Infinity) - (right.year ?? Infinity) || left.competition.name.localeCompare(right.competition.name))
           .map(season => ({ id: season.id, label: seasonLabel(season), competition: season.competition.name, status: season.status })),
         teams: teams.map(team => ({
           id: team.id, name: team.name, seasonId: team.section.season.id,
@@ -82,7 +86,7 @@ export class ClubAdminDashboardService {
   private async activity(clubId: string): Promise<ClubAdminDashboard['activity']> {
     const results = await this.prisma.matchResult.findMany({
       where: { fixture: { OR: [{ homeTeam: { clubId } }, { awayTeam: { clubId } }] } },
-      select: { id: true, corrections: { select: { id: true } }, fixture: { select: { roundNumber: true, roundLabel: true, ...fixtureSides } } },
+      select: { id: true, corrections: { select: { id: true } }, fixture: { select: { roundNumber: true, roundLabel: true, ...FIXTURE_SIDES } } },
     })
     if (!results.length) return []
     const resultOf = new Map<string, (typeof results)[number]>()

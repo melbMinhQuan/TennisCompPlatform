@@ -8,16 +8,16 @@ import { PlayerLookupService } from './player-lookup.service'
 import { calendarDate, fullName, seasonLabel } from './player-mappers'
 import type { MembershipTeam, PlayerMemberships, SupportContacts, TeamDetails } from './player.types'
 
-const teamInclude = Prisma.validator<Prisma.TeamInclude>()({
+const TEAM_INCLUDE = Prisma.validator<Prisma.TeamInclude>()({
   club: { include: { association: true } },
   section: { include: { season: { include: { competition: true } } } },
 })
-type RosterTeam = Prisma.TeamGetPayload<{ include: typeof teamInclude }>
+type RosterTeam = Prisma.TeamGetPayload<{ include: typeof TEAM_INCLUDE }>
 
-const oldestFirst = [{ createdAt: 'asc' as const }, { id: 'asc' as const }]
+const OLDEST_FIRST = [{ createdAt: 'asc' as const }, { id: 'asc' as const }]
 
 // What a roster row reads about each member. Guardian fields are only passed on to the team's manager.
-const rosterPlayer = {
+const ROSTER_PLAYER_SELECT = {
   id: true, firstName: true, lastName: true, isJunior: true, guardianName: true, guardianEmail: true, guardianPhone: true,
 } as const
 
@@ -36,12 +36,12 @@ export class MembershipsService {
     return readOrUnavailable(async () => {
       const player = await this.lookup.findByEmail(email)
       const [associations, clubs, teams, managedTeamId] = await Promise.all([
-        this.prisma.associationMembership.findMany({ where: { playerId: player.id }, include: { association: true }, orderBy: oldestFirst }),
-        this.prisma.clubMembership.findMany({ where: { playerId: player.id }, include: { club: { include: { association: true } } }, orderBy: oldestFirst }),
+        this.prisma.associationMembership.findMany({ where: { playerId: player.id }, include: { association: true }, orderBy: OLDEST_FIRST }),
+        this.prisma.clubMembership.findMany({ where: { playerId: player.id }, include: { club: { include: { association: true } } }, orderBy: OLDEST_FIRST }),
         this.activeTeams(player.id),
         this.managedTeamId(email),
       ])
-      const managed = managedTeamId ? await this.prisma.team.findUnique({ where: { id: managedTeamId }, include: teamInclude }) : null
+      const managed = managedTeamId ? await this.prisma.team.findUnique({ where: { id: managedTeamId }, include: TEAM_INCLUDE }) : null
       return {
         player,
         associations: associations.map(membership => ({
@@ -74,7 +74,7 @@ export class MembershipsService {
       const viewerIsManager = (await this.managedTeamId(email)) === teamId
       const team = await this.prisma.team.findFirst({
         where: viewerIsManager ? { id: teamId } : { id: teamId, teamPlayers: { some: { playerId: player.id } } },
-        include: { ...teamInclude, teamPlayers: { include: { player: { select: rosterPlayer } } } },
+        include: { ...TEAM_INCLUDE, teamPlayers: { include: { player: { select: ROSTER_PLAYER_SELECT } } } },
       })
       if (!team) throw new NotFoundException({ statusCode: 404, code: 'TEAM_NOT_FOUND', message: 'Team not found' })
       return {
@@ -110,8 +110,8 @@ export class MembershipsService {
       const player = await this.lookup.findByEmail(email)
       const [teams, club, association] = await Promise.all([
         this.activeTeams(player.id),
-        this.prisma.clubMembership.findFirst({ where: { playerId: player.id, isPrimary: true, status: 'ACTIVE' }, include: { club: true }, orderBy: oldestFirst }),
-        this.prisma.associationMembership.findFirst({ where: { playerId: player.id, isPrimary: true, status: 'ACTIVE' }, include: { association: true }, orderBy: oldestFirst }),
+        this.prisma.clubMembership.findFirst({ where: { playerId: player.id, isPrimary: true, status: 'ACTIVE' }, include: { club: true }, orderBy: OLDEST_FIRST }),
+        this.prisma.associationMembership.findFirst({ where: { playerId: player.id, isPrimary: true, status: 'ACTIVE' }, include: { association: true }, orderBy: OLDEST_FIRST }),
       ])
       // A player can be on several teams at once (two competitions, or two clubs), so list them all.
       // A team whose season has not started yet counts too: its players need their manager before round 1.
@@ -143,10 +143,10 @@ export class MembershipsService {
 
   /** The player's ACTIVE roster places, newest season first. */
   private async activeTeams(playerId: string): Promise<RosterTeam[]> {
-    const rows = await this.prisma.teamPlayer.findMany({ where: { playerId, status: 'ACTIVE' }, include: { team: { include: teamInclude } } })
-    return rows.map(row => row.team).sort((a, b) =>
-      (calendarDate(b.section.season.startDate) ?? '').localeCompare(calendarDate(a.section.season.startDate) ?? '')
-      || a.name.localeCompare(b.name))
+    const rows = await this.prisma.teamPlayer.findMany({ where: { playerId, status: 'ACTIVE' }, include: { team: { include: TEAM_INCLUDE } } })
+    return rows.map(row => row.team).sort((left, right) =>
+      (calendarDate(right.section.season.startDate) ?? '').localeCompare(calendarDate(left.section.season.startDate) ?? '')
+      || left.name.localeCompare(right.name))
   }
 
   /** A team with its competition, season and section, as My Clubs lists it. */

@@ -8,14 +8,14 @@ import {
 } from './player-mappers'
 import type { CompetitionEntry, MatchFixture, NextFixture } from './player.types'
 
-const teamInclude = Prisma.validator<Prisma.TeamInclude>()({
+const TEAM_INCLUDE = Prisma.validator<Prisma.TeamInclude>()({
   club: true,
   section: { include: { season: { include: { competition: { include: { association: true } } } } } },
 })
-type PlayerTeam = Prisma.TeamGetPayload<{ include: typeof teamInclude }>
+type PlayerTeam = Prisma.TeamGetPayload<{ include: typeof TEAM_INCLUDE }>
 
-const fixtureInclude = Prisma.validator<Prisma.FixtureInclude>()({ homeTeam: true, awayTeam: true, venue: true })
-type TeamFixture = Prisma.FixtureGetPayload<{ include: typeof fixtureInclude }>
+const FIXTURE_INCLUDE = Prisma.validator<Prisma.FixtureInclude>()({ homeTeam: true, awayTeam: true, venue: true })
+type TeamFixture = Prisma.FixtureGetPayload<{ include: typeof FIXTURE_INCLUDE }>
 
 @Injectable()
 export class MatchesService {
@@ -90,11 +90,11 @@ export class MatchesService {
   private async activeTeams(playerId: string): Promise<PlayerTeam[]> {
     const rows = await this.prisma.teamPlayer.findMany({
       where: { playerId, status: 'ACTIVE' },
-      include: { team: { include: teamInclude } },
+      include: { team: { include: TEAM_INCLUDE } },
     })
-    return rows.map(row => row.team).sort((a, b) =>
-      (calendarDate(b.section.season.startDate) ?? '').localeCompare(calendarDate(a.section.season.startDate) ?? '')
-      || a.name.localeCompare(b.name))
+    return rows.map(row => row.team).sort((left, right) =>
+      (calendarDate(right.section.season.startDate) ?? '').localeCompare(calendarDate(left.section.season.startDate) ?? '')
+      || left.name.localeCompare(right.name))
   }
 
   /** Every fixture either side of which is one of these teams, soonest first. */
@@ -103,7 +103,7 @@ export class MatchesService {
     if (!teamIds.length) return []
     return this.prisma.fixture.findMany({
       where: { OR: [{ homeTeamId: { in: teamIds } }, { awayTeamId: { in: teamIds } }] },
-      include: fixtureInclude,
+      include: FIXTURE_INCLUDE,
       // Postgres sorts NULL dates last, so a postponed fixture with no new date trails the dated ones.
       orderBy: [{ scheduleDate: 'asc' }, { scheduleTime: 'asc' }, { id: 'asc' }],
     })

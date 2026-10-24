@@ -7,8 +7,8 @@ import { PlayerLookupService } from './player-lookup.service'
 import { calendarDate, DEFAULT_TIME_ZONE, fullName, localDate } from './player-mappers'
 import type { MatchResult } from './player.types'
 
-const sideTeam = { include: { club: true } } as const
-const rubberInclude = Prisma.validator<Prisma.RubberInclude>()({
+const SIDE_TEAM_INCLUDE = { include: { club: true } } as const
+const RUBBER_INCLUDE = Prisma.validator<Prisma.RubberInclude>()({
   rubberPlayers: {
     include: { player: { select: { firstName: true, lastName: true } } },
     orderBy: [{ playerOrder: 'asc' }, { id: 'asc' }],
@@ -18,14 +18,14 @@ const rubberInclude = Prisma.validator<Prisma.RubberInclude>()({
     include: {
       fixture: {
         include: {
-          venue: true, homeTeam: sideTeam, awayTeam: sideTeam,
+          venue: true, homeTeam: SIDE_TEAM_INCLUDE, awayTeam: SIDE_TEAM_INCLUDE,
           section: { include: { season: { include: { competition: true } } } },
         },
       },
     },
   },
 })
-type PlayedRubber = Prisma.RubberGetPayload<{ include: typeof rubberInclude }>
+type PlayedRubber = Prisma.RubberGetPayload<{ include: typeof RUBBER_INCLUDE }>
 
 @Injectable()
 export class ResultsService {
@@ -43,11 +43,11 @@ export class ResultsService {
       const player = await this.lookup.findByEmail(email)
       const rubbers = await this.prisma.rubber.findMany({
         where: { rubberPlayers: { some: { playerId: player.id } }, matchResult: { status: 'FINALISED' } },
-        include: rubberInclude,
+        include: RUBBER_INCLUDE,
       })
       return rubbers
         .map(rubber => this.toResult(rubber, player.id))
-        .sort((a, b) => b.date.localeCompare(a.date) || a.id.localeCompare(b.id))
+        .sort((left, right) => right.date.localeCompare(left.date) || left.id.localeCompare(right.id))
     }, 'Results are unavailable right now')
   }
 

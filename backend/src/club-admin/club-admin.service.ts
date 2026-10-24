@@ -16,24 +16,27 @@ import { isCurrentMembership, localToday } from './membership'
 /** A season that has finished: its teams' squads and managers no longer change. */
 export const CLOSED_SEASONS: readonly SeasonStatus[] = ['COMPLETED', 'ARCHIVED']
 
-const seasonInclude = Prisma.validator<Prisma.SeasonInclude>()({ competition: true })
-type SeasonWithCompetition = Prisma.SeasonGetPayload<{ include: typeof seasonInclude }>
+const SEASON_INCLUDE = Prisma.validator<Prisma.SeasonInclude>()({ competition: true })
+type SeasonWithCompetition = Prisma.SeasonGetPayload<{ include: typeof SEASON_INCLUDE }>
 
-const teamInclude = Prisma.validator<Prisma.TeamInclude>()({ section: { include: { season: { include: seasonInclude } } } })
-type TeamWithSeason = Prisma.TeamGetPayload<{ include: typeof teamInclude }>
+const TEAM_INCLUDE = Prisma.validator<Prisma.TeamInclude>()({ section: { include: { season: { include: SEASON_INCLUDE } } } })
+type TeamWithSeason = Prisma.TeamGetPayload<{ include: typeof TEAM_INCLUDE }>
 
 // The player's login and role, to leave club admins' own profiles out of the Players pages.
-export const playerRole = { user: { select: { userRole: { select: { roleType: true, revokedAt: true } } } } } as const
-type PlayerWithRole = { user: { userRole: { roleType: string; revokedAt: Date | null } | null } | null }
+export const PLAYER_ROLE = { user: { select: { userRole: { select: { roleType: true, revokedAt: true } } } } } as const
+interface PlayerWithRole { user: { userRole: { roleType: string; revokedAt: Date | null } | null } | null }
+/** True when the player's login account holds an unrevoked CLUB_ADMIN role. */
 export const isClubAdmin = (player: PlayerWithRole) =>
   player.user?.userRole?.roleType === 'CLUB_ADMIN' && player.user.userRole.revokedAt === null
 
+/** The 404 for a player who is not in this club, or does not exist. */
 const playerNotFound = () => new NotFoundException({ statusCode: 404, code: 'PLAYER_NOT_FOUND', message: 'Player not found' })
-const byName = (a: { firstName: string; lastName: string }, b: { firstName: string; lastName: string }) =>
-  fullName(a).localeCompare(fullName(b))
+/** Sorts people alphabetically by full name. */
+const byName = (left: { firstName: string; lastName: string }, right: { firstName: string; lastName: string }) =>
+  fullName(left).localeCompare(fullName(right))
 
 // Newest season first (by year, then start date); undated seasons sort last.
-const newestSeason = [
+const NEWEST_SEASON_FIRST = [
   { year: { sort: 'desc' as const, nulls: 'last' as const } },
   { startDate: { sort: 'desc' as const, nulls: 'last' as const } },
 ]
@@ -47,6 +50,7 @@ const newestSeason = [
 export class ClubAdminService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /** The competitions the club has at least one team in, by name. */
   async competitions(clubId: string): Promise<ClubCompetition[]> {
     return readOrUnavailable(async () => {
       const competitions = await this.prisma.competition.findMany({
@@ -59,12 +63,13 @@ export class ClubAdminService {
     }, 'Competitions are unavailable right now')
   }
 
+  /** The sections the club has teams in, newest season first. */
   async sections(clubId: string): Promise<ClubSection[]> {
     return readOrUnavailable(async () => {
       const sections = await this.prisma.sectionGrade.findMany({
         where: { teams: { some: { clubId } } },
-        include: { season: { include: seasonInclude } },
-        orderBy: [...newestSeason.map(season => ({ season })), { name: 'asc' }, { id: 'asc' }],
+        include: { season: { include: SEASON_INCLUDE } },
+        orderBy: [...NEWEST_SEASON_FIRST.map(season => ({ season })), { name: 'asc' }, { id: 'asc' }],
       })
       return sections.map(section => ({
         id: section.id, name: section.name, gender: section.gender, ageGroup: section.ageGroup,
@@ -78,8 +83,8 @@ export class ClubAdminService {
     return readOrUnavailable(async () => {
       const teams = await this.prisma.team.findMany({
         where: { clubId },
-        include: { ...teamInclude, _count: { select: { teamPlayers: { where: { status: 'ACTIVE' } } } } },
-        orderBy: [...newestSeason.map(season => ({ section: { season } })), { section: { name: 'asc' } }, { name: 'asc' }, { id: 'asc' }],
+        include: { ...TEAM_INCLUDE, _count: { select: { teamPlayers: { where: { status: 'ACTIVE' } } } } },
+        orderBy: [...NEWEST_SEASON_FIRST.map(season => ({ section: { season } })), { section: { name: 'asc' } }, { name: 'asc' }, { id: 'asc' }],
       })
       const managers = await teamManagerNames(this.prisma, teams.map(team => team.id))
       return teams.map(team => ({
@@ -93,7 +98,7 @@ export class ClubAdminService {
     return readOrUnavailable(async () => {
       const team = await this.prisma.team.findFirst({
         where: { id: teamId, clubId },
-        include: { ...teamInclude, teamPlayers: { include: { player: { select: { id: true, code: true, firstName: true, lastName: true, isJunior: true } } } } },
+        include: { ...TEAM_INCLUDE, teamPlayers: { include: { player: { select: { id: true, code: true, firstName: true, lastName: true, isJunior: true } } } } },
       })
       if (!team) throw new NotFoundException({ statusCode: 404, code: 'TEAM_NOT_FOUND', message: 'Team not found' })
       const role = await this.prisma.userRole.findFirst({
@@ -173,9 +178,9 @@ export class ClubAdminService {
       const player = await this.prisma.player.findFirst({
         where: { id: playerId, clubMemberships: { some: { clubId } } },
         include: {
-          user: { select: { email: true, ...playerRole.user.select } },
+          user: { select: { email: true, ...PLAYER_ROLE.user.select } },
           clubMemberships: { include: { club: { select: { name: true } } } },
-          teamPlayers: { where: { team: { clubId } }, include: { team: { include: teamInclude } } },
+          teamPlayers: { where: { team: { clubId } }, include: { team: { include: TEAM_INCLUDE } } },
         },
       })
       if (!player || isClubAdmin(player)) throw playerNotFound()
@@ -185,14 +190,14 @@ export class ClubAdminService {
         email: player.user?.email ?? null, phone: player.phone, guardian: guardianContact(player), status: player.status,
         memberships: player.clubMemberships
           .map(membership => ({ clubId: membership.clubId, clubName: membership.club.name, ...this.membership(membership) }))
-          .sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary) || a.clubName.localeCompare(b.clubName)),
+          .sort((left, right) => Number(right.isPrimary) - Number(left.isPrimary) || left.clubName.localeCompare(right.clubName)),
         teams: player.teamPlayers
           .map(entry => ({
             teamId: entry.team.id, teamName: entry.team.name, sectionName: entry.team.section.name,
             status: entry.status, registeredAt: entry.registerAt?.toISOString() ?? null,
             ...this.seasonContext(entry.team.section.season),
           }))
-          .sort((a, b) => b.seasonLabel.localeCompare(a.seasonLabel) || a.teamName.localeCompare(b.teamName)),
+          .sort((left, right) => right.seasonLabel.localeCompare(left.seasonLabel) || left.teamName.localeCompare(right.teamName)),
       }
     }, 'Player details are unavailable right now')
   }
@@ -207,8 +212,8 @@ export class ClubAdminService {
       if (!club) return []
       const sections = await this.prisma.sectionGrade.findMany({
         where: { season: { status: 'UPCOMING', competition: { associationId: club.associationId } } },
-        include: { season: { include: seasonInclude }, _count: { select: { teams: true } } },
-        orderBy: [{ season: { competition: { name: 'asc' } } }, ...newestSeason.map(season => ({ season })), { name: 'asc' }, { id: 'asc' }],
+        include: { season: { include: SEASON_INCLUDE }, _count: { select: { teams: true } } },
+        orderBy: [{ season: { competition: { name: 'asc' } } }, ...NEWEST_SEASON_FIRST.map(season => ({ season })), { name: 'asc' }, { id: 'asc' }],
       })
       return sections.map(section => ({
         id: section.id, name: section.name, gender: section.gender, ageGroup: section.ageGroup,
@@ -237,7 +242,7 @@ export class ClubAdminService {
           ...(written.kind === 'full' ? { lastName: startsWith } : { OR: [{ firstName: startsWith }, { lastName: startsWith }] }),
         },
         include: {
-          user: { select: { email: true, ...playerRole.user.select } },
+          user: { select: { email: true, ...PLAYER_ROLE.user.select } },
           clubMemberships: { include: { club: { select: { name: true } } } },
         },
         take: 2000,
@@ -263,7 +268,7 @@ export class ClubAdminService {
           }
           return [{ match, score: (exact ? 100 : 20) + (dateOfBirth ? 30 : 0) + (email ? 30 : 0) }]
         })
-        .sort((a, b) => b.score - a.score || byName(a.match, b.match))
+        .sort((left, right) => right.score - left.score || byName(left.match, right.match))
         .slice(0, 20)
         .map(({ match }) => match)
     }, 'The player registry is unavailable right now')
@@ -289,6 +294,7 @@ export class ClubAdminService {
     }, 'Contacts are unavailable right now')
   }
 
+  /** A team with its section, season and competition, as the club admin pages list it. */
   private clubTeam(team: TeamWithSeason): ClubTeam {
     return {
       id: team.id, name: team.name, sectionId: team.sectionId, sectionName: team.section.name,
@@ -296,6 +302,7 @@ export class ClubAdminService {
     }
   }
 
+  /** A club membership with its dates as YYYY-MM-DD. */
   private membership(membership: { status: ClubPlayerMembership['status']; isPrimary: boolean; startDate: Date | null; endDate: Date | null }): ClubPlayerMembership {
     return {
       status: membership.status, isPrimary: membership.isPrimary,
@@ -303,6 +310,7 @@ export class ClubAdminService {
     }
   }
 
+  /** The season and competition fields every team and section row carries. */
   private seasonContext(season: SeasonWithCompetition) {
     return {
       seasonId: season.id, seasonLabel: seasonLabel(season), seasonStatus: season.status,

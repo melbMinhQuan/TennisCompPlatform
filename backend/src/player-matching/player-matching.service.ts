@@ -2,38 +2,7 @@ import { Injectable } from '@nestjs/common'
 import { fullName } from '../player/player-mappers'
 import { PrismaService } from '../prisma/prisma.service'
 import { firstNameFit, lastNameFit, nameFit, parseWrittenName } from './names'
-
-/** A player as a scoresheet records them: often a short first name, or no surname at all. */
-export interface RecordedPlayer {
-  /** As written: "Josh", "J. Smith", "Smith, Josh". */
-  name: string
-  /** The team they played for, by id or by name. */
-  teamId?: string
-  teamName?: string
-  /** Picks the season, and so which of the team's rosters is searched. */
-  matchDate: Date | string
-  /** When known: a different date of birth rules a player out. */
-  dateOfBirth?: Date | string | null
-}
-
-export interface Candidate {
-  playerId: string
-  name: string
-  reasons: string[]
-}
-
-export type PlayerMatch =
-  | ({ status: 'matched' } & Candidate)
-  | { status: 'ambiguous'; candidates: Candidate[] }
-  | { status: 'unmatched'; reason: string }
-
-export interface DuplicatePair {
-  playerAId: string
-  playerBId: string
-  names: [string, string]
-  dateOfBirth: string
-  reasons: string[]
-}
+import type { Candidate, DuplicatePair, PlayerMatch, RecordedPlayer } from './player-matching.types'
 
 /** "2026-05-10" from a date or a date string, or null when it is not a date. */
 function day(value: Date | string | null | undefined): string | null {
@@ -47,13 +16,15 @@ function inSeason(season: { startDate: Date | null; endDate: Date | null }, matc
   return (!season.startDate || day(season.startDate)! <= matchDay) && (!season.endDate || matchDay <= day(season.endDate)!)
 }
 
+/** Groups rows into sets of values by key, e.g. each player's fixtures. */
 function groupSets<T>(rows: T[], keyOf: (row: T) => string, valueOf: (row: T) => string): Map<string, Set<string>> {
   const sets = new Map<string, Set<string>>()
   for (const row of rows) sets.set(keyOf(row), (sets.get(keyOf(row)) ?? new Set<string>()).add(valueOf(row)))
   return sets
 }
 
-const pairKey = (x: string, y: string) => [x, y].sort().join('|')
+/** The same key for a pair of players whichever order they come in. */
+const pairKey = (firstId: string, secondId: string) => [firstId, secondId].sort().join('|')
 
 /**
  * Identifies players from incomplete names (MATCH-*) and finds profiles that are probably one
@@ -93,12 +64,13 @@ export class PlayerMatchingService {
       fits.set(player.id, { playerId: player.id, name: fullName(player), reasons: [...reasons, `on the ${team.name} roster`] })
     }
 
-    const candidates = [...fits.values()].sort((a, b) => a.name.localeCompare(b.name))
+    const candidates = [...fits.values()].sort((left, right) => left.name.localeCompare(right.name))
     if (candidates.length === 1) return { status: 'matched', ...candidates[0] }
     if (candidates.length > 1) return { status: 'ambiguous', candidates }
     return { status: 'unmatched', reason: `Nobody on the ${teams[0].name} roster for ${matchDay} fits "${recorded.name.trim()}"${born ? ` born ${born}` : ''}` }
   }
 
+  /** The team a scoresheet names, by id or by name (ignoring case), with its season dates. */
   private async teamsFor(recorded: RecordedPlayer) {
     const select = { id: true, name: true, section: { select: { season: { select: { startDate: true, endDate: true } } } } } as const
     if (recorded.teamId) {
@@ -120,19 +92,19 @@ export class PlayerMatchingService {
       select: { id: true, firstName: true, lastName: true, dateOfBirth: true }, orderBy: { id: 'asc' },
     })
     const byBirthday = groupLists(players, player => day(player.dateOfBirth)!)
-    const likely: { a: (typeof players)[number]; b: (typeof players)[number]; dateOfBirth: string; reasons: string[] }[] = []
+    const likely: { playerA: (typeof players)[number]; playerB: (typeof players)[number]; dateOfBirth: string; reasons: string[] }[] = []
     for (const [dateOfBirth, group] of byBirthday) {
-      for (const [i, a] of group.entries()) {
-        for (const b of group.slice(i + 1)) {
-          const first = firstNameFit(a.firstName, b.firstName) ?? firstNameFit(b.firstName, a.firstName)
-          const last = lastNameFit(a.lastName, b.lastName)
-          if (first && last) likely.push({ a, b, dateOfBirth, reasons: ['same date of birth', first, last] })
+      for (const [i, player] of group.entries()) {
+        for (const otherPlayer of group.slice(i + 1)) {
+          const first = firstNameFit(player.firstName, otherPlayer.firstName) ?? firstNameFit(otherPlayer.firstName, player.firstName)
+          const last = lastNameFit(player.lastName, otherPlayer.lastName)
+          if (first && last) likely.push({ playerA: player, playerB: otherPlayer, dateOfBirth, reasons: ['same date of birth', first, last] })
         }
       }
     }
     if (!likely.length) return []
 
-    const ids = [...new Set(likely.flatMap(({ a, b }) => [a.id, b.id]))]
+    const ids = [...new Set(likely.flatMap(({ playerA, playerB }) => [playerA.id, playerB.id]))]
     const [raised, played, memberships] = await Promise.all([
       this.prisma.profileMergeRequest.findMany({
         where: { OR: [{ playerAId: { in: ids } }, { playerBId: { in: ids } }] }, select: { playerAId: true, playerBId: true },
@@ -145,16 +117,16 @@ export class PlayerMatchingService {
     const alreadyRaised = new Set(raised.map(request => pairKey(request.playerAId, request.playerBId)))
     const fixturesOf = groupSets(played, row => row.playerId, row => row.rubber.matchResult.fixtureId)
     const clubsOf = groupSets(memberships, row => row.playerId, row => row.club.name)
-    const playedTogether = (a: string, b: string) => [...(fixturesOf.get(a) ?? [])].some(fixture => fixturesOf.get(b)?.has(fixture))
+    const playedTogether = (firstId: string, secondId: string) => [...(fixturesOf.get(firstId) ?? [])].some(fixture => fixturesOf.get(secondId)?.has(fixture))
 
     return likely
-      .filter(({ a, b }) => !alreadyRaised.has(pairKey(a.id, b.id)) && !playedTogether(a.id, b.id))
-      .map(({ a, b, dateOfBirth, reasons }) => ({
-        playerAId: a.id,
-        playerBId: b.id,
-        names: [fullName(a), fullName(b)],
+      .filter(({ playerA, playerB }) => !alreadyRaised.has(pairKey(playerA.id, playerB.id)) && !playedTogether(playerA.id, playerB.id))
+      .map(({ playerA, playerB, dateOfBirth, reasons }) => ({
+        playerAId: playerA.id,
+        playerBId: playerB.id,
+        names: [fullName(playerA), fullName(playerB)],
         dateOfBirth,
-        reasons: [...reasons, ...[...(clubsOf.get(a.id) ?? [])].filter(club => clubsOf.get(b.id)?.has(club)).map(club => `both at ${club}`)],
+        reasons: [...reasons, ...[...(clubsOf.get(playerA.id) ?? [])].filter(club => clubsOf.get(playerB.id)?.has(club)).map(club => `both at ${club}`)],
       }))
   }
 
@@ -175,6 +147,7 @@ export class PlayerMatchingService {
   }
 }
 
+/** Groups rows into lists by key, keeping their order. */
 function groupLists<T>(rows: T[], keyOf: (row: T) => string): Map<string, T[]> {
   const lists = new Map<string, T[]>()
   for (const row of rows) lists.set(keyOf(row), [...(lists.get(keyOf(row)) ?? []), row])

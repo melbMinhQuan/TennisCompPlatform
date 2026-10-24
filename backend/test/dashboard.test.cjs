@@ -1,9 +1,11 @@
 const { test, before, after } = require('node:test')
 const assert = require('node:assert/strict')
+const { ValidationPipe } = require('@nestjs/common')
 const { Test } = require('@nestjs/testing')
 const { DashboardModule } = require('../dist/dashboard/dashboard.module')
 const { PrismaService } = require('../dist/prisma/prisma.service')
-const { parseQuery, ageOn, paginate } = require('../dist/dashboard/dashboard.query')
+const { ageOn, paginate } = require('../dist/dashboard/dashboard.query')
+const { DashboardQueryDto } = require('../dist/dashboard/dashboard-query.dto')
 
 // In-memory query fixtures only: never insert test records into the user's database.
 const competition = { id: '11111111-1111-4111-8111-111111111111', name: 'Test competition' }
@@ -74,6 +76,7 @@ const prisma = {
 before(async () => {
   const module = await Test.createTestingModule({ imports: [DashboardModule] }).overrideProvider(PrismaService).useValue(prisma).compile()
   app = module.createNestApplication({ logger: false })
+  app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true })) // as main.ts does
   await app.listen(0, '127.0.0.1')
   url = await app.getUrl()
 })
@@ -196,11 +199,14 @@ test('I-DASH-009: email lookup is disabled when NODE_ENV=production', async () =
   }
 })
 
-test('DASH-001: age boundary and query types', () => {
+test('DASH-001: age boundary and query types', async () => {
   assert.equal(ageOn('2000-03-01', '2026-02-28'), 25)
   assert.equal(ageOn('2000-03-01', '2026-03-01'), 26)
-  assert.throws(() => parseQuery({ email: ['alice@example.test', 'bob@example.test'] }))
-  assert.throws(() => parseQuery({ email: 'alice@example.test', from: '2026-12-01', to: '2026-01-01' }))
+  const validateQuery = query => new ValidationPipe({ transform: true, whitelist: true }).transform(query, { type: 'query', metatype: DashboardQueryDto })
+  await assert.rejects(validateQuery({ email: ['alice@example.test', 'bob@example.test'] }))
+  await assert.rejects(validateQuery({ email: 'alice@example.test', from: '2026-12-01', to: '2026-01-01' }))
+  const parsed = await validateQuery({ email: ' Alice@Example.test ', limit: '5' })
+  assert.deepEqual({ email: parsed.email, limit: parsed.limit, scope: parsed.scope, discipline: parsed.discipline }, { email: 'alice@example.test', limit: 5, scope: 'upcoming', discipline: 'SINGLES' })
   assert.deepEqual(paginate([], 20, ['empty']), { available: true, items: [], nextCursor: null, hasMore: false })
 })
 

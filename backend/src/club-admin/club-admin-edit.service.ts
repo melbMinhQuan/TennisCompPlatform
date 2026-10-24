@@ -4,26 +4,32 @@ import { readOrUnavailable } from '../common/data-unavailable'
 import { fullName } from '../player/player-mappers'
 import { PrismaService } from '../prisma/prisma.service'
 import type { AddTeamPlayersDto, CreatePlayerDto, CreateTeamDto } from './club-admin.dto'
-import { CLOSED_SEASONS, ClubAdminService, isClubAdmin, playerRole } from './club-admin.service'
+import { CLOSED_SEASONS, ClubAdminService, isClubAdmin, PLAYER_ROLE } from './club-admin.service'
 import type { ClubPlayerDetail, ClubTeamDetail } from './club-admin.types'
 import { isCurrentMembership, localToday } from './membership'
 
 /** Why a player cannot join a squad or manage a team. */
 type Ineligible = 'PLAYER_NOT_FOUND' | 'INACTIVE_PLAYER' | 'NOT_CLUB_MEMBER' | 'ALREADY_IN_TEAM' | 'NO_LOGIN_ACCOUNT' | 'UNDER_18'
 
-// A user holds one role row. Losing a team-manager role turns it back into a
-// plain player role rather than revoking it, so they can still sign in as a player.
+/**
+ * A user holds one role row. Losing a team-manager role turns it back into a
+ * plain player role rather than revoking it, so they can still sign in as a player.
+ */
 const playerRoleData = (grantedAt: Date) => ({
   roleType: 'PLAYER' as const, contextType: 'GLOBAL' as const,
   associationId: null, clubId: null, teamId: null, competitionId: null, grantedAt, revokedAt: null,
 })
+/** The role row of a team manager, scoped to their team. */
 const managerRoleData = (clubId: string, teamId: string, grantedAt: Date) => ({
   roleType: 'TEAM_MANAGER' as const, contextType: 'TEAM' as const,
   associationId: null, clubId, teamId, competitionId: null, grantedAt, revokedAt: null,
 })
 
+/** The 404 for a team that is not this club's, or does not exist. */
 const teamNotFound = () => new NotFoundException({ statusCode: 404, code: 'TEAM_NOT_FOUND', message: 'Team not found' })
+/** The 404 for a player the club administrator cannot see. */
 const playerNotFound = () => new NotFoundException({ statusCode: 404, code: 'PLAYER_NOT_FOUND', message: 'Player not found' })
+/** True when the database refused a write because a unique constraint would be broken. */
 const isUniqueViolation = (error: unknown) => error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002'
 
 /** A date-only value for a @db.Date column. */
@@ -87,15 +93,15 @@ export class ClubAdminEditService {
       await this.openTeam(clubId, teamId)
       const people = await this.prisma.player.findMany({
         where: { id: { in: playerIds } },
-        include: { ...playerRole, clubMemberships: { where: { clubId } }, teamPlayers: { where: { teamId } } },
+        include: { ...PLAYER_ROLE, clubMemberships: { where: { clubId } }, teamPlayers: { where: { teamId } } },
       })
       const today = localToday()
       const problems = playerIds.flatMap(playerId => {
-        const person = people.find(p => p.id === playerId)
+        const person = people.find(person => person.id === playerId)
         const reason: Ineligible | null =
           !person || person.mergeIntoId || isClubAdmin(person) ? 'PLAYER_NOT_FOUND'
             : person.status !== 'ACTIVE' ? 'INACTIVE_PLAYER'
-              : !person.clubMemberships.some(m => isCurrentMembership(m, today)) ? 'NOT_CLUB_MEMBER'
+              : !person.clubMemberships.some(clubMembership => isCurrentMembership(clubMembership, today)) ? 'NOT_CLUB_MEMBER'
                 : person.teamPlayers.some(entry => entry.status === 'ACTIVE') ? 'ALREADY_IN_TEAM'
                   : null
         return reason ? [{ id: playerId, reason }] : []
@@ -114,7 +120,7 @@ export class ClubAdminEditService {
             update: { status: 'ACTIVE', registerAt },
           })
         }
-        const names = playerIds.map(id => fullName(people.find(p => p.id === id)!)).join(', ')
+        const names = playerIds.map(id => fullName(people.find(person => person.id === id)!)).join(', ')
         await this.audit(tx, adminUserId, 'TEAM', teamId, 'ADD_PLAYERS', `Added ${names}`)
       })
     }, 'Squads cannot be changed right now')
@@ -159,7 +165,7 @@ export class ClubAdminEditService {
       if (!person || person.mergeIntoId) throw playerNotFound()
       const reason: Ineligible | null =
         person.status !== 'ACTIVE' ? 'INACTIVE_PLAYER'
-          : !person.clubMemberships.some(m => isCurrentMembership(m, localToday())) ? 'NOT_CLUB_MEMBER'
+          : !person.clubMemberships.some(clubMembership => isCurrentMembership(clubMembership, localToday())) ? 'NOT_CLUB_MEMBER'
             : person.isJunior ? 'UNDER_18'
               : !person.user ? 'NO_LOGIN_ACCOUNT'
                 : null
@@ -213,14 +219,14 @@ export class ClubAdminEditService {
     await readOrUnavailable(async () => {
       const person = await this.prisma.player.findUnique({
         where: { id: playerId },
-        include: { ...playerRole, clubMemberships: true },
+        include: { ...PLAYER_ROLE, clubMemberships: true },
       })
       if (!person || person.mergeIntoId || isClubAdmin(person)) throw playerNotFound()
       const today = localToday()
-      if (person.clubMemberships.some(m => m.clubId === clubId && isCurrentMembership(m, today))) {
+      if (person.clubMemberships.some(clubMembership => clubMembership.clubId === clubId && isCurrentMembership(clubMembership, today))) {
         throw new ConflictException({ statusCode: 409, code: 'ALREADY_MEMBER', message: 'This player is already a member of your club' })
       }
-      const isPrimary = !person.clubMemberships.some(m => m.clubId !== clubId && m.isPrimary && isCurrentMembership(m, today))
+      const isPrimary = !person.clubMemberships.some(clubMembership => clubMembership.clubId !== clubId && clubMembership.isPrimary && isCurrentMembership(clubMembership, today))
       const joined = { status: 'ACTIVE' as const, isPrimary, startDate: dateOnly(today), endDate: null }
       await this.prisma.$transaction(async tx => {
         await tx.clubMembership.upsert({
@@ -291,11 +297,13 @@ export class ClubAdminEditService {
     return team
   }
 
+  /** True when the team's season is over (or the team is gone), so its squad can no longer change. */
   private async seasonClosed(teamId: string): Promise<boolean> {
     const team = await this.prisma.team.findUnique({ where: { id: teamId }, include: { section: { include: { season: true } } } })
     return !team || CLOSED_SEASONS.includes(team.section.season.status)
   }
 
+  /** Records an administrative change in audit_log, inside the same transaction as the change. */
   private audit(tx: Prisma.TransactionClient, changedBy: string, entityType: string, entityId: string, action: string, changeSummary: string) {
     return tx.auditLog.create({ data: { entityType, entityId, action, changeSummary, changedBy } })
   }

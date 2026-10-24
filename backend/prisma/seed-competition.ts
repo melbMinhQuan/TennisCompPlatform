@@ -50,17 +50,17 @@ function uuidFor(code: string): string {
 type Row = Record<string, string | number | boolean>
 
 /** A blank cell means NULL, never an empty string. */
-const nul = (v: unknown) => (v === '' || v === undefined || v === null ? null : v)
-const str = (v: unknown) => (nul(v) === null ? null : String(v))
-const int = (v: unknown) => (nul(v) === null ? null : Number(v))
-const bool = (v: unknown) => v === true || v === 'true' || v === 1
+const nul = (value: unknown) => (value === '' || value === undefined || value === null ? null : value)
+const str = (value: unknown) => (nul(value) === null ? null : String(value))
+const int = (value: unknown) => (nul(value) === null ? null : Number(value))
+const bool = (value: unknown) => value === true || value === 'true' || value === 1
 /** Calendar date (@db.Date) - kept at UTC midnight so the day never shifts. */
-const date = (v: unknown) => (nul(v) === null ? null : new Date(`${v}T00:00:00Z`))
+const date = (value: unknown) => (nul(value) === null ? null : new Date(`${value}T00:00:00Z`))
 /** Local clock time (@db.Time), stored on the epoch date Prisma expects. */
-const time = (v: unknown) => (nul(v) === null ? null : new Date(`1970-01-01T${v}:00Z`))
-const ts = (v: unknown) => (nul(v) === null ? null : new Date(String(v)))
+const time = (value: unknown) => (nul(value) === null ? null : new Date(`1970-01-01T${value}:00Z`))
+const ts = (value: unknown) => (nul(value) === null ? null : new Date(String(value)))
 /** Foreign key: spreadsheet code -> UUID. */
-const ref = (v: unknown) => (nul(v) === null ? null : uuidFor(String(v)))
+const ref = (value: unknown) => (nul(value) === null ? null : uuidFor(String(value)))
 
 function readSheets(file: string): Record<string, Row[]> {
   const book = XLSX.readFile(file)
@@ -79,7 +79,7 @@ type Built = Record<string, unknown> & { id: string }
  * One table each, in foreign-key order: parents first. Inserts and updates walk
  * this order, deletes walk it backwards so children go before their parents.
  */
-type Table = {
+interface Table {
   name: string
   /**
    * True when rows here can come from somewhere other than this workbook, so a
@@ -108,237 +108,237 @@ type Table = {
    */
   coded?: boolean
   of: (tx: Prisma.TransactionClient) => {
-    createMany(a: unknown): Promise<{ count: number }>
-    deleteMany(a: unknown): Promise<{ count: number }>
-    findMany(a?: unknown): Promise<Record<string, unknown>[]>
-    update(a: unknown): Promise<unknown>
-    upsert(a: unknown): Promise<unknown>
+    createMany(args: unknown): Promise<{ count: number }>
+    deleteMany(args: unknown): Promise<{ count: number }>
+    findMany(args?: unknown): Promise<Record<string, unknown>[]>
+    update(args: unknown): Promise<unknown>
+    upsert(args: unknown): Promise<unknown>
   }
-  rows: (S: Record<string, Row[]>, U: Users) => Built[]
+  rows: (sheets: Record<string, Row[]>, users: Users) => Built[]
 }
 
 const TABLES: Table[] = [
-  { name: 'user', shared: true, of: tx => tx.user as never, rows: S => S.User.map(r => ({
-      id: uuidFor(String(r.id)), email: String(r.email), passwordHash: String(r.password_hash),
-      status: String(r.status) as never, lastLoginAt: ts(r.last_login_at),
+  { name: 'user', shared: true, of: tx => tx.user as never, rows: sheets => sheets.User.map(user => ({
+      id: uuidFor(String(user.id)), email: String(user.email), passwordHash: String(user.password_hash),
+      status: String(user.status) as never, lastLoginAt: ts(user.last_login_at),
     })) },
 
-  { name: 'association', of: tx => tx.association as never, rows: S => S.Association.map(r => ({
-      id: uuidFor(String(r.id)), name: String(r.name), email: str(r.email), address: str(r.address),
-      phone: str(r.phone), status: String(r.status) as never,
+  { name: 'association', of: tx => tx.association as never, rows: sheets => sheets.Association.map(association => ({
+      id: uuidFor(String(association.id)), name: String(association.name), email: str(association.email), address: str(association.address),
+      phone: str(association.phone), status: String(association.status) as never,
     })) },
 
-  { name: 'club', coded: true, of: tx => tx.club as never, rows: S => S.Club.map(r => ({
-      id: uuidFor(String(r.id)), code: String(r.id), associationId: ref(r.association_id)!, name: String(r.name),
-      address: str(r.address), email: str(r.email), phone: str(r.phone), status: String(r.status) as never,
+  { name: 'club', coded: true, of: tx => tx.club as never, rows: sheets => sheets.Club.map(club => ({
+      id: uuidFor(String(club.id)), code: String(club.id), associationId: ref(club.association_id)!, name: String(club.name),
+      address: str(club.address), email: str(club.email), phone: str(club.phone), status: String(club.status) as never,
     })) },
 
-  { name: 'venue', of: tx => tx.venue as never, rows: S => S.Venue.map(r => ({
-      id: uuidFor(String(r.id)), clubId: ref(r.club_id), name: String(r.name), address: str(r.address),
-      timeZone: String(r.time_zone), courtCount: int(r.court_count), status: String(r.status) as never,
+  { name: 'venue', of: tx => tx.venue as never, rows: sheets => sheets.Venue.map(venue => ({
+      id: uuidFor(String(venue.id)), clubId: ref(venue.club_id), name: String(venue.name), address: str(venue.address),
+      timeZone: String(venue.time_zone), courtCount: int(venue.court_count), status: String(venue.status) as never,
     })) },
 
-  { name: 'competition', of: tx => tx.competition as never, rows: S => S.Competition.map(r => ({
-      id: uuidFor(String(r.id)), associationId: ref(r.association_id)!, name: String(r.name),
-      type: str(r.type), status: String(r.status) as never,
+  { name: 'competition', of: tx => tx.competition as never, rows: sheets => sheets.Competition.map(competition => ({
+      id: uuidFor(String(competition.id)), associationId: ref(competition.association_id)!, name: String(competition.name),
+      type: str(competition.type), status: String(competition.status) as never,
     })) },
 
-  { name: 'matchFormat', of: tx => tx.matchFormat as never, rows: S => S.MatchFormat.map(r => ({
-      id: uuidFor(String(r.id)), competitionId: ref(r.competition_id)!, name: String(r.name),
-      rubberCount: int(r.rubber_count), setFormat: str(r.set_format), setToWin: int(r.set_to_win),
-      tiebreakRule: str(r.tiebreak_rule), matchTiebreak: str(r.match_tiebreak),
-      winnerDeterminedBy: str(r.winner_determined_by), allowDraw: bool(r.allow_draw),
-      singlesCount: int(r.singles_count), doublesCount: int(r.doubles_count),
+  { name: 'matchFormat', of: tx => tx.matchFormat as never, rows: sheets => sheets.MatchFormat.map(matchFormat => ({
+      id: uuidFor(String(matchFormat.id)), competitionId: ref(matchFormat.competition_id)!, name: String(matchFormat.name),
+      rubberCount: int(matchFormat.rubber_count), setFormat: str(matchFormat.set_format), setToWin: int(matchFormat.set_to_win),
+      tiebreakRule: str(matchFormat.tiebreak_rule), matchTiebreak: str(matchFormat.match_tiebreak),
+      winnerDeterminedBy: str(matchFormat.winner_determined_by), allowDraw: bool(matchFormat.allow_draw),
+      singlesCount: int(matchFormat.singles_count), doublesCount: int(matchFormat.doubles_count),
     })) },
 
-  { name: 'eligibilityRule', of: tx => tx.eligibilityRule as never, rows: S => S.EligibilityRule.map(r => ({
-      id: uuidFor(String(r.id)), competitionId: ref(r.competition_id)!, ruleType: String(r.rule_type),
-      scope: str(r.scope), minMatchesPlayed: int(r.min_matches_played),
-      gradeRestriction: str(r.grade_restriction), description: str(r.description),
+  { name: 'eligibilityRule', of: tx => tx.eligibilityRule as never, rows: sheets => sheets.EligibilityRule.map(eligibilityRule => ({
+      id: uuidFor(String(eligibilityRule.id)), competitionId: ref(eligibilityRule.competition_id)!, ruleType: String(eligibilityRule.rule_type),
+      scope: str(eligibilityRule.scope), minMatchesPlayed: int(eligibilityRule.min_matches_played),
+      gradeRestriction: str(eligibilityRule.grade_restriction), description: str(eligibilityRule.description),
     })) },
 
-  { name: 'season', of: tx => tx.season as never, rows: S => S.Season.map(r => ({
-      id: uuidFor(String(r.id)), competitionId: ref(r.competition_id)!, year: int(r.year),
-      seasonType: str(r.season_type), startDate: date(r.start_date), endDate: date(r.end_date),
-      status: String(r.status) as never,
+  { name: 'season', of: tx => tx.season as never, rows: sheets => sheets.Season.map(season => ({
+      id: uuidFor(String(season.id)), competitionId: ref(season.competition_id)!, year: int(season.year),
+      seasonType: str(season.season_type), startDate: date(season.start_date), endDate: date(season.end_date),
+      status: String(season.status) as never,
     })) },
 
-  { name: 'sectionGrade', of: tx => tx.sectionGrade as never, rows: S => S.SectionGrade.map(r => ({
-      id: uuidFor(String(r.id)), seasonId: ref(r.season_id)!, name: String(r.name),
-      gender: (str(r.gender) ?? undefined) as never, ageGroup: str(r.age_group),
-      minAge: int(r.min_age), maxAge: int(r.max_age), teamCount: int(r.team_count),
+  { name: 'sectionGrade', of: tx => tx.sectionGrade as never, rows: sheets => sheets.SectionGrade.map(sectionGrade => ({
+      id: uuidFor(String(sectionGrade.id)), seasonId: ref(sectionGrade.season_id)!, name: String(sectionGrade.name),
+      gender: (str(sectionGrade.gender) ?? undefined) as never, ageGroup: str(sectionGrade.age_group),
+      minAge: int(sectionGrade.min_age), maxAge: int(sectionGrade.max_age), teamCount: int(sectionGrade.team_count),
     })) },
 
   // The workbook has no season column on Team: the season is the section's.
-  { name: 'team', of: tx => tx.team as never, rows: S => {
-    const seasonOf = new Map(S.SectionGrade.map(s => [String(s.id), String(s.season_id)]))
-    return S.Team.map(r => ({
-      id: uuidFor(String(r.id)), clubId: ref(r.club_id)!, sectionId: ref(r.section_id)!,
-      seasonId: ref(seasonOf.get(String(r.section_id)))!,
-      homeVenueId: ref(r.home_venue_id), name: String(r.name),
+  { name: 'team', of: tx => tx.team as never, rows: sheets => {
+    const seasonOf = new Map(sheets.SectionGrade.map(sectionGrade => [String(sectionGrade.id), String(sectionGrade.season_id)]))
+    return sheets.Team.map(team => ({
+      id: uuidFor(String(team.id)), clubId: ref(team.club_id)!, sectionId: ref(team.section_id)!,
+      seasonId: ref(seasonOf.get(String(team.section_id)))!,
+      homeVenueId: ref(team.home_venue_id), name: String(team.name),
     }))
   } },
 
-  { name: 'player', coded: true, of: tx => tx.player as never, rows: (S, U) => S.Player.map(r => ({
-      id: uuidFor(String(r.id)), code: String(r.id),
-      userId: U.get(String(r._lookup_user_email)) ?? null,
-      firstName: String(r.first_name), lastName: String(r.last_name),
-      dateOfBirth: date(r.date_of_birth)!, gender: String(r.gender) as never,
-      phone: str(r.phone), avatarUrl: str(r.avatar_url),
-      isJunior: bool(r.is_junior), status: String(r.status) as never,
-      guardianName: str(r.guardian_name), guardianEmail: str(r.guardian_email), guardianPhone: str(r.guardian_phone),
+  { name: 'player', coded: true, of: tx => tx.player as never, rows: (sheets, users) => sheets.Player.map(player => ({
+      id: uuidFor(String(player.id)), code: String(player.id),
+      userId: users.get(String(player._lookup_user_email)) ?? null,
+      firstName: String(player.first_name), lastName: String(player.last_name),
+      dateOfBirth: date(player.date_of_birth)!, gender: String(player.gender) as never,
+      phone: str(player.phone), avatarUrl: str(player.avatar_url),
+      isJunior: bool(player.is_junior), status: String(player.status) as never,
+      guardianName: str(player.guardian_name), guardianEmail: str(player.guardian_email), guardianPhone: str(player.guardian_phone),
     })) },
 
-  { name: 'clubMembership', of: tx => tx.clubMembership as never, rows: S => S.ClubMembership.map(r => ({
-      id: uuidFor(String(r.id)), playerId: ref(r.player_id)!, clubId: ref(r.club_id)!,
-      isPrimary: bool(r.is_primary), startDate: date(r.start_date), endDate: date(r.end_date),
-      status: String(r.status) as never,
+  { name: 'clubMembership', of: tx => tx.clubMembership as never, rows: sheets => sheets.ClubMembership.map(clubMembership => ({
+      id: uuidFor(String(clubMembership.id)), playerId: ref(clubMembership.player_id)!, clubId: ref(clubMembership.club_id)!,
+      isPrimary: bool(clubMembership.is_primary), startDate: date(clubMembership.start_date), endDate: date(clubMembership.end_date),
+      status: String(clubMembership.status) as never,
     })) },
 
-  { name: 'associationMembership', of: tx => tx.associationMembership as never, rows: S => S.AssociationMembership.map(r => ({
-      id: uuidFor(String(r.id)), playerId: ref(r.player_id)!, associationId: ref(r.association_id)!,
-      isPrimary: bool(r.is_primary), status: String(r.status) as never,
+  { name: 'associationMembership', of: tx => tx.associationMembership as never, rows: sheets => sheets.AssociationMembership.map(associationMembership => ({
+      id: uuidFor(String(associationMembership.id)), playerId: ref(associationMembership.player_id)!, associationId: ref(associationMembership.association_id)!,
+      isPrimary: bool(associationMembership.is_primary), status: String(associationMembership.status) as never,
     })) },
 
-  { name: 'teamPlayer', of: tx => tx.teamPlayer as never, rows: S => S.TeamPlayer.map(r => ({
-      id: uuidFor(String(r.id)), teamId: ref(r.team_id)!, playerId: ref(r.player_id)!,
-      status: String(r.status) as never, registerAt: ts(r.register_at),
+  { name: 'teamPlayer', of: tx => tx.teamPlayer as never, rows: sheets => sheets.TeamPlayer.map(teamPlayer => ({
+      id: uuidFor(String(teamPlayer.id)), teamId: ref(teamPlayer.team_id)!, playerId: ref(teamPlayer.player_id)!,
+      status: String(teamPlayer.status) as never, registerAt: ts(teamPlayer.register_at),
     })) },
 
-  { name: 'utrLink', of: tx => tx.utrLink as never, rows: S => S.UtrLink.map(r => ({
-      id: uuidFor(String(r.id)), playerId: ref(r.player_id)!, utrAccountId: str(r.utr_account_id),
-      utrRating: str(r.utr_rating), lastSyncedAt: ts(r.last_synced_at), status: String(r.status) as never,
+  { name: 'utrLink', of: tx => tx.utrLink as never, rows: sheets => sheets.UtrLink.map(utrLink => ({
+      id: uuidFor(String(utrLink.id)), playerId: ref(utrLink.player_id)!, utrAccountId: str(utrLink.utr_account_id),
+      utrRating: str(utrLink.utr_rating), lastSyncedAt: ts(utrLink.last_synced_at), status: String(utrLink.status) as never,
     })) },
 
-  { name: 'utrRatingSnapshot', of: tx => tx.utrRatingSnapshot as never, rows: S => S.UtrRatingSnapshot.map(r => ({
-      id: uuidFor(String(r.id)), playerId: ref(r.player_id)!,
-      discipline: (str(r.discipline) ?? undefined) as never,
-      rating: String(r.rating), recordedAt: ts(r.recorded_at)!, source: str(r.source),
+  { name: 'utrRatingSnapshot', of: tx => tx.utrRatingSnapshot as never, rows: sheets => sheets.UtrRatingSnapshot.map(utrRatingSnapshot => ({
+      id: uuidFor(String(utrRatingSnapshot.id)), playerId: ref(utrRatingSnapshot.player_id)!,
+      discipline: (str(utrRatingSnapshot.discipline) ?? undefined) as never,
+      rating: String(utrRatingSnapshot.rating), recordedAt: ts(utrRatingSnapshot.recorded_at)!, source: str(utrRatingSnapshot.source),
     })) },
 
-  { name: 'rankingCohort', of: tx => tx.rankingCohort as never, rows: S => S.RankingCohort.map(r => ({
-      id: uuidFor(String(r.id)), name: String(r.name), description: str(r.description),
-      associationId: ref(r.association_id), discipline: (str(r.discipline) ?? undefined) as never,
+  { name: 'rankingCohort', of: tx => tx.rankingCohort as never, rows: sheets => sheets.RankingCohort.map(rankingCohort => ({
+      id: uuidFor(String(rankingCohort.id)), name: String(rankingCohort.name), description: str(rankingCohort.description),
+      associationId: ref(rankingCohort.association_id), discipline: (str(rankingCohort.discipline) ?? undefined) as never,
     })) },
 
-  { name: 'rankingEntry', of: tx => tx.rankingEntry as never, rows: S => S.RankingEntry.map(r => ({
-      id: uuidFor(String(r.id)), cohortId: ref(r.cohort_id)!, playerId: ref(r.player_id)!,
-      rank: Number(r.rank), rating: str(r.rating), percentileRank: str(r.percentile_rank),
-      asOf: ts(r.as_of)!,
+  { name: 'rankingEntry', of: tx => tx.rankingEntry as never, rows: sheets => sheets.RankingEntry.map(rankingEntry => ({
+      id: uuidFor(String(rankingEntry.id)), cohortId: ref(rankingEntry.cohort_id)!, playerId: ref(rankingEntry.player_id)!,
+      rank: Number(rankingEntry.rank), rating: str(rankingEntry.rating), percentileRank: str(rankingEntry.percentile_rank),
+      asOf: ts(rankingEntry.as_of)!,
     })) },
 
-  { name: 'fixture', of: tx => tx.fixture as never, rows: S => S.Fixture.map(r => ({
-      id: uuidFor(String(r.id)), sectionId: ref(r.section_id)!,
-      homeTeamId: ref(r.home_team_id)!, awayTeamId: ref(r.away_team_id)!, venueId: ref(r.venue_id),
-      roundNumber: int(r.round_number), roundLabel: str(r.round_label),
-      scheduleDate: date(r.schedule_date), scheduleTime: time(r.schedule_time),
-      status: String(r.status) as never, isFinals: bool(r.is_finals),
+  { name: 'fixture', of: tx => tx.fixture as never, rows: sheets => sheets.Fixture.map(fixture => ({
+      id: uuidFor(String(fixture.id)), sectionId: ref(fixture.section_id)!,
+      homeTeamId: ref(fixture.home_team_id)!, awayTeamId: ref(fixture.away_team_id)!, venueId: ref(fixture.venue_id),
+      roundNumber: int(fixture.round_number), roundLabel: str(fixture.round_label),
+      scheduleDate: date(fixture.schedule_date), scheduleTime: time(fixture.schedule_time),
+      status: String(fixture.status) as never, isFinals: bool(fixture.is_finals),
     })) },
 
-  { name: 'fixtureScheduleChange', of: tx => tx.fixtureScheduleChange as never, rows: S => S.FixtureScheduleChange.map(r => ({
-      id: uuidFor(String(r.id)), fixtureId: ref(r.fixture_id)!, changeType: String(r.change_type) as never,
-      previousDate: date(r.previous_date), previousTime: time(r.previous_time),
-      newDate: date(r.new_date), newTime: time(r.new_time),
-      previousVenueId: ref(r.previous_venue_id), newVenueId: ref(r.new_venue_id),
-      reason: str(r.reason), changedBy: str(r.changed_by), changedAt: ts(r.changed_at)!,
+  { name: 'fixtureScheduleChange', of: tx => tx.fixtureScheduleChange as never, rows: sheets => sheets.FixtureScheduleChange.map(fixtureScheduleChange => ({
+      id: uuidFor(String(fixtureScheduleChange.id)), fixtureId: ref(fixtureScheduleChange.fixture_id)!, changeType: String(fixtureScheduleChange.change_type) as never,
+      previousDate: date(fixtureScheduleChange.previous_date), previousTime: time(fixtureScheduleChange.previous_time),
+      newDate: date(fixtureScheduleChange.new_date), newTime: time(fixtureScheduleChange.new_time),
+      previousVenueId: ref(fixtureScheduleChange.previous_venue_id), newVenueId: ref(fixtureScheduleChange.new_venue_id),
+      reason: str(fixtureScheduleChange.reason), changedBy: str(fixtureScheduleChange.changed_by), changedAt: ts(fixtureScheduleChange.changed_at)!,
     })) },
 
-  { name: 'matchResult', of: tx => tx.matchResult as never, rows: S => S.MatchResult.map(r => ({
-      id: uuidFor(String(r.id)), fixtureId: ref(r.fixture_id)!,
-      homeRubbers: int(r.home_rubbers), awayRubbers: int(r.away_rubbers),
-      status: String(r.status) as never, outcome: str(r.outcome), notes: str(r.notes),
-      enteredBy: str(r.entered_by), finalisedBy: str(r.finalised_by),
-      enteredAt: ts(r.entered_at), finalisedAt: ts(r.finalised_at),
+  { name: 'matchResult', of: tx => tx.matchResult as never, rows: sheets => sheets.MatchResult.map(matchResult => ({
+      id: uuidFor(String(matchResult.id)), fixtureId: ref(matchResult.fixture_id)!,
+      homeRubbers: int(matchResult.home_rubbers), awayRubbers: int(matchResult.away_rubbers),
+      status: String(matchResult.status) as never, outcome: str(matchResult.outcome), notes: str(matchResult.notes),
+      enteredBy: str(matchResult.entered_by), finalisedBy: str(matchResult.finalised_by),
+      enteredAt: ts(matchResult.entered_at), finalisedAt: ts(matchResult.finalised_at),
     })) },
 
-  { name: 'resultConfirmation', of: tx => tx.resultConfirmation as never, rows: S => S.ResultConfirmation.map(r => ({
-      id: uuidFor(String(r.id)), matchResultId: ref(r.match_result_id)!, status: String(r.status) as never,
-      homeEnteredBy: ref(r.home_entered_by), awayConfirmedBy: ref(r.away_confirmed_by),
-      homeEnteredAt: ts(r.home_entered_at), awayConfirmedAt: ts(r.away_confirmed_at),
-      scoreCorrect: r.score_correct === '' ? null : bool(r.score_correct),
-      commentsCorrect: r.comments_correct === '' ? null : bool(r.comments_correct),
-      disputeReason: str(r.dispute_reason),
+  { name: 'resultConfirmation', of: tx => tx.resultConfirmation as never, rows: sheets => sheets.ResultConfirmation.map(resultConfirmation => ({
+      id: uuidFor(String(resultConfirmation.id)), matchResultId: ref(resultConfirmation.match_result_id)!, status: String(resultConfirmation.status) as never,
+      homeEnteredBy: ref(resultConfirmation.home_entered_by), awayConfirmedBy: ref(resultConfirmation.away_confirmed_by),
+      homeEnteredAt: ts(resultConfirmation.home_entered_at), awayConfirmedAt: ts(resultConfirmation.away_confirmed_at),
+      scoreCorrect: resultConfirmation.score_correct === '' ? null : bool(resultConfirmation.score_correct),
+      commentsCorrect: resultConfirmation.comments_correct === '' ? null : bool(resultConfirmation.comments_correct),
+      disputeReason: str(resultConfirmation.dispute_reason),
     })) },
 
-  { name: 'correctionRequest', of: tx => tx.correctionRequest as never, rows: S => S.CorrectionRequest.map(r => ({
-      id: uuidFor(String(r.id)), matchResultId: ref(r.match_result_id)!,
-      requestedAt: ts(r.requested_at), requestedBy: ref(r.requested_by), reason: str(r.reason),
-      status: String(r.status) as never, reviewBy: ref(r.review_by), reviewAt: ts(r.review_at),
-      reviewedNotes: str(r.reviewed_notes),
+  { name: 'correctionRequest', of: tx => tx.correctionRequest as never, rows: sheets => sheets.CorrectionRequest.map(correctionRequest => ({
+      id: uuidFor(String(correctionRequest.id)), matchResultId: ref(correctionRequest.match_result_id)!,
+      requestedAt: ts(correctionRequest.requested_at), requestedBy: ref(correctionRequest.requested_by), reason: str(correctionRequest.reason),
+      status: String(correctionRequest.status) as never, reviewBy: ref(correctionRequest.review_by), reviewAt: ts(correctionRequest.review_at),
+      reviewedNotes: str(correctionRequest.reviewed_notes),
     })) },
 
-  { name: 'rubber', of: tx => tx.rubber as never, rows: S => S.Rubber.map(r => ({
-      id: uuidFor(String(r.id)), matchResultId: ref(r.match_result_id)!, matchFormatId: ref(r.match_format_id),
-      rubberNumber: int(r.rubber_number), rubberType: String(r.rubber_type) as never,
-      winnerSide: (str(r.winner_side) ?? undefined) as never,
-      outcomeType: (str(r.outcome_type) ?? undefined) as never,
-      playedAt: ts(r.played_at), incompleteReason: str(r.incomplete_reason),
+  { name: 'rubber', of: tx => tx.rubber as never, rows: sheets => sheets.Rubber.map(rubber => ({
+      id: uuidFor(String(rubber.id)), matchResultId: ref(rubber.match_result_id)!, matchFormatId: ref(rubber.match_format_id),
+      rubberNumber: int(rubber.rubber_number), rubberType: String(rubber.rubber_type) as never,
+      winnerSide: (str(rubber.winner_side) ?? undefined) as never,
+      outcomeType: (str(rubber.outcome_type) ?? undefined) as never,
+      playedAt: ts(rubber.played_at), incompleteReason: str(rubber.incomplete_reason),
     })) },
 
-  { name: 'rubberSet', deferredUnique: true, of: tx => tx.rubberSet as never, rows: S => S.RubberSet.map(r => ({
-      id: uuidFor(String(r.id)), rubberId: ref(r.rubber_id)!, setNumber: int(r.set_number),
-      homeGames: int(r.home_games), awayGames: int(r.away_games), isTiebreak: bool(r.is_tiebreak),
-      homeTiebreakPoints: int(r.home_tiebreak_points), awayTiebreakPoints: int(r.away_tiebreak_points),
+  { name: 'rubberSet', deferredUnique: true, of: tx => tx.rubberSet as never, rows: sheets => sheets.RubberSet.map(rubberSet => ({
+      id: uuidFor(String(rubberSet.id)), rubberId: ref(rubberSet.rubber_id)!, setNumber: int(rubberSet.set_number),
+      homeGames: int(rubberSet.home_games), awayGames: int(rubberSet.away_games), isTiebreak: bool(rubberSet.is_tiebreak),
+      homeTiebreakPoints: int(rubberSet.home_tiebreak_points), awayTiebreakPoints: int(rubberSet.away_tiebreak_points),
     })) },
 
-  { name: 'rubberPlayer', of: tx => tx.rubberPlayer as never, rows: S => S.RubberPlayer.map(r => ({
-      id: uuidFor(String(r.id)), rubberId: ref(r.rubber_id)!, playerId: ref(r.player_id)!,
-      side: String(r.side) as never, playerOrder: int(r.player_order), isEmergency: bool(r.is_emergency),
+  { name: 'rubberPlayer', of: tx => tx.rubberPlayer as never, rows: sheets => sheets.RubberPlayer.map(rubberPlayer => ({
+      id: uuidFor(String(rubberPlayer.id)), rubberId: ref(rubberPlayer.rubber_id)!, playerId: ref(rubberPlayer.player_id)!,
+      side: String(rubberPlayer.side) as never, playerOrder: int(rubberPlayer.player_order), isEmergency: bool(rubberPlayer.is_emergency),
     })) },
 
-  { name: 'ladderEntry', of: tx => tx.ladderEntry as never, rows: S => S.LadderEntry.map(r => ({
-      id: uuidFor(String(r.id)), sectionId: ref(r.section_id)!, teamId: ref(r.team_id)!,
-      position: int(r.position), played: Number(r.played), won: Number(r.won),
-      lost: Number(r.lost), drawn: Number(r.drawn),
-      rubbersFor: Number(r.rubbers_for), rubbersAgainst: Number(r.rubbers_against),
-      setsFor: Number(r.sets_for), setsAgainst: Number(r.sets_against),
-      gamesFor: Number(r.games_for), gamesAgainst: Number(r.games_against),
-      points: Number(r.points), calculatedAt: ts(r.calculated_at)!,
+  { name: 'ladderEntry', of: tx => tx.ladderEntry as never, rows: sheets => sheets.LadderEntry.map(ladderEntry => ({
+      id: uuidFor(String(ladderEntry.id)), sectionId: ref(ladderEntry.section_id)!, teamId: ref(ladderEntry.team_id)!,
+      position: int(ladderEntry.position), played: Number(ladderEntry.played), won: Number(ladderEntry.won),
+      lost: Number(ladderEntry.lost), drawn: Number(ladderEntry.drawn),
+      rubbersFor: Number(ladderEntry.rubbers_for), rubbersAgainst: Number(ladderEntry.rubbers_against),
+      setsFor: Number(ladderEntry.sets_for), setsAgainst: Number(ladderEntry.sets_against),
+      gamesFor: Number(ladderEntry.games_for), gamesAgainst: Number(ladderEntry.games_against),
+      points: Number(ladderEntry.points), calculatedAt: ts(ladderEntry.calculated_at)!,
     })) },
 
-  { name: 'playerStanding', of: tx => tx.playerStanding as never, rows: S => S.PlayerStanding.map(r => ({
-      id: uuidFor(String(r.id)), sectionId: ref(r.section_id)!, playerId: ref(r.player_id)!,
-      position: int(r.position), rubbersPlayed: Number(r.rubbers_played),
-      rubbersWon: Number(r.rubbers_won), rubbersLost: Number(r.rubbers_lost),
-      setsWon: Number(r.sets_won), setsLost: Number(r.sets_lost),
-      gamesWon: Number(r.games_won), gamesLost: Number(r.games_lost),
-      winPercentage: str(r.win_percentage), calculatedAt: ts(r.calculated_at)!,
+  { name: 'playerStanding', of: tx => tx.playerStanding as never, rows: sheets => sheets.PlayerStanding.map(playerStanding => ({
+      id: uuidFor(String(playerStanding.id)), sectionId: ref(playerStanding.section_id)!, playerId: ref(playerStanding.player_id)!,
+      position: int(playerStanding.position), rubbersPlayed: Number(playerStanding.rubbers_played),
+      rubbersWon: Number(playerStanding.rubbers_won), rubbersLost: Number(playerStanding.rubbers_lost),
+      setsWon: Number(playerStanding.sets_won), setsLost: Number(playerStanding.sets_lost),
+      gamesWon: Number(playerStanding.games_won), gamesLost: Number(playerStanding.games_lost),
+      winPercentage: str(playerStanding.win_percentage), calculatedAt: ts(playerStanding.calculated_at)!,
     })) },
 
-  { name: 'playerAward', of: tx => tx.playerAward as never, rows: S => S.PlayerAward.map(r => ({
-      id: uuidFor(String(r.id)), playerId: ref(r.player_id)!, awardType: String(r.award_type) as never,
-      title: String(r.title), competitionId: ref(r.competition_id), seasonId: ref(r.season_id),
-      teamId: ref(r.team_id), awardedOn: date(r.awarded_on),
+  { name: 'playerAward', of: tx => tx.playerAward as never, rows: sheets => sheets.PlayerAward.map(playerAward => ({
+      id: uuidFor(String(playerAward.id)), playerId: ref(playerAward.player_id)!, awardType: String(playerAward.award_type) as never,
+      title: String(playerAward.title), competitionId: ref(playerAward.competition_id), seasonId: ref(playerAward.season_id),
+      teamId: ref(playerAward.team_id), awardedOn: date(playerAward.awarded_on),
     })) },
 
-  { name: 'notification', of: tx => tx.notification as never, rows: (S, U) => S.Notification.map(r => ({
-      id: uuidFor(String(r.id)), userId: U.get(String(r._lookup_user_email))!,
-      type: String(r.type) as never, title: String(r.title), message: String(r.message),
-      details: nul(r.details) === null ? Prisma.DbNull : JSON.parse(String(r.details)),
-      targetType: (str(r.target_type) ?? undefined) as never, targetId: ref(r.target_id),
-      channel: String(r.channel) as never, deliveryStatus: String(r.delivery_status) as never,
-      sentAt: ts(r.sent_at), readAt: ts(r.read_at), createdAt: ts(r.created_at)!,
+  { name: 'notification', of: tx => tx.notification as never, rows: (sheets, users) => sheets.Notification.map(notification => ({
+      id: uuidFor(String(notification.id)), userId: users.get(String(notification._lookup_user_email))!,
+      type: String(notification.type) as never, title: String(notification.title), message: String(notification.message),
+      details: nul(notification.details) === null ? Prisma.DbNull : JSON.parse(String(notification.details)),
+      targetType: (str(notification.target_type) ?? undefined) as never, targetId: ref(notification.target_id),
+      channel: String(notification.channel) as never, deliveryStatus: String(notification.delivery_status) as never,
+      sentAt: ts(notification.sent_at), readAt: ts(notification.read_at), createdAt: ts(notification.created_at)!,
     })) },
 
-  { name: 'userRole', uniqueOwner: 'userId', of: tx => tx.userRole as never, rows: (S, U) => S.UserRole.map(r => ({
-      id: uuidFor(String(r.id)), userId: U.get(String(r._lookup_user_email))!,
-      roleType: String(r.role_type) as never, contextType: String(r.context_type) as never,
-      associationId: ref(r.association_id), clubId: ref(r.club_id),
-      teamId: ref(r.team_id), competitionId: ref(r.competition_id),
-      grantedAt: ts(r.granted_at),
+  { name: 'userRole', uniqueOwner: 'userId', of: tx => tx.userRole as never, rows: (sheets, users) => sheets.UserRole.map(userRole => ({
+      id: uuidFor(String(userRole.id)), userId: users.get(String(userRole._lookup_user_email))!,
+      roleType: String(userRole.role_type) as never, contextType: String(userRole.context_type) as never,
+      associationId: ref(userRole.association_id), clubId: ref(userRole.club_id),
+      teamId: ref(userRole.team_id), competitionId: ref(userRole.competition_id),
+      grantedAt: ts(userRole.granted_at),
     })) },
 
-  { name: 'profileMergeRequest', of: tx => tx.profileMergeRequest as never, rows: S => S.ProfileMergeRequest.map(r => ({
-      id: uuidFor(String(r.id)), status: String(r.status) as never,
-      playerAId: ref(r.player_a_id)!, playerBId: ref(r.player_b_id)!,
-      requestingAssociationId: ref(r.requesting_association_id),
-      note: str(r.note), resolvedAt: ts(r.resolved_at),
+  { name: 'profileMergeRequest', of: tx => tx.profileMergeRequest as never, rows: sheets => sheets.ProfileMergeRequest.map(profileMergeRequest => ({
+      id: uuidFor(String(profileMergeRequest.id)), status: String(profileMergeRequest.status) as never,
+      playerAId: ref(profileMergeRequest.player_a_id)!, playerBId: ref(profileMergeRequest.player_b_id)!,
+      requestingAssociationId: ref(profileMergeRequest.requesting_association_id),
+      note: str(profileMergeRequest.note), resolvedAt: ts(profileMergeRequest.resolved_at),
     })) },
 
-  { name: 'auditLog', of: tx => tx.auditLog as never, rows: S => S.AuditLog.map(r => ({
-      id: uuidFor(String(r.id)), entityType: String(r.entity_type), entityId: ref(r.entity_id),
-      action: String(r.action), changedAt: ts(r.changed_at)!,
-      changeSummary: str(r.change_summary), changedBy: ref(r.changed_by),
+  { name: 'auditLog', of: tx => tx.auditLog as never, rows: sheets => sheets.AuditLog.map(auditLog => ({
+      id: uuidFor(String(auditLog.id)), entityType: String(auditLog.entity_type), entityId: ref(auditLog.entity_id),
+      action: String(auditLog.action), changedAt: ts(auditLog.changed_at)!,
+      changeSummary: str(auditLog.change_summary), changedBy: ref(auditLog.changed_by),
     })) },
 ]
 
@@ -350,7 +350,7 @@ const TABLES: Table[] = [
  * stored them.
  */
 function same(raw: unknown, stored: unknown): boolean {
-  const blank = (v: unknown) => v === null || v === undefined || v === Prisma.DbNull
+  const blank = (value: unknown) => value === null || value === undefined || value === Prisma.DbNull
   if (blank(raw)) return blank(stored)
   if (blank(stored)) return false
   // Decimal renders itself as a string; unwrap it before anything walks into it
@@ -364,92 +364,92 @@ function same(raw: unknown, stored: unknown): boolean {
     return canonical(want) === canonical(got)
   }
   // Decimal columns: 99 and "99.00" are the same number, different strings.
-  const a = Number(want)
-  const b = Number(got)
-  if (!Number.isNaN(a) && !Number.isNaN(b) && String(want).trim() !== '' && String(got).trim() !== '') {
-    return a === b
+  const wanted = Number(want)
+  const actual = Number(got)
+  if (!Number.isNaN(wanted) && !Number.isNaN(actual) && String(want).trim() !== '' && String(got).trim() !== '') {
+    return wanted === actual
   }
   return String(want) === String(got)
 }
 
 /** Unwraps a Decimal (or anything else carrying toJSON) to the value it stands for. */
-function plain(v: unknown): unknown {
-  return v !== null && typeof v === 'object' && !(v instanceof Date)
-    && typeof (v as { toJSON?: unknown }).toJSON === 'function'
-    ? (v as { toJSON: () => unknown }).toJSON()
-    : v
+function plain(value: unknown): unknown {
+  return value !== null && typeof value === 'object' && !(value instanceof Date)
+    && typeof (value as { toJSON?: unknown }).toJSON === 'function'
+    ? (value as { toJSON: () => unknown }).toJSON()
+    : value
 }
 
 /** JSON with object keys sorted, so key order never reads as a change. */
-function canonical(v: unknown): string {
+function canonical(value: unknown): string {
   const walk = (raw: unknown): unknown => {
-    const x = plain(raw)
-    if (x === null || typeof x !== 'object') return x
-    if (Array.isArray(x)) return x.map(walk)
-    const o = x as Record<string, unknown>
-    return Object.fromEntries(Object.keys(o).sort().map(k => [k, walk(o[k])]))
+    const plainValue = plain(raw)
+    if (plainValue === null || typeof plainValue !== 'object') return plainValue
+    if (Array.isArray(plainValue)) return plainValue.map(walk)
+    const record = plainValue as Record<string, unknown>
+    return Object.fromEntries(Object.keys(record).sort().map(key => [key, walk(record[key])]))
   }
-  return JSON.stringify(walk(v))
+  return JSON.stringify(walk(value))
 }
 
 /** Fails loudly rather than letting a bad `_lookup_user_email` become a null FK. */
-function userIndex(S: Record<string, Row[]>): Users {
-  const index: Users = new Map(S.User.map(u => [String(u.email), uuidFor(String(u.id))]))
+function userIndex(sheets: Record<string, Row[]>): Users {
+  const index: Users = new Map(sheets.User.map(user => [String(user.email), uuidFor(String(user.id))]))
   const unlinked = [...new Set(
-    ['Player', 'Notification', 'UserRole'].flatMap(s => (S[s] ?? []).map(r => String(r._lookup_user_email))),
-  )].filter(e => e && !index.has(e))
+    ['Player', 'Notification', 'UserRole'].flatMap(sheetName => (sheets[sheetName] ?? []).map(row => String(row._lookup_user_email))),
+  )].filter(email => email && !index.has(email))
   if (unlinked.length) {
     throw new Error(`${unlinked.length} row(s) reference a login that the User sheet does not define, e.g. ${unlinked[0]}`)
   }
   return index
 }
 
-function checkSheets(S: Record<string, Row[]>) {
+function checkSheets(sheets: Record<string, Row[]>) {
   const need = ['Association', 'Club', 'Venue', 'Competition', 'Player', 'Fixture']
-  const missing = need.filter(n => !S[n]?.length)
+  const missing = need.filter(sheetName => !sheets[sheetName]?.length)
   if (missing.length) throw new Error(`Workbook is missing data for: ${missing.join(', ')}`)
 }
 
 /** The original behaviour: insert what is absent, touch nothing that is present. */
-export async function seedCompetition(tx: Prisma.TransactionClient, S: Record<string, Row[]>, dryRun: boolean) {
-  checkSheets(S)
-  const U = userIndex(S)
+export async function seedCompetition(tx: Prisma.TransactionClient, sheets: Record<string, Row[]>, dryRun: boolean) {
+  checkSheets(sheets)
+  const users = userIndex(sheets)
 
   const inserted: Record<string, number> = {}
   const codesFilled: Record<string, number> = {}
-  for (const t of TABLES) {
-    const data = t.rows(S, U)
-    if (t.coded) {
+  for (const table of TABLES) {
+    const data = table.rows(sheets, users)
+    if (table.coded) {
       // A club or player added through the app took the next free code, which the
       // workbook may since have given to a row of its own. Inserting would then skip
       // the workbook's row without a word (the code is unique), so stop instead.
-      const taken = await t.of(tx).findMany({
-        where: { code: { in: data.map(r => r.code) }, id: { notIn: data.map(r => r.id) } }, select: { code: true },
+      const taken = await table.of(tx).findMany({
+        where: { code: { in: data.map(row => row.code) }, id: { notIn: data.map(row => row.id) } }, select: { code: true },
       })
       if (taken.length) {
-        throw new Error(`The workbook's ${t.name} ${taken.map(r => r.code).join(', ')} already belong(s) to a ${t.name} added through the app. `
+        throw new Error(`The workbook's ${table.name} ${taken.map(takenRow => takenRow.code).join(', ')} already belong(s) to a ${table.name} added through the app. `
           + 'Run with --sync to replace the database with the workbook, or remove that row first.')
       }
       // Read before inserting, so only rows that predate the column are counted.
-      const uncoded = await t.of(tx).findMany({ where: { id: { in: data.map(r => r.id) }, code: null }, select: { id: true } })
-      const codeOf = new Map(data.map(r => [r.id, r.code]))
+      const uncoded = await table.of(tx).findMany({ where: { id: { in: data.map(row => row.id) }, code: null }, select: { id: true } })
+      const codeOf = new Map(data.map(row => [row.id, row.code]))
       if (!dryRun) {
-        for (const r of uncoded) await t.of(tx).update({ where: { id: r.id }, data: { code: codeOf.get(String(r.id)) } })
+        for (const uncodedRow of uncoded) await table.of(tx).update({ where: { id: uncodedRow.id }, data: { code: codeOf.get(String(uncodedRow.id)) } })
       }
-      codesFilled[t.name] = uncoded.length
+      codesFilled[table.name] = uncoded.length
     }
     if (dryRun) {
-      inserted[t.name] = data.length
-    } else if (t.deferredUnique) {
-      const present = new Set((await t.of(tx).findMany({ where: { id: { in: data.map(r => r.id) } }, select: { id: true } })).map(r => String(r.id)))
-      const missing = data.filter(r => !present.has(r.id))
-      inserted[t.name] = missing.length ? (await t.of(tx).createMany({ data: missing })).count : 0
+      inserted[table.name] = data.length
+    } else if (table.deferredUnique) {
+      const present = new Set((await table.of(tx).findMany({ where: { id: { in: data.map(row => row.id) } }, select: { id: true } })).map(row => String(row.id)))
+      const missing = data.filter(row => !present.has(row.id))
+      inserted[table.name] = missing.length ? (await table.of(tx).createMany({ data: missing })).count : 0
     } else {
-      inserted[t.name] = (await t.of(tx).createMany({ data, skipDuplicates: true })).count
+      inserted[table.name] = (await table.of(tx).createMany({ data, skipDuplicates: true })).count
     }
   }
 
-  return { dryRun, accounts: S.User.length, [dryRun ? 'rowsInWorkbook' : 'inserted']: inserted, codesFilled }
+  return { dryRun, accounts: sheets.User.length, [dryRun ? 'rowsInWorkbook' : 'inserted']: inserted, codesFilled }
 }
 
 /**
@@ -458,54 +458,54 @@ export async function seedCompetition(tx: Prisma.TransactionClient, S: Record<st
  * `npm run data:generate` renumbers the spreadsheet codes, which a plain seed
  * cannot follow. Unlike a seed, this does not spare hand-edited rows.
  */
-export async function syncCompetition(tx: Prisma.TransactionClient, S: Record<string, Row[]>, dryRun: boolean) {
-  checkSheets(S)
-  const U = userIndex(S)
-  const built = new Map(TABLES.map(t => [t.name, t.rows(S, U)]))
+export async function syncCompetition(tx: Prisma.TransactionClient, sheets: Record<string, Row[]>, dryRun: boolean) {
+  checkSheets(sheets)
+  const users = userIndex(sheets)
+  const built = new Map(TABLES.map(table => [table.name, table.rows(sheets, users)]))
 
   // Children before parents, so a delete never trips a foreign key.
   const deleted: Record<string, number> = {}
   const kept: Record<string, number> = {}
-  for (const t of [...TABLES].reverse()) {
-    const keep = built.get(t.name)!.map(r => r.id)
-    const strangers = (await t.of(tx).findMany({ where: { id: { notIn: keep } }, select: { id: true } })).length
-    if (t.shared) {
-      kept[t.name] = strangers
-      deleted[t.name] = 0
+  for (const table of [...TABLES].reverse()) {
+    const keep = built.get(table.name)!.map(row => row.id)
+    const strangers = (await table.of(tx).findMany({ where: { id: { notIn: keep } }, select: { id: true } })).length
+    if (table.shared) {
+      kept[table.name] = strangers
+      deleted[table.name] = 0
       continue
     }
-    deleted[t.name] = dryRun ? strangers : (await t.of(tx).deleteMany({ where: { id: { notIn: keep } } })).count
+    deleted[table.name] = dryRun ? strangers : (await table.of(tx).deleteMany({ where: { id: { notIn: keep } } })).count
   }
 
   // Parents before children, so an insert always has its foreign key present.
   const created: Record<string, number> = {}
   const updated: Record<string, number> = {}
-  for (const t of TABLES) {
-    const rows = built.get(t.name)!
-    const existing = new Map((await t.of(tx).findMany()).map(r => [String(r.id), r]))
-    const missing = rows.filter(r => !existing.has(r.id))
-    const drifted = rows.filter(r => {
-      const was = existing.get(r.id)
-      return was && Object.keys(r).some(k => !same(r[k], was[k]))
+  for (const table of TABLES) {
+    const rows = built.get(table.name)!
+    const existing = new Map((await table.of(tx).findMany()).map(row => [String(row.id), row]))
+    const missing = rows.filter(row => !existing.has(row.id))
+    const drifted = rows.filter(row => {
+      const was = existing.get(row.id)
+      return was && Object.keys(row).some(key => !same(row[key], was[key]))
     })
-    created[t.name] = missing.length
-    updated[t.name] = drifted.length
+    created[table.name] = missing.length
+    updated[table.name] = drifted.length
     if (!dryRun) {
-      const owner = t.uniqueOwner
-      const moved = owner ? drifted.filter(r => !same(r[owner], existing.get(r.id)![owner])) : []
-      if (moved.length) await t.of(tx).deleteMany({ where: { id: { in: moved.map(r => r.id) } } })
-      for (const r of [...missing, ...drifted]) {
-        await t.of(tx).upsert({ where: { id: r.id }, create: r, update: r })
+      const owner = table.uniqueOwner
+      const moved = owner ? drifted.filter(driftedRow => !same(driftedRow[owner], existing.get(driftedRow.id)![owner])) : []
+      if (moved.length) await table.of(tx).deleteMany({ where: { id: { in: moved.map(movedRow => movedRow.id) } } })
+      for (const row of [...missing, ...drifted]) {
+        await table.of(tx).upsert({ where: { id: row.id }, create: row, update: row })
       }
     }
   }
 
-  const total = (c: Record<string, number>) => Object.values(c).reduce((a, b) => a + b, 0)
-  const nonZero = (c: Record<string, number>) => Object.fromEntries(Object.entries(c).filter(([, n]) => n > 0))
+  const total = (counts: Record<string, number>) => Object.values(counts).reduce((sum, count) => sum + count, 0)
+  const nonZero = (counts: Record<string, number>) => Object.fromEntries(Object.entries(counts).filter(([, count]) => count > 0))
   return {
     dryRun,
     sync: true,
-    accounts: S.User.length,
+    accounts: sheets.User.length,
     totals: { created: total(created), updated: total(updated), deleted: total(deleted) },
     created: nonZero(created),
     updated: nonZero(updated),
@@ -517,7 +517,7 @@ export async function syncCompetition(tx: Prisma.TransactionClient, S: Record<st
 async function main() {
   const flags = process.argv.slice(2)
   const known = ['--dry-run', '--sync']
-  const unknown = flags.filter(f => !known.includes(f))
+  const unknown = flags.filter(flag => !known.includes(flag))
   if (unknown.length) throw new Error(`Unsupported option(s): ${unknown.join(', ')}. Only ${known.join(' and ')} are available.`)
   const dryRun = flags.includes('--dry-run')
   const sync = flags.includes('--sync')
