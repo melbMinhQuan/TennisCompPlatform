@@ -22,8 +22,11 @@ export type TeamDetails = MembershipTeam & {
   }[];
 };
 
-// Logged out: the sample roster. Logged in: GET /api/v1/player/teams/:teamId, which only
-// answers for a team the player is on; any other team is 404, shown as "not found".
+/**
+ * Without an identity, returns the sample roster or null when the team is not found.
+ * With an identity, loads GET /api/v1/player/teams/:teamId using the shared player client.
+ * Returns null for 400/404 responses; other failures propagate without a sample fallback.
+ */
 export async function getTeamDetails(
   teamId: string,
   signal: AbortSignal,

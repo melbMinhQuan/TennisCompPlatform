@@ -1,6 +1,6 @@
 import { TABLE_CAPTIONS, TABLE_HEADERS, dateLabel, type TableRow, type View } from "./standings-helpers";
 
-type StandingsTableProps = { view: View; rows: TableRow[]; asOf?: string };
+interface StandingsTableProps { view: View; rows: TableRow[]; asOf?: string }
 
 /** Scrollable standings table. The player's own row is highlighted and tagged. */
 export default function StandingsTable({ view, rows, asOf }: StandingsTableProps) {

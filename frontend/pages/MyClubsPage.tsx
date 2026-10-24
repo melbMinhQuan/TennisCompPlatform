@@ -18,13 +18,13 @@ export default function MyClubsPage() {
   const associations = data ? [...data.associations].sort(primaryFirst) : [];
   const clubs = data ? [...data.clubs].sort(primaryFirst) : [];
   // Club ownership alone does not establish a player's association membership.
-  const ungroupedClubs = clubs.filter((c) => !associations.some((a) => a.associationId === c.associationId));
-  const primaryAssociation = associations.find((a) => a.isPrimary);
+  const ungroupedClubs = clubs.filter((club) => !associations.some((association) => association.associationId === club.associationId));
+  const primaryAssociation = associations.find((association) => association.isPrimary);
   const clubCard = (club: ClubMembership) => (
     <ClubCard
       key={data!.player.id + club.id}
       club={club}
-      teams={data!.teams.filter((t) => t.clubId === club.clubId).sort(currentFirst)}
+      teams={data!.teams.filter((team) => team.clubId === club.clubId).sort(currentFirst)}
     />
   );
   return (
@@ -41,9 +41,9 @@ export default function MyClubsPage() {
             playerName={data.player.displayName}
             primaryAssociationName={primaryAssociation?.name}
             counts={{
-              associations: new Set(associations.map((a) => a.associationId)).size,
-              clubs: new Set(clubs.map((c) => c.clubId)).size,
-              teams: new Set(data.teams.map((t) => t.id)).size,
+              associations: new Set(associations.map((association) => association.associationId)).size,
+              clubs: new Set(clubs.map((club) => club.clubId)).size,
+              teams: new Set(data.teams.map((team) => team.id)).size,
             }}
           />
           {data.managedTeams.length > 0 && (
@@ -62,20 +62,20 @@ export default function MyClubsPage() {
               </ul>
             </section>
           )}
-          {associations.map((a) => (
+          {associations.map((association) => (
             <AssociationSection
-              key={a.id}
-              association={a}
-              clubCards={clubs.filter((c) => c.associationId === a.associationId).map(clubCard)}
+              key={association.id}
+              association={association}
+              clubCards={clubs.filter((club) => club.associationId === association.associationId).map(clubCard)}
             />
           ))}
           {ungroupedClubs.length > 0 && (
             <section className="space-y-3">
               <h2 className="text-lg font-bold text-white md:text-[#1a3049]">Other club memberships</h2>
-              {ungroupedClubs.map((c) => (
-                <div key={c.id}>
-                  <p className="mb-2 text-sm text-white md:text-muted">{c.associationName}</p>
-                  {clubCard(c)}
+              {ungroupedClubs.map((club) => (
+                <div key={club.id}>
+                  <p className="mb-2 text-sm text-white md:text-muted">{club.associationName}</p>
+                  {clubCard(club)}
                 </div>
               ))}
             </section>

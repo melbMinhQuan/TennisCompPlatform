@@ -1,7 +1,7 @@
 import { Link, useSearchParams } from "react-router";
 import { getCompetitions } from "../api/matches";
 import { useApiData } from "../api/useApiData";
-import { matchBadgeClass, matchButtonClass, matchCardClass, pageClass, pageIntroClass, pageTitleClass } from "../components/MatchesUI";
+import { matchButtonClass, matchCardClass, pageClass, pageIntroClass, pageTitleClass } from "../components/MatchesUI";
 import MatchLoadState from "../components/MatchLoadState";
 import { isOpenSeason } from "../types/season";
 
