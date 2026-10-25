@@ -101,8 +101,8 @@ describe("I-UI-004: page data follows the logged-in player", () => {
 
   test("leaving the page cancels the request", () => {
     let signal: AbortSignal | undefined;
-    const { unmount } = renderAsAlice((s) => {
-      signal = s;
+    const { unmount } = renderAsAlice((abortSignal) => {
+      signal = abortSignal;
       return new Promise<string>(() => {});
     });
     unmount();

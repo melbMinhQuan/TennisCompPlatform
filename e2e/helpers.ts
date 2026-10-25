@@ -1,6 +1,6 @@
 import { expect, type Page } from "@playwright/test";
 
-// Every seeded .example account shares this development password (see README "Logging in").
+// Every seeded .example account shares this development password (see README "Test accounts").
 export const DEV_PASSWORD = "WaverleyDev#2026";
 export const CHLOE = "chloe.cooper005@players.example";
 // Glen Waverley Tennis Club's club administrator (UserRole UR101).

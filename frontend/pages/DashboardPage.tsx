@@ -70,7 +70,7 @@ export default function DashboardPage() {
             <MatchLoadState error={results.error} retry={results.retry} />
           ) : (
             <RecentActivity
-              matches={[...(results.data ?? [])].sort((a, b) => b.date.localeCompare(a.date))}
+              matches={[...(results.data ?? [])].sort((left, right) => right.date.localeCompare(left.date))}
               available={!results.error}
               careerSummary={apiData?.careerSummary ?? MOCK_CAREER_SUMMARY}
             />

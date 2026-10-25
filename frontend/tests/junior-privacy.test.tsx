@@ -253,7 +253,7 @@ describe("JUNIOR-UI-006: the association admin sees every junior's details, with
     expect(screen.queryByRole("heading", { name: /Leo Fitzgerald/ })).toBeNull();
     fireEvent.click(screen.getByLabelText("Only age problems"));
     fireEvent.change(screen.getByPlaceholderText("Name or Player ID"), { target: { value: "plr113" } });
-    expect(screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent)).toEqual(["Leo Fitzgerald · PLR113"]);
+    expect(screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)).toEqual(["Leo Fitzgerald · PLR113"]);
     // Asked as the signed-in administrator.
     expect(paths).toEqual(["association-admin/juniors"]);
   });

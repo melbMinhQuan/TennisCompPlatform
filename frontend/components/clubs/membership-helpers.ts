@@ -6,11 +6,11 @@ export type ClubMembership = PlayerMemberships["clubs"][number];
 export const CLUB_CARD_CLASS = `${matchCardClass} text-[#1a3049]`;
 
 /** Primary membership first. */
-export const primaryFirst = (a: Membership, b: Membership) => Number(b.isPrimary) - Number(a.isPrimary);
+export const primaryFirst = (left: Membership, right: Membership) => Number(right.isPrimary) - Number(left.isPrimary);
 
 /** Current-season teams first; past seasons stay listed but are labelled. */
-export const currentFirst = (a: MembershipTeam, b: MembershipTeam) =>
-  Number(b.seasonStatus === "ACTIVE") - Number(a.seasonStatus === "ACTIVE");
+export const currentFirst = (left: MembershipTeam, right: MembershipTeam) =>
+  Number(right.seasonStatus === "ACTIVE") - Number(left.seasonStatus === "ACTIVE");
 
 /** Nothing for the season being played; otherwise whether the season is still to come or over. */
 export const pastLabel = (team: MembershipTeam) =>

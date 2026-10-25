@@ -30,7 +30,7 @@ export function toUpcomingCompetitions(fixtures: MatchFixture[]): UpcomingCompet
 
   return fixtures
     .filter((fixture) => (fixture.status === "Scheduled" || fixture.status === "Postponed") && (!fixture.date || fixture.date >= today))
-    .sort((a, b) => (a.date ?? "9999").localeCompare(b.date ?? "9999"))
+    .sort((left, right) => (left.date ?? "9999").localeCompare(right.date ?? "9999"))
     .map((fixture) => {
       const { weekday, day, month } = dateParts(fixture.date);
       return {

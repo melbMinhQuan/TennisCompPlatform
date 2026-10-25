@@ -47,11 +47,11 @@ export function unique<T extends { id: string }>(items: T[]) {
  * with the player's team), otherwise the latest season by start date. Array order does not matter.
  */
 export function pickSection(candidates: Section[], data: StandingsData): Section | undefined {
-  const hasMyTeam = (s: Section) =>
-    data.ladders.some((r) => r.sectionId === s.id && data.myTeamIds.includes(r.teamId));
+  const hasMyTeam = (section: Section) =>
+    data.ladders.some((entry) => entry.sectionId === section.id && data.myTeamIds.includes(entry.teamId));
   return (
-    candidates.find((s) => s.seasonStatus === "ACTIVE" && hasMyTeam(s)) ??
-    candidates.find((s) => s.seasonStatus === "ACTIVE") ??
-    [...candidates].sort((a, b) => b.seasonStartDate.localeCompare(a.seasonStartDate))[0]
+    candidates.find((section) => section.seasonStatus === "ACTIVE" && hasMyTeam(section)) ??
+    candidates.find((section) => section.seasonStatus === "ACTIVE") ??
+    [...candidates].sort((left, right) => right.seasonStartDate.localeCompare(left.seasonStartDate))[0]
   );
 }
