@@ -21,6 +21,10 @@ export async function login(email: string, password: string, signal: AbortSignal
   return response
 }
 
+/**
+ * Loads GET /api/v1/player-dashboard with the email query parameter and returns its data.
+ * Uses the supplied abort signal; request failures propagate through the shared client.
+ */
 export async function getDashboard(email: string, signal: AbortSignal) {
   const query = new URLSearchParams({ email })
   return (await request<{ data: DashboardData }>(`/api/v1/player-dashboard?${query}`, signal)).data

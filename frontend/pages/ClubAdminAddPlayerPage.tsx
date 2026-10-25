@@ -12,19 +12,16 @@ import { useClubAdminAction } from "../api/useClubAdminAction";
 import { RoleSessionContext } from "../context/RoleSession";
 import {
   matchButtonClass,
-  matchCardClass,
   matchLightButtonClass,
   pageTitleClass,
 } from "../components/MatchesUI";
 import CreatePlayerForm from "../components/club-admin/players/CreatePlayerForm";
-import { displayId, shortClubName } from "../utils/formatters";
-import JuniorBadge from "../components/junior/JuniorBadge";
-import JuniorNotice from "../components/junior/JuniorNotice";
+import { displayId } from "../utils/formatters";
+import PlayerRegistryLookup from "../components/club-admin/players/PlayerRegistryLookup";
 
 type Stage = "search" | "choose" | "create" | "done";
 const button = matchButtonClass;
 const secondary = matchLightButtonClass;
-const inputStyle = "mt-1 min-h-11 w-full rounded-lg border border-[#c8d8e9] bg-white px-4 text-[#1a3049] outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3f72af]";
 const normalize = (value: string) => value.trim().toLowerCase().replace(/\s+/g, " ");
 
 function toISODate(value: string) {
@@ -146,90 +143,24 @@ export default function ClubAdminAddPlayerPage() {
         })}
       </ol>
 
-      {stage === "search" && (
-        <form onSubmit={search} className={`mt-5 text-[#1a3049] ${matchCardClass}`}>
-          <h2 className="mb-4 text-lg font-bold">Who are you adding?</h2>
-          <div className="grid gap-4 md:grid-cols-3">
-            <label className="text-sm font-semibold">Full name *
-              <input className={inputStyle} value={fullName} onChange={(event) => setFullName(event.target.value)} placeholder="Full name" required />
-              <span className="mt-1 block text-xs font-normal text-muted">Required</span>
-            </label>
-            <label className="text-sm font-semibold">Date of birth
-              <input
-                className={inputStyle}
-                type="text"
-                inputMode="numeric"
-                placeholder="DD/MM/YYYY"
-                maxLength={10}
-                value={dateOfBirth}
-                onChange={(event) => {
-                  const digits = event.target.value
-                    .replace(/\D/g, "")
-                    .slice(0, 8);
-
-                  let formatted = digits.slice(0, 2);
-
-                  if (digits.length > 2) {
-                    formatted += "/" + digits.slice(2, 4);
-                  }
-
-                  if (digits.length > 4) {
-                    formatted += "/" + digits.slice(4, 8);
-                  }
-
-                  setDateOfBirth(formatted);
-                }}
-              />
-
-              <span className="mt-1 block text-xs font-normal text-muted">Helps find the right person</span>
-            </label>
-            <label className="text-sm font-semibold">Email
-              <input className={inputStyle} type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Email address" />
-              <span className="mt-1 block text-xs font-normal text-muted">Optional. Only used to find a match</span>
-            </label>
-          </div>
-          <p className="mt-4 text-sm text-muted">Searches every registered player, in every club. Results never show date of birth or contact details.</p>
-          {(error || action.error) && <p role="alert" className="mt-2 text-sm text-red-700">{error || action.error}</p>}
-          <button className={`${button} mt-4 w-full md:w-auto`} type="submit" disabled={action.busy}>{action.busy ? "Searching…" : "Search"}</button>
-        </form>
-      )}
-
-      {stage === "choose" && (
-        <div className="mt-5">
-          <h2 className="mb-4 text-lg font-bold">{results.length} results for “{fullName.trim()}”</h2>
-          {action.error && <p role="alert" className="mb-4 rounded-lg bg-white p-3 text-sm text-red-700">{action.error}</p>}
-          {results.some((player) => player.isJunior) && <JuniorNotice audience="registry" className="mb-4" />}
-          <div className="space-y-4">
-            {results.map((player) => {
-              const member = player.inThisClub;
-              const clubs = player.otherClubs;
-              const exact = player.match.name === "exact";
-              return (
-                <article key={player.id} className="rounded-2xl bg-white p-5 text-[#1a3049] md:p-6">
-                  <div className="flex flex-col-reverse items-start justify-between gap-2 md:flex-row">
-                    <h3 className="font-bold">{player.firstName} {player.lastName} · {displayId(player)}{player.isJunior && <JuniorBadge />}</h3>
-                    <span className={`rounded-md px-3 py-1 text-xs font-semibold ${member ? "bg-[#e4f5ec] text-[#187650]" : exact ? "bg-[#e7f0fa]" : "bg-[#fff1df] text-[#a45c14]"}`}>
-                      {member ? "Already in your club" : exact ? "In another club / Not a member" : "Possible match"}
-                    </span>
-                  </div>
-                  <p className="mt-2 text-sm font-medium">Name {exact ? "✓" : "similar"} {player.match.dateOfBirth !== null && ` · Date of birth ${player.match.dateOfBirth ? "✓" : "×"}`} {player.match.email !== null && ` · Email ${player.match.email ? "✓" : "×"}`}</p>
-                  <p className="mt-2 text-sm text-muted">{member ? `Already a ${shortClubName(clubName)} member. There is nothing to add.` : player.isJunior ? "A junior: where they play is not shown to other clubs. Adding them keeps the same Player ID and history." : clubs.length ? `Plays for ${clubs.join(", ")}. Adding them keeps the same Player ID and history.` : "No current club membership."}</p>
-                  {member ? (
-                    <Link to={`/club-admin/players/${player.id}`} className={`${secondary} mt-3 w-full md:w-auto`}>View player</Link>
-                  ) : (
-                    <button type="button" disabled={action.busy} onClick={() => void choose(player)} className={`${exact ? button : secondary} mt-3 w-full md:w-auto`}>Add to my club</button>
-                  )}
-                </article>
-              );
-            })}
-          </div>
-          <div className="mt-4 rounded-2xl border-2 border-dashed border-[#b7cce3] bg-[#f4f8fc] p-5 text-[#1a3049] md:p-6">
-            <h3 className="font-bold">Not in the list?</h3>
-            <p className="mt-2 text-sm text-muted">Only create a new player if none of the results above is this person.</p>
-            <button type="button" className={`${secondary} mt-3 w-full md:w-auto`} onClick={() => setStage("create")}>Create new player</button>
-          </div>
-        </div>
-      )}
+			<PlayerRegistryLookup
+				showSearch={stage === "search"}
+				showResults={stage === "choose"}
+				fullName={fullName}
+				dateOfBirth={dateOfBirth}
+				email={email}
+				results={results}
+				clubName={clubName}
+				error={error}
+				actionError={action.error}
+				busy={action.busy}
+				onFullNameChange={setFullName}
+				onDateOfBirthChange={setDateOfBirth}
+				onEmailChange={setEmail}
+				onSearch={search}
+				onChoose={choose}
+				onCreateNew={() => setStage("create")}
+			/>
 
       {stage === "create" && (
         <CreatePlayerForm

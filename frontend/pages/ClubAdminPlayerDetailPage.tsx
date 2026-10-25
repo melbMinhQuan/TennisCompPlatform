@@ -14,6 +14,12 @@ import GuardianContact from "../components/junior/GuardianContact";
 import JuniorBadge from "../components/junior/JuniorBadge";
 import JuniorNotice from "../components/junior/JuniorNotice";
 
+import PlayerMembershipDetails from "../components/club-admin/players/PlayerMembershipDetails";
+
+import PlayerTeamsCard from "../components/club-admin/players/PlayerTeamsCard";
+
+import EndMembershipDialog from "../components/club-admin/players/EndMembershipDialog";
+
 const secondaryButton = matchLightButtonClass;
 
 function formatDate(value: string | null | undefined) {
@@ -88,6 +94,15 @@ export default function ClubAdminPlayerDetailPage() {
   const primaryClubName = primaryClub?.clubName;
 
   const isPrimary = currentMembership.isPrimary;
+	const membershipRows = memberships.map((membership) => ({
+		clubId: membership.clubId,
+		clubName: membership.clubName,
+		status: ended && membership.clubId === clubId ? "INACTIVE" as const : membership.status,
+		isPrimary: membership.isPrimary,
+		joinedLabel: membership.clubId === clubId
+			? `Joined ${formatDate(membership.startDate)}`
+			: "Managed by that club",
+	}));
 
   return (
     <section className="text-white md:text-[#1a3049]">
@@ -134,207 +149,30 @@ export default function ClubAdminPlayerDetailPage() {
 
       
     {/* Membership Summary */}
-    <div className="mt-5 rounded-2xl bg-[#1c334e] p-5 text-white md:p-6">
-        <h2 className="text-lg font-bold">
-            {clubName} membership
-        </h2>
-
-        <div className="mt-4 grid grid-cols-2 gap-x-5 gap-y-5 md:grid-cols-[100px_190px_130px_1fr] md:gap-x-5">
-            {/* Status */}
-            <div>
-            <p className="text-xl font-bold">
-                {currentStatus === "ACTIVE" ? "Active" : "Inactive"}
-            </p>
-            <p className="text-xs text-[#aebed0]">Status</p>
-            </div>
-
-            {/* Club type */}
-            <div>
-            <p className="text-xl font-bold">
-                {isPrimary ? "Primary" : "Additional club"}
-            </p>
-            <p className="text-xs text-[#aebed0]">
-                {isPrimary
-                ? "Primary club"
-                : `Primary club: ${primaryClubName ?? "Unknown"}`}
-            </p>
-            </div>
-
-            {/* Joined date */}
-            <div>
-            <p className="text-xl font-bold">
-                {formatDate(currentMembership.startDate)}
-            </p>
-            <p className="text-xs text-[#aebed0]">Joined</p>
-            </div>
-
-            {/* Team count */}
-            <div>
-            <p className="text-xl font-bold">
-                {currentTeamCount}
-            </p>
-            <p className="text-xs text-[#aebed0]">
-                {currentTeamCount === 1 ? "Team this season" : "Teams this season"}
-            </p>
-            </div>
-        </div>
-    </div>
-
-
-      {/* Club Membership */}
-      <div className="mt-4 rounded-2xl bg-white p-5 text-[#1a3049] md:p-6">
-        <h2 className="border-b border-[#dbe4ef] pb-2 text-lg font-bold">
-          Club membership
-        </h2>
-
-        {memberships.map((membership) => {
-          const status =
-            ended && membership.clubId === clubId
-              ? "INACTIVE"
-              : membership.status;
-
-          return (
-            <div
-              key={membership.clubId}
-              className="border-b border-[#dbe4ef] py-4 last:border-b-0"
-            >
-              <p className="font-semibold">
-                {membership.clubName}
-              </p>
-
-              <p className="mt-1 text-sm text-muted">
-                {membership.clubId === clubId
-                  ? `Joined ${formatDate(membership.startDate)}`
-                  : "Managed by that club"}
-              </p>
-
-              <div className="mt-2 flex flex-wrap gap-2">
-                <span
-                  className={`rounded-md px-3 py-1 text-xs font-semibold ${
-                    status === "ACTIVE"
-                      ? "bg-[#e4f5ec] text-[#187650]"
-                      : "bg-[#f0f1f3] text-[#64748b]"
-                  }`}
-                >
-                  {status === "ACTIVE" ? "Active" : "Inactive"}
-                </span>
-
-                <span className="rounded-md bg-[#e7f0fa] px-3 py-1 text-xs font-semibold">
-                  {membership.isPrimary
-                    ? "Primary club"
-                    : "Additional club"}
-                </span>
-              </div>
-            </div>
-          );
-        })}
-
-        {currentStatus === "ACTIVE" && (
-          <button
-            type="button"
-            onClick={() => setShowConfirm(true)}
-            className={`${secondaryButton} mt-4 w-full md:w-auto`}
-          >
-            End {clubName} membership
-          </button>
-        )}
-      </div>
+			<PlayerMembershipDetails
+				clubName={clubName}
+				currentStatus={currentStatus}
+				isPrimary={isPrimary}
+				primaryClubName={primaryClubName}
+				joinedDate={formatDate(currentMembership.startDate)}
+				currentTeamCount={currentTeamCount}
+				memberships={membershipRows}
+				onEndMembership={() => setShowConfirm(true)}
+			/>
 
       {/* Teams */}
-      <div className="mt-4 rounded-2xl bg-white p-5 text-[#1a3049] md:p-6">
-        <h2 className="border-b border-[#dbe4ef] pb-2 text-lg font-bold">
-          Teams
-        </h2>
-
-        {playerTeams.length === 0 ? (
-          <p className="py-4 text-sm text-muted">
-            No team yet.
-          </p>
-        ) : (
-          playerTeams.map((team) => (
-            <div
-              key={team.teamId}
-              className="border-b border-[#dbe4ef] py-4 last:border-b-0"
-            >
-              <p className="font-semibold">{team.teamName}</p>
-              <p className="mt-1 text-sm text-muted">
-                {team.competitionName} · {team.seasonLabel} · {team.sectionName}
-              </p>
-
-              <div className="mt-2 flex flex-wrap items-center gap-3">
-                {team.seasonStatus === "ACTIVE" || team.seasonStatus === "UPCOMING" ? (
-                  <span className="rounded-md bg-[#e4f5ec] px-3 py-1 text-xs font-semibold text-[#187650]">
-                    In squad
-                  </span>
-                ) : (
-                  <span className="rounded-md bg-[#f0f1f3] px-3 py-1 text-xs font-semibold text-[#64748b]">
-                    Past season
-                  </span>
-                )}
-
-                <Link
-                  to={`/club-admin/teams/${team.teamId}`}
-                  className="text-sm font-semibold text-[#3f72af] hover:underline focus-visible:outline-2 focus-visible:outline-[#3f72af]"
-                >
-                  View team ›
-                </Link>
-              </div>
-            </div>
-          ))
-        )}
-
-        <Link
-          to="/club-admin/teams"
-          className={`${secondaryButton} mt-4 w-full md:w-auto`}
-        >
-          + Add to a team
-        </Link>
-      </div>
+			<PlayerTeamsCard teams={playerTeams} />
 
       {/* Confirmation Dialog */}
       {showConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="end-membership-title"
-            className="w-full max-w-md rounded-2xl bg-white p-6 text-[#1a3049]"
-          >
-            <h2
-              id="end-membership-title"
-              className="text-xl font-bold"
-            >
-              End membership?
-            </h2>
-
-            <p className="mt-3 text-sm text-muted">
-              This will mark the {clubName} membership as
-              inactive on this page only.
-              No database changes will be made.
-            </p>
-
-            <div className="mt-6 flex flex-wrap gap-3">
-              <button
-                type="button"
-                className={secondaryButton}
-                onClick={() => setShowConfirm(false)}
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                className="min-h-11 rounded-lg bg-red-600 px-5 font-medium text-white hover:bg-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700"
-                onClick={() => {
-                  setEnded(true);
-                  setShowConfirm(false);
-                }}
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
-        </div>
+				<EndMembershipDialog
+					clubName={clubName}
+					onCancel={() => setShowConfirm(false)}
+					onConfirm={() => {
+						setEnded(true);
+						setShowConfirm(false);
+					}}
+				/>
       )}
     </section>
   );

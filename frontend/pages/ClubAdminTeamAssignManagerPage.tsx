@@ -8,10 +8,9 @@ import { getClubPlayers, type ClubPlayer } from "../api/club-admin-players";
 import { assignTeamManager, getClubTeam } from "../api/club-admin-teams";
 import { useClubAdminData } from "../api/useApiData";
 import { useClubAdminAction } from "../api/useClubAdminAction";
+import TeamManagerSelection from "../components/club-admin/teams/TeamManagerSelection";
 import MatchLoadState from "../components/MatchLoadState";
 import {
-  matchButtonClass,
-  matchCardClass,
   matchLightButtonClass,
   pageTitleClass,
 } from "../components/MatchesUI";
@@ -136,104 +135,24 @@ export default function ClubAdminTeamAssignManagerPage() {
         can’t hold another role such as club administrator.
       </p>
 
-      <div className={`mt-5 text-[#1a3049] ${matchCardClass}`}>
-        <label
-          htmlFor="team-manager-search"
-          className="text-sm font-semibold"
-        >
-          Search players
-        </label>
-
-        <input
-          id="team-manager-search"
-          type="search"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search by name or Player ID"
-          className="mt-2 min-h-11 w-full rounded-lg border border-[#c8d8e9] px-4 outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3f72af]"
-        />
-
-        <div className="mt-5 border-b border-[#dbe4ef] pb-3">
-          <h2 className="font-bold">
-            Choose one person ({candidates.length})
-          </h2>
-        </div>
-
-        <div className="max-h-[480px] overflow-y-auto">
-          {candidates.length === 0 ? (
-            <p className="py-6 text-sm text-muted">
-              No eligible players found.
-            </p>
-          ) : (
-            candidates.map((player) => {
-              const reason = blockedReason(player);
-              return (
-              <label
-                key={player.id}
-                className={`flex items-center gap-3 border-b border-[#e4eaf2] py-4 last:border-0 ${reason ? "opacity-65" : "cursor-pointer"}`}
-              >
-                <input
-                  type="radio"
-                  name="team-manager"
-                  disabled={Boolean(reason)}
-                  value={player.id}
-                  checked={selectedManagerId === player.id}
-                  onChange={() => setSelectedId(player.id)}
-                  className="h-4 w-4 accent-[#3f72af]"
-                />
-
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold">
-                    {player.firstName} {player.lastName}
-                  </p>
-                  <p className="text-xs text-muted">
-                    {displayId(player)} ·{" "}
-                    {reason ||
-                      (squadPlayerIds.has(player.id)
-                        ? "In this squad"
-                        : "Club member")}
-                  </p>
-                </div>
-
-                {player.id === currentManagerId && (
-                  <span className="rounded-md bg-[#e8f0fa] px-2.5 py-1 text-xs font-semibold text-[#1a3049]">
-                    Current manager
-                  </span>
-                )}
-              </label>
-              );
-            })
-          )}
-        </div>
-
-        {action.error && (
-          <p role="alert" className="mt-4 text-sm text-red-600">
-            {action.error}
-          </p>
-        )}
-
-        <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-          <Link
-            to={detailPath}
-            className={matchLightButtonClass}
-          >
-            Cancel
-          </Link>
-
-          <button
-            type="button"
-            disabled={
-              !selectedPlayer ||
-              Boolean(blockedReason(selectedPlayer)) ||
-              action.busy
-            }
-            onClick={() => void handleAssign()}
-            className={`${matchButtonClass} disabled:cursor-not-allowed disabled:opacity-50`}
-          >
-            Assign manager
-          </button>
-        </div>
-      </div>
+			<TeamManagerSelection
+				search={search}
+				candidates={candidates}
+				selectedManagerId={selectedManagerId}
+				currentManagerId={currentManagerId}
+				squadPlayerIds={squadPlayerIds}
+				blockedReason={blockedReason}
+				error={action.error}
+				assignDisabled={
+					!selectedPlayer ||
+					Boolean(blockedReason(selectedPlayer)) ||
+					action.busy
+				}
+				detailPath={detailPath}
+				onSearchChange={setSearch}
+				onSelectManager={setSelectedId}
+				onAssign={handleAssign}
+			/>
     </section>
   );
 }

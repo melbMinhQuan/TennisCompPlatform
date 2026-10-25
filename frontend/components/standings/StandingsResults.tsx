@@ -1,7 +1,7 @@
 import StandingsTable from "./StandingsTable";
 import { STANDINGS_CARD_CLASS, STANDINGS_CONTROL_CLASS, TABLE_NOTES, type TableRow, type View } from "./standings-helpers";
 
-type StandingsResultsProps = {
+interface StandingsResultsProps {
   view: View;
   title: string;
   subtitle: string;
@@ -14,7 +14,7 @@ type StandingsResultsProps = {
   rows: TableRow[];
   total: number;
   asOf?: string;
-};
+}
 
 /** Results card: heading, finals banner, search and "only me" filter, and the table. */
 export default function StandingsResults(props: StandingsResultsProps) {

@@ -1,13 +1,13 @@
 import StandingsSelect from "./StandingsSelect";
 import { STANDINGS_CARD_CLASS, unique, type Section } from "./standings-helpers";
 
-type StandingsFiltersProps = {
+interface StandingsFiltersProps {
   sections: Section[];
   section?: Section;
   /** Picks the best section out of the matching candidates. */
   onChooseSection: (candidates: Section[]) => void;
   onSectionChange: (sectionId: string) => void;
-};
+}
 
 /** Association → competition → season → section filters. */
 export default function StandingsFilters(props: StandingsFiltersProps) {
@@ -18,36 +18,36 @@ export default function StandingsFilters(props: StandingsFiltersProps) {
         <StandingsSelect
           label="Association"
           value={section?.associationId ?? ""}
-          options={unique(sections.map((s) => ({ id: s.associationId, name: s.associationName })))}
-          onChange={(id) => props.onChooseSection(sections.filter((s) => s.associationId === id))}
+          options={unique(sections.map((candidateSection) => ({ id: candidateSection.associationId, name: candidateSection.associationName })))}
+          onChange={(id) => props.onChooseSection(sections.filter((candidateSection) => candidateSection.associationId === id))}
         />
         <StandingsSelect
           label="Competition"
           value={section?.competitionId ?? ""}
           options={unique(
             sections
-              .filter((s) => s.associationId === section?.associationId)
-              .map((s) => ({ id: s.competitionId, name: s.competitionName })),
+              .filter((candidateSection) => candidateSection.associationId === section?.associationId)
+              .map((candidateSection) => ({ id: candidateSection.competitionId, name: candidateSection.competitionName })),
           )}
-          onChange={(id) => props.onChooseSection(sections.filter((s) => s.competitionId === id))}
+          onChange={(id) => props.onChooseSection(sections.filter((candidateSection) => candidateSection.competitionId === id))}
         />
         <StandingsSelect
           label="Season"
           value={section?.seasonId ?? ""}
           options={unique(
             sections
-              .filter((s) => s.competitionId === section?.competitionId)
-              .map((s) => ({
-                id: s.seasonId,
-                name: s.seasonLabel + (s.seasonStatus === "ACTIVE" ? " · Current" : " · Past"),
+              .filter((candidateSection) => candidateSection.competitionId === section?.competitionId)
+              .map((candidateSection) => ({
+                id: candidateSection.seasonId,
+                name: candidateSection.seasonLabel + (candidateSection.seasonStatus === "ACTIVE" ? " · Current" : " · Past"),
               })),
           )}
-          onChange={(id) => props.onChooseSection(sections.filter((s) => s.seasonId === id))}
+          onChange={(id) => props.onChooseSection(sections.filter((candidateSection) => candidateSection.seasonId === id))}
         />
         <StandingsSelect
           label="Section"
           value={section?.id ?? ""}
-          options={sections.filter((s) => s.seasonId === section?.seasonId)}
+          options={sections.filter((candidateSection) => candidateSection.seasonId === section?.seasonId)}
           onChange={props.onSectionChange}
         />
       </div>

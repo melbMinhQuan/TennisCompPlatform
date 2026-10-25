@@ -1,11 +1,11 @@
 import { darkCardClass } from "../MatchesUI";
 
-type StandingsOverviewProps = {
+interface StandingsOverviewProps {
   playerName: string;
   teamPosition: string;
   playerPosition: string;
   utrRank: string;
-};
+}
 
 /**
  * Navy summary card. Waverley Tennis standings (team and player position) and the UTR rank

@@ -4,11 +4,11 @@ import { matchCardClass } from "../../MatchesUI";
 
 const inputClass = "mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-ink";
 
-type Props = {
+interface Props {
   fixtures: ClubAdminFixture[];
   filter: FixtureFilter;
   onChange: (changes: Partial<FixtureFilter>) => void;
-};
+}
 
 /** Season, club team and search filters for the Fixtures & Results page. */
 export default function FixtureFilters({ fixtures, filter, onChange }: Props) {
