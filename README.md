@@ -16,7 +16,7 @@ association's administrator keeps an eye on its juniors.
 
 ---
 
-## Handover at a glance
+## Handover Summary
 
 | Handover item | Where to find it |
 | --- | --- |
