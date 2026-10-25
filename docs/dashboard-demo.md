@@ -2,7 +2,7 @@
 
 The routes under `/api/v1/player-dashboard`, which the player's Profile page and its
 Notifications card use. (The separate `/demo` showcase page that first called them has been
-removed; the player pages replaced it.) To run the app, see the README's Quick start.
+removed; the player pages replaced it.) To run the app, see the README's "Running it on your computer".
 
 ## Implemented routes
 

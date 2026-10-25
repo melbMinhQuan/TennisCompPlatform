@@ -29,10 +29,10 @@ describe("FE-009: club membership lines and order", () => {
 
   test("the primary membership comes first; current-season teams come first and past ones are labelled", () => {
     const memberships = [membership({ id: "second" }), membership({ id: "primary", isPrimary: true })].sort(primaryFirst);
-    expect(memberships.map((m) => m.id)).toEqual(["primary", "second"]);
+    expect(memberships.map((membership) => membership.id)).toEqual(["primary", "second"]);
 
     const teams = [team("last-year", "COMPLETED"), team("this-year", "ACTIVE"), team("archived", "ARCHIVED")].sort(currentFirst);
-    expect(teams.map((t) => t.id + pastLabel(t))).toEqual(["this-year", "last-year · Past season", "archived · Past season"]);
+    expect(teams.map((team) => team.id + pastLabel(team))).toEqual(["this-year", "last-year · Past season", "archived · Past season"]);
   });
 
   test("a season that has not started is coming, not past", () => {

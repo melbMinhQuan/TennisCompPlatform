@@ -52,9 +52,9 @@ describe("FE-008: which standings section opens", () => {
 
   test("with no current season, the latest season by start date, without reordering the list it was given", () => {
     for (const candidates of orderings([pastOther2024, pastMine, pastOther2025])) {
-      const before = candidates.map((s) => s.id);
+      const before = candidates.map((section) => section.id);
       expect(pickSection(candidates, data)?.id).toBe("past-other-2025");
-      expect(candidates.map((s) => s.id)).toEqual(before);
+      expect(candidates.map((section) => section.id)).toEqual(before);
     }
   });
 
@@ -64,6 +64,6 @@ describe("FE-008: which standings section opens", () => {
 
   test("filter options list each one once, in the order first seen", () => {
     const options = [{ id: "B", name: "Box Hill" }, { id: "W", name: "Waverley" }, { id: "B", name: "Box Hill" }];
-    expect(unique(options).map((o) => o.id)).toEqual(["B", "W"]);
+    expect(unique(options).map((option) => option.id)).toEqual(["B", "W"]);
   });
 });

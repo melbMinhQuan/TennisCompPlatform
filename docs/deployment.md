@@ -46,7 +46,7 @@ visitor's browser and calls the backend address that was baked in at build time.
 
 To release, open a pull request from `develop` into `main` and merge it once CI is
 green. The merge starts the **CI** workflow on `main` (watch it in the repository's
-**Actions** tab). It runs every check again ([README → Testing](../README.md#testing)),
+**Actions** tab). It runs every check again ([README → Testing and CI](../README.md#testing-and-ci)),
 and only if all of them pass does it release, one step at a time:
 
 ```text

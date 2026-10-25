@@ -26,7 +26,7 @@ const ADMIN = {
   clubName: "Glen Waverley Tennis Club", displayName: "Margaret Hayes",
 };
 const TEAM = "11111111-1111-4111-8111-111111111111";
-const [AVA, BEN, DAN] = ["a", "b", "d"].map((n) => `00000000-0000-4000-8000-00000000000${n}`);
+const [AVA, BEN, DAN] = ["a", "b", "d"].map((suffix) => `00000000-0000-4000-8000-00000000000${suffix}`);
 
 beforeEach(() => {
   // The layout scrolls to the top on every page; jsdom has no scrolling.

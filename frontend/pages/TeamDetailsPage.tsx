@@ -30,7 +30,7 @@ export default function TeamDetailsPage() {
   );
   const { data: team, error, loading, retry } = useApiData(loadTeam);
   const members = team
-    ? [...team.members].sort((a, b) => a.name.localeCompare(b.name))
+    ? [...team.members].sort((left, right) => left.name.localeCompare(right.name))
     : [];
   return (
     <div className={`${pageClass} leading-[1.45]`}>
@@ -118,7 +118,7 @@ export default function TeamDetailsPage() {
                           {member.name
                             .split(/\s+/)
                             .slice(0, 2)
-                            .map((n) => n[0])
+                            .map((namePart) => namePart[0])
                             .join("")}
                         </span>
                         <div className="min-w-0">

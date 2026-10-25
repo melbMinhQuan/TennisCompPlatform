@@ -39,7 +39,9 @@ export default function ClubAdminTeamsPage() {
   const { data, error, retry } = useClubAdminData(getClubTeams);
   const clubName = useContext(RoleSessionContext).signedIn?.clubName ?? "Your club";
 
-  const teams = [...(data ?? [])].sort((a, b) => a.name.localeCompare(b.name) || a.sectionName.localeCompare(b.sectionName));
+  const teams = [...(data ?? [])].sort(
+    (left, right) => left.name.localeCompare(right.name) || left.sectionName.localeCompare(right.sectionName),
+  );
   const tabs = tabsFor(teams);
   const seasonFilter = chosenFilter ?? tabs[0].value;
   const competitionNames = [...new Set(teams.map((team) => team.competitionName))].sort();

@@ -108,19 +108,19 @@ export default function ClubAdminTeamCreatePage() {
             )}
             <div className="mt-4 grid gap-4 md:grid-cols-3">
               <label className="text-sm font-semibold">Competition *
-                <select required className={input} value={competitionId} onChange={e => setCompetition(e.target.value)}>
+                <select required className={input} value={competitionId} onChange={event => setCompetition(event.target.value)}>
                   {competitions.map(item => <option key={item.competitionId} value={item.competitionId}>{item.competitionName}</option>)}
                 </select>
                 <span className="mt-2 block text-xs font-normal text-[#60758d]">Run by your association</span>
               </label>
               <label className="text-sm font-semibold">Season *
-                <select required className={input} value={seasonId} onChange={e => setSeason(e.target.value)}>
+                <select required className={input} value={seasonId} onChange={event => setSeason(event.target.value)}>
                   {seasons.map(item => <option key={item.seasonId} value={item.seasonId}>{item.seasonLabel}</option>)}
                 </select>
                 <span className="mt-2 block text-xs font-normal text-[#60758d]">Only seasons open for entries</span>
               </label>
               <label className="text-sm font-semibold">Section *
-                <select required className={input} value={sectionId} onChange={e => setSection(e.target.value)}>
+                <select required className={input} value={sectionId} onChange={event => setSection(event.target.value)}>
                   {seasonSections.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
                 </select>
                 <span className="mt-2 block text-xs font-normal text-[#60758d]">Sections for this season</span>
@@ -130,7 +130,7 @@ export default function ClubAdminTeamCreatePage() {
           <div className="mt-4 rounded-2xl bg-white p-5 text-[#1a3049] md:p-6">
             <h2 className="text-lg font-bold">Team name</h2>
             <label className="mt-4 block text-sm font-semibold">Name *
-              <input required maxLength={80} value={teamName} onChange={e => setName(e.target.value)} className={input} placeholder={suggestedName(clubName, [])} />
+              <input required maxLength={80} value={teamName} onChange={event => setName(event.target.value)} className={input} placeholder={suggestedName(clubName, [])} />
               <span className="mt-2 block text-xs font-normal text-[#60758d]">Suggested from your club name. It must be unique in this season.</span>
             </label>
           </div>

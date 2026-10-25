@@ -1,0 +1,35 @@
+TennisComp
+Copyright (c) 2026 Waverley Tennis Association. All rights reserved.
+
+TennisComp (the "Software") was developed by the TennisComp student project team
+(GitHub: melbMinhQuan, Ejalyna, Xt162, Merryleang and zhe3364) for the Waverley Tennis
+Association (the "Client").
+
+1. Ownership
+
+   As agreed between the team and the Client, on handover the team transfers to the
+   Client all copyright and other intellectual property rights in the Software,
+   including its source code, documentation, database schema and test data. The
+   Client may use, copy, modify, publish, distribute, sublicense and sell the
+   Software, and let others do so, without restriction and without payment to the
+   team.
+
+2. Third-party software
+
+   The Software depends on open-source packages that remain under their own
+   licences, mostly MIT, Apache-2.0, ISC and BSD. They are listed in the
+   package.json files and package-lock.json, and summarised in README.md under
+   "Licence and third-party software". Nothing in this file changes those
+   licences, and anyone who distributes the Software must keep their notices.
+
+3. Name and logo
+
+   The Waverley Tennis name and logo (frontend/resources/Logo.png) belong to the
+   Client.
+
+4. No warranty
+
+   The Software is provided "as is", without warranty of any kind, express or
+   implied, including the warranties of merchantability, fitness for a particular
+   purpose and non-infringement. In no event shall the team be liable for any
+   claim, damages or other liability arising from the Software or its use.
