@@ -2,7 +2,7 @@
 
 Route: /dashboard/rankings. Frontend-only implementation based on the functional
 requirements: separate competition/season/section ladders, retained past seasons,
-and individual statistics. docs/dashboardapi.md defines cohort-scoped ranking views.
+and individual statistics. docs/api/dashboardapi.md defines cohort-scoped ranking views.
 
 ## Data
 frontend/data/competition-standings.json is a read-only display snapshot extracted

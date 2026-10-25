@@ -1,4 +1,4 @@
-// The checks from coding_standards.docx section 8, plus its naming rules (section 1).
+// The checks from docs/standards/coding_standards.docx section 8, plus its naming rules (section 1).
 // Run with `npm run lint` in backend/.
 import eslint from '@eslint/js'
 import globals from 'globals'

@@ -7,7 +7,7 @@ connect to it, see [README → Database access](../README.md#database-access).
   Azure Database for PostgreSQL Flexible Server on the live site (`tennis-db`).
 - **Where it is defined.** [backend/prisma/schema.prisma](../backend/prisma/schema.prisma) describes
   every table. The database is only ever changed through the migrations in
-  [backend/prisma/migrations/](../backend/prisma/migrations/) (13 so far), and the live site
+  [backend/prisma/migrations/](../backend/prisma/migrations) (13 so far), and the live site
   applies new ones automatically when it starts.
 - **Names.** 33 tables. In the database, tables and columns are snake_case (`club_membership.is_primary`).
   The backend code calls the same things by camelCase names (`ClubMembership.isPrimary`).

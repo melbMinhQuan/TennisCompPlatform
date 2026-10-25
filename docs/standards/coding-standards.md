@@ -1,11 +1,11 @@
 # Coding standards check
 
-How the code compares with [coding_standards.docx](../coding_standards.docx), section by section.
+How the code compares with [coding_standards.docx](coding_standards.docx), section by section.
 Checked on 24 October 2026. ✅ means the rule is met everywhere it applies; ⚠️ means some code
 still differs, and the cell says where.
 
 The backend is checked automatically: `npm run lint --workspace=backend`
-([backend/eslint.config.mjs](../backend/eslint.config.mjs)) covers the naming rules (section 1),
+([backend/eslint.config.mjs](../../backend/eslint.config.mjs)) covers the naming rules (section 1),
 `any` (3.1) and the section 8 rules, and CI runs it on every push. The frontend has no linter yet;
 its column comes from running the backend's lint rules over `frontend/` and `e2e/` once, and from
 searching the code for the rules a linter can't check.

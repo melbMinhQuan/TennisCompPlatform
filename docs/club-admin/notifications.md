@@ -14,8 +14,8 @@ tested against a fake backend (I-UI-007).
 
 ## Backend API
 
-Built in [`club-admin-notification.service.ts`](../backend/src/club-admin/club-admin-notification.service.ts),
-tests in [`club-admin-notification.test.cjs`](../backend/test/club-admin-notification.test.cjs) (I-CLUBNOTE-*).
+Built in [`club-admin-notification.service.ts`](../../backend/src/club-admin/club-admin-notification.service.ts),
+tests in [`club-admin-notification.test.cjs`](../../backend/test/club-admin-notification.test.cjs) (I-CLUBNOTE-*).
 The frontend uses all three.
 
 | Method | Endpoint | Notes |

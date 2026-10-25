@@ -10,8 +10,8 @@ Filters support competition/season, own-club team and text search, with eight ro
 
 ## Backend API
 
-Built in [`club-admin-fixture.service.ts`](../backend/src/club-admin/club-admin-fixture.service.ts),
-tests in [`club-admin-fixture.test.cjs`](../backend/test/club-admin-fixture.test.cjs) (I-CLUBFIX-*).
+Built in [`club-admin-fixture.service.ts`](../../backend/src/club-admin/club-admin-fixture.service.ts),
+tests in [`club-admin-fixture.test.cjs`](../../backend/test/club-admin-fixture.test.cjs) (I-CLUBFIX-*).
 The frontend uses both.
 
 | Method | Endpoint | Notes |

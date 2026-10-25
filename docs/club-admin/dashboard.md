@@ -23,13 +23,13 @@ Every value below is read from the running database by the backend when the page
 
 The seeded database shows Glen Waverley with 34 active club memberships (26 adults, seven juniors and a parent who manages a junior team), two Winter 2026 teams, six active squad players in each, assigned managers and zero current setup tasks (checked by E2E-011). The unread tile, the sidebar badge and the Notifications page count the same list, loaded once per visit by `context/ClubAdminNotifications.tsx` (see `club-admin-notifications.md`), so marking a notice read updates all three. Historical teams do not create current setup tasks. Counts and selected team rows share one data source, as does the sidebar unread badge. There is no separate notices card: the unread count is shown in the summary card and the sidebar, which link to Notifications (US-22 is a Should).
 
-The Figma numbers (128 members, eight teams, two tasks, three notices), CL-004 identifier and “Summer 2026/27 entries are open” are illustrative. The page shows the real counts, and the club's database ID as its Club ID (an open decision, see [hardcoded-values.md](hardcoded-values.md) §4). The team selector lists every season the club has a team in. The backend labels a season that crosses the new year from its dates ("Summer 2025/26").
+The Figma numbers (128 members, eight teams, two tasks, three notices), CL-004 identifier and “Summer 2026/27 entries are open” are illustrative. The page shows the real counts, and the club's database ID as its Club ID (an open decision, see [hardcoded-values.md](../hardcoded-values.md) §4). The team selector lists every season the club has a team in. The backend labels a season that crosses the new year from its dates ("Summer 2025/26").
 
 ## Backend API
 
 `GET /api/v1/club-admin/dashboard` → `{ data: ClubAdminDashboard }`, built in
-[`club-admin-dashboard.service.ts`](../backend/src/club-admin/club-admin-dashboard.service.ts),
-tests in [`club-admin-dashboard.test.cjs`](../backend/test/club-admin-dashboard.test.cjs) (I-CLUBDASH-*).
+[`club-admin-dashboard.service.ts`](../../backend/src/club-admin/club-admin-dashboard.service.ts),
+tests in [`club-admin-dashboard.test.cjs`](../../backend/test/club-admin-dashboard.test.cjs) (I-CLUBDASH-*).
 The page uses it. As on the other club admin routes, the
 club comes from the admin's CLUB_ADMIN role (403 `NOT_CLUB_ADMIN` otherwise), and a database
 failure is a 503 `DATA_UNAVAILABLE`.

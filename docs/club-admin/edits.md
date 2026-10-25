@@ -4,9 +4,9 @@ The backend for the club admin pages that change data, and how the pages use it.
 is saved by these routes; the pages keep no data of their own and show the record as the
 backend answers it.
 
-Code: [`club-admin-edit.service.ts`](../backend/src/club-admin/club-admin-edit.service.ts),
-request bodies in [`club-admin.dto.ts`](../backend/src/club-admin/club-admin.dto.ts), tests in
-[`club-admin-edit.test.cjs`](../backend/test/club-admin-edit.test.cjs) (I-CLUBEDIT-*).
+Code: [`club-admin-edit.service.ts`](../../backend/src/club-admin/club-admin-edit.service.ts),
+request bodies in [`club-admin.dto.ts`](../../backend/src/club-admin/club-admin.dto.ts), tests in
+[`club-admin-edit.test.cjs`](../../backend/test/club-admin-edit.test.cjs) (I-CLUBEDIT-*).
 
 ## Common rules
 
@@ -69,7 +69,7 @@ exactly one role row. So:
 - The player needs a **login account**. A player without one gets 422 `MANAGER_NOT_ELIGIBLE`
   with `reason: "NO_LOGIN_ACCOUNT"`. The other reasons are `INACTIVE_PLAYER`, `NOT_CLUB_MEMBER` and
   `UNDER_18`: a junior cannot manage a team, because a manager sees every junior's parent contact
-  ([junior-privacy.md](junior-privacy.md)).
+  ([junior-privacy.md](../junior-privacy.md)).
   The page knows all of this before anyone is picked, from `GET players` (below).
 - Their role becomes TEAM_MANAGER. A replaced or removed manager goes back to PLAYER (context
   GLOBAL) instead of being revoked, so they can still sign in as a player.
@@ -87,7 +87,7 @@ exactly one role row. So:
 | `POST players` `{ firstName, lastName, dateOfBirth, gender }` | Step 2, "Create new player". 201. Action `CREATE`. |
 
 **Search.** Whether someone is a candidate depends only on the name, using the scoresheet
-matching rules ([player-matching.md](player-matching.md)): short forms (Ben for Benjamin), nicknames, initials,
+matching rules ([player-matching.md](../player-matching.md)): short forms (Ben for Benjamin), nicknames, initials,
 and one word as either a first name or a surname. Date of birth and email only rank the results
 (exact name 100, +30 each if they agree), so a typo there never hides the right person. Results
 carry `match.name` (`exact` / `similar`) and `match.nameReasons`; `match.dateOfBirth` and
@@ -109,7 +109,7 @@ and `playerCode` (the readable Player ID the page shows) when a profile with the
 
 The edit pages read these routes too, through `frontend/api/club-admin-players.ts` and
 `club-admin-teams.ts`. Tests: I-CLUBADMIN-011 to -017 in
-[`club-admin.test.cjs`](../backend/test/club-admin.test.cjs).
+[`club-admin.test.cjs`](../../backend/test/club-admin.test.cjs).
 
 | Route | Fields the pages rely on |
 | --- | --- |
@@ -133,7 +133,7 @@ The edit pages read these routes too, through `frontend/api/club-admin-players.t
   the next free letter ("Glen Waverley C"). The backend refuses a name used in the season by any club.
 - A finished season's squad and manager can't change (409 `SEASON_CLOSED`). The team page still
   offers the buttons and shows that reason when one is used (an open decision, see
-  [hardcoded-values.md](hardcoded-values.md) §4).
+  [hardcoded-values.md](../hardcoded-values.md) §4).
 - **End membership** on a player's page is not saved: there is no route for it yet, because the
   rules for ending a membership wait on client decision A07. The page says so in its confirmation.
 

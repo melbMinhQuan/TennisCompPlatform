@@ -12,7 +12,7 @@ Work after Sprint 2, going into the final release.
 - Repository clean-up: unused files and the `ts-node` dependency removed, frontend single-letter
   names renamed (coding standard 1.2): `chore/repo-cleanup`
 - Handover documentation: README rebuilt for handover, `LICENSE`, this changelog,
-  `docs/database.md` (entity relationship diagrams) and `docs/coding-standards.md`: `chore/repo-cleanup`
+  `docs/database.md` (entity relationship diagrams) and `docs/standards/coding-standards.md`: `chore/repo-cleanup`
 - Frontend coding-standards compliance: `style/frontend-safe-cleanup` (#41, open)
 
 ## v2.0.0: Sprint 2, Club Administration (5–25 October 2026)

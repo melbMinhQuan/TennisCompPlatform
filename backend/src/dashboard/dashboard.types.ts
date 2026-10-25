@@ -21,7 +21,7 @@ export interface ScheduleItem {
   status: 'SCHEDULED' | 'COMPLETED' | 'CANCELLED'| "POSTPONED"
   rescheduled: null
 }
-/** One in-app notification. `details` depends on `type`; see docs/dashboardapi.md. */
+/** One in-app notification. `details` depends on `type`; see docs/api/dashboardapi.md. */
 /** The player's best recorded standing within one ranking group. Not a global rank. */
 export interface BestUtrRank {
   /** 0-100 within the cohort; 88 means better than 88% of it, shown as "Top 12%". */

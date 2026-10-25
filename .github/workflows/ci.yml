@@ -38,12 +38,12 @@ jobs:
       - name: Check the test data (competition_data.xlsx)
         run: npm run data:check --workspace=backend
 
-      # TestingPlan.xlsx lists every test: a test with no row, a row with no test, or two tests
+      # docs/testing/TestingPlan.xlsx lists every test: a test with no row, a row with no test, or two tests
       # sharing an ID fails the run.
       - name: Check the testing plan lists every test (TestingPlan.xlsx)
         run: npm run test:plan
 
-      # The checks and naming rules from coding_standards.docx (backend/eslint.config.mjs).
+      # The checks and naming rules from docs/standards/coding_standards.docx (backend/eslint.config.mjs).
       - name: Lint the backend
         run: npm run lint --workspace=backend
 

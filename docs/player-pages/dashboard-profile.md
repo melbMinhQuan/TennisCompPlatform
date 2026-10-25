@@ -96,7 +96,7 @@ Each item can link to:
 so the dashboard and matches pages share the same fixture data.
 
 ## Future API work
-Recent Activity and Upcoming Competition load through `getResults` / `getFixtures` in `frontend/api/matches.ts`: from the backend when logged in, from `mockResults` / `mockFixtures` when logged out (see `docs/matches.md`). The career summary's Win % and Titles are now filled by the dashboard endpoint; "UTR Best Rank" is still null (see `docs/hardcoded-values.md`).
+Recent Activity and Upcoming Competition load through `getResults` / `getFixtures` in `frontend/api/matches.ts`: from the backend when logged in, from `mockResults` / `mockFixtures` when logged out (see `docs/player-pages/matches.md`). The career summary's Win % and Titles are now filled by the dashboard endpoint; "UTR Best Rank" is still null (see `docs/hardcoded-values.md`).
 
 ## Logged-out profile access
 The Profile dashboard can be viewed without logging in.

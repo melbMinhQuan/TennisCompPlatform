@@ -167,7 +167,7 @@ Hiding or disabling the buttons for COMPLETED and ARCHIVED seasons would need a 
 **j. Seeded club administrators have no notifications.** The generator only writes notices for
 players, so the Notifications page is empty with real data, and marking notices read is tested
 only against a fake backend (I-UI-007). Adding club admin rows to the seed would let the
-end-to-end tests cover it (see [club-admin-notifications.md](club-admin-notifications.md)).
+end-to-end tests cover it (see [club-admin/notifications.md](club-admin/notifications.md)).
 
 **k. A suspended or pending account is told "Incorrect email or password."** Login refuses any
 account whose `User.status` is not ACTIVE, with the same answer as a wrong password, and checks

@@ -819,7 +819,7 @@ model Notification {
   message String
 
   // Type-specific payload, e.g. previousDate/newDate/timeZone for a
-  // DATE_TIME change. Shape per type is documented in dashboardapi.md.
+  // DATE_TIME change. Shape per type is documented in docs/api/dashboardapi.md.
   details Json?
 
   // What the card links to. Null means the notification is informational.

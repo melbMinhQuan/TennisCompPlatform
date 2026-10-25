@@ -54,7 +54,7 @@ association's administrator keeps an eye on its juniors.
 ## Features by sprint
 
 The user stories each sprint delivered. [CHANGELOG.md](CHANGELOG.md) lists the branch and pull request
-behind each one, and the User stories sheet of `TestingPlan-Sprint2.xlsx` maps each Sprint 2 story to
+behind each one, and the User stories sheet of `docs/testing/TestingPlan-Sprint2.xlsx` maps each Sprint 2 story to
 its tests.
 
 **Sprint 1: Player (7 September – 4 October 2026), release `v1.0.0`**
@@ -143,15 +143,18 @@ TennisComp/
 │   │   ├── utr/               # UTR provider scaffold
 │   │   └── prisma/            # Database client for NestJS
 │   ├── test/                  # Backend tests
-│   └── eslint.config.mjs      # Lint rules from coding_standards.docx
+│   └── eslint.config.mjs      # Lint rules from the coding standards
 ├── e2e/                       # End-to-end tests (Playwright); live/ checks the deployed site
-├── scripts/                   # check-testing-plan.mjs, run by npm run test:plan
+├── docs/
+│   ├── deployment.md, database.md, junior-privacy.md, player-matching.md, hardcoded-values.md
+│   ├── api/                   # API designs and contracts
+│   ├── club-admin/            # One page per club administrator feature
+│   ├── player-pages/          # One page per player page
+│   ├── standards/             # coding_standards.docx and how the code compares with it
+│   └── testing/               # TestingPlan.xlsx (every test) and the Sprint 2 testing plan
 ├── .github/                   # CI and deployment workflows, and the scripts they run
-├── docs/                      # Detailed documentation (index below)
+├── CHANGELOG.md               # What each release changed
 ├── LICENSE                    # Ownership and licence terms
-├── TestingPlan.xlsx           # Every test, checked against the code by npm run test:plan
-├── TestingPlan-Sprint2.*      # Sprint 2 testing plan with user stories (.xlsx and .pdf)
-├── coding_standards.docx      # The team's coding standards
 ├── playwright.config.ts       # End-to-end test settings (playwright.live.config.ts: live site)
 └── docker-compose.yml         # Database container (PostgreSQL 16)
 ```
@@ -165,12 +168,11 @@ TennisComp/
 | [docs/junior-privacy.md](docs/junior-privacy.md) | Who may see a junior's details, and an account to try each view |
 | [docs/player-matching.md](docs/player-matching.md) | Matching incomplete scoresheet names to players; finding profiles registered twice |
 | [docs/hardcoded-values.md](docs/hardcoded-values.md) | What the frontend still hardcodes, and open product decisions |
-| [docs/coding-standards.md](docs/coding-standards.md) | How the code compares with `coding_standards.docx` |
-| [docs/club-admin-dashboard.md](docs/club-admin-dashboard.md), [club-admin-edits.md](docs/club-admin-edits.md), [club-admin-fixtures.md](docs/club-admin-fixtures.md), [club-admin-notifications.md](docs/club-admin-notifications.md), [club-admin-support.md](docs/club-admin-support.md) | The club administrator pages and their API routes |
-| [docs/competitions.md](docs/competitions.md), [matches.md](docs/matches.md), [player-memberships.md](docs/player-memberships.md), [standings-rankings.md](docs/standings-rankings.md), [support-contacts.md](docs/support-contacts.md), [dashboard-profile.md](docs/dashboard-profile.md) | The player pages: what each shows and where its data comes from |
-| [docs/dashboardapi.md](docs/dashboardapi.md), [dashboard-demo.md](docs/dashboard-demo.md) | The player dashboard API: the full design, and the routes built so far |
-| [docs/authapi.md](docs/authapi.md) | The login API. Older: the response now also has the role, club and display name ([API](#api)) |
-| [docs/dashboard-data-gaps.md](docs/dashboard-data-gaps.md) | Early-October review of the data the dashboard designs needed; many gaps have since been filled |
+| [docs/standards/](docs/standards/) | The team's coding standards (`coding_standards.docx`) and how the code compares with them (`coding-standards.md`) |
+| [docs/club-admin/](docs/club-admin/) | The club administrator pages and their API routes: dashboard, edits (players, teams, squads, managers), fixtures, notifications, support |
+| [docs/player-pages/](docs/player-pages/) | The player pages: what each shows and where its data comes from |
+| [docs/api/](docs/api/) | API designs: the player dashboard API (`dashboardapi.md`, `dashboard-demo.md`), the login API (`authapi.md`, older: the response now also has the role, club and display name) and an early review of the data the dashboard needed (`dashboard-data-gaps.md`) |
+| [docs/testing/](docs/testing/) | `TestingPlan.xlsx` (every test, checked by `npm run test:plan`) and the Sprint 2 testing plan with its user stories |
 | [backend/src/utr/README.md](backend/src/utr/README.md) | Where a UTR connection plugs in |
 
 ---
@@ -474,8 +476,8 @@ terminal; `docker compose down` stops the database and keeps its data.
 | `npm run test:coverage --workspace=backend` (or `=frontend`) | The same tests with a coverage report; fails below the minimums |
 | `npm run test:e2e` | End-to-end tests in Chrome (database running and seeded) |
 | `npm run test:database --workspace=backend` | Tests on the real local database, rolled back afterwards |
-| `npm run test:plan` | Checks `TestingPlan.xlsx` has a row for every test and a test for every row |
-| `npm run lint --workspace=backend` | Checks the backend against `coding_standards.docx` |
+| `npm run test:plan` | Checks `docs/testing/TestingPlan.xlsx` has a row for every test and a test for every row |
+| `npm run lint --workspace=backend` | Checks the backend against the coding standards (`docs/standards/`) |
 | `npm run data:check --workspace=backend` | Checks the test-data workbook against the schema and the competition rules |
 | `npm run players:duplicates --workspace=backend` | Lists profiles that are probably one person registered twice |
 | `docker compose down -v` | Stops the database and **deletes all its data** |
@@ -501,10 +503,10 @@ terminal; `docker compose down` stops the database and keeps its data.
 
 ## Testing and CI
 
-[TestingPlan.xlsx](TestingPlan.xlsx) lists every test: its ID, what it checks and how to run it.
+[TestingPlan.xlsx](docs/testing/TestingPlan.xlsx) lists every test: its ID, what it checks and how to run it.
 Each test's name starts with its ID (such as `AUTH-002`), so a failure points straight to its row,
 and `npm run test:plan` fails if a test and the plan disagree. For traceability, the User stories
-sheet of `TestingPlan-Sprint2.xlsx` maps each Sprint 2 user story to the tests that cover it.
+sheet of `docs/testing/TestingPlan-Sprint2.xlsx` maps each Sprint 2 user story to the tests that cover it.
 
 | Type | What it covers | Where | Run with |
 | --- | --- | --- | --- |
@@ -552,7 +554,7 @@ or `TEAM_NOT_FOUND`; `503 DATA_UNAVAILABLE` when the database can't be read.
 
 - **Club administrators** use `/api/v1/club-admin/*`, also with `?email=`. The club always comes
   from the administrator's role, never from the request. The routes are described in the
-  `docs/club-admin-*.md` files.
+  files in `docs/club-admin/`.
 - **The association administrator** uses `GET /api/v1/association-admin/juniors?email=`: every
   junior, with an age check per team. Only an `ADMINISTRATOR` gets it.
 - **A rubber's winner** is its recorded `winner_side` (after a retirement or walkover), otherwise
@@ -663,7 +665,7 @@ Roughly most important first:
    [docs/hardcoded-values.md](docs/hardcoded-values.md).
 9. **The UTR connection is switched off** (`UTR_PROVIDER=disabled`). It's ready for the
    Association to connect ([backend/src/utr/README.md](backend/src/utr/README.md)).
-10. **Coding-standards follow-ups** are in [docs/coding-standards.md](docs/coding-standards.md).
+10. **Coding-standards follow-ups** are in [docs/standards/coding-standards.md](docs/standards/coding-standards.md).
 
 ---
 

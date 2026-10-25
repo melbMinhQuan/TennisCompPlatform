@@ -69,7 +69,7 @@ test.describe("viewing my club (Margaret Hayes, Glen Waverley)", () => {
   test("E2E-015: check my notices and who to contact", async ({ page }) => {
     await logInAsClubAdmin(page);
     await openFromClubAdminMenu(page, "Notifications");
-    // The seed has no notices for club administrators yet (docs/club-admin-notifications.md).
+    // The seed has no notices for club administrators yet (docs/club-admin/notifications.md).
     await expect(main(page).getByRole("button", { name: "All (0)" })).toBeVisible();
     await expect(main(page)).toContainText("You’re all caught up.");
     await page.getByRole("link", { name: "Help & Support" }).click();
