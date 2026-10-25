@@ -10,9 +10,6 @@ association's administrator keeps an eye on its juniors.
 | Live API (no page of its own) | https://tenniscomp-dkdxhgawdsbnfwgw.newzealandnorth-01.azurewebsites.net |
 | Source code | https://github.com/melbMinhQuan/TennisCompPlatform |
 
-> [!WARNING]
-> The live site holds made-up test data only. Until real authentication is built, don't put real
-> members' details into it. See [Known limitations and next steps](#known-limitations-and-next-steps).
 
 ---
 
