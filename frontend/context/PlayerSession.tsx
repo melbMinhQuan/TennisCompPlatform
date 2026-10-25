@@ -27,5 +27,5 @@ export default function PlayerSession({ children }: { children: ReactNode }) {
     return () => controller.abort();
   }, [email, attempt]);
   const current = result?.email === email ? result : null;
-  return <PlayerSessionContext.Provider value={{ email, setEmail, data: current?.data ?? null, error: current?.error ?? "", loading: !!email && !current, reload: () => { setResult(null); setAttempt(a => a + 1); } }}>{children}</PlayerSessionContext.Provider>;
+  return <PlayerSessionContext.Provider value={{ email, setEmail, data: current?.data ?? null, error: current?.error ?? "", loading: !!email && !current, reload: () => { setResult(null); setAttempt(count => count + 1); } }}>{children}</PlayerSessionContext.Provider>;
 }

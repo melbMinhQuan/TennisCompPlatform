@@ -20,9 +20,12 @@ export default function MatchesPage() {
   const today = todayInMelbourne();
   const upcoming = (fixtures.data ?? [])
     .filter((fixture) => (fixture.status === "Scheduled" || fixture.status === "Postponed") && (!fixture.date || fixture.date >= today))
-    .sort((a, b) => (a.date ?? "9999").localeCompare(b.date ?? "9999") || (a.time ?? "").localeCompare(b.time ?? ""));
+    .sort(
+      (left, right) =>
+        (left.date ?? "9999").localeCompare(right.date ?? "9999") || (left.time ?? "").localeCompare(right.time ?? ""),
+    );
 
-  const history = [...(results.data ?? [])].sort((a, b) => b.date.localeCompare(a.date));
+  const history = [...(results.data ?? [])].sort((left, right) => right.date.localeCompare(left.date));
   const shownCount = isHistory ? history.length : upcoming.length;
 
   function changeView(nextView: "upcoming" | "results") {

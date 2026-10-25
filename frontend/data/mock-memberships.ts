@@ -128,33 +128,33 @@ export const mockMemberships: PlayerMemberships = {
     displayName: `${player.firstName} ${player.lastName}`,
   },
   associations: associationMemberships
-    .filter((m) => m.playerId === player.id)
-    .map((m) => ({
-      ...m,
-      name: associations.find((a) => a.id === m.associationId)!.name,
+    .filter((membership) => membership.playerId === player.id)
+    .map((membership) => ({
+      ...membership,
+      name: associations.find((association) => association.id === membership.associationId)!.name,
       startDate: null,
       endDate: null, // AssociationMembership has no start or end date in the workbook.
     })),
   clubs: clubMemberships
-    .filter((m) => m.playerId === player.id)
-    .map((m) => {
-      const club = clubs.find((c) => c.id === m.clubId)!;
+    .filter((membership) => membership.playerId === player.id)
+    .map((membership) => {
+      const club = clubs.find((candidate) => candidate.id === membership.clubId)!;
       return {
-        ...m,
+        ...membership,
         name: club.name,
         associationId: club.associationId,
-        associationName: associations.find((a) => a.id === club.associationId)!
+        associationName: associations.find((association) => association.id === club.associationId)!
           .name,
       };
     }),
   teams: teamPlayers
-    .filter((m) => m.playerId === player.id && m.status === "ACTIVE")
-    .map((m) => {
-      const team = teams.find((t) => t.id === m.teamId)!;
-      const section = sections.find((s) => s.id === team.sectionId)!;
-      const season = seasons.find((s) => s.id === section.seasonId)!;
+    .filter((teamPlayer) => teamPlayer.playerId === player.id && teamPlayer.status === "ACTIVE")
+    .map((teamPlayer) => {
+      const team = teams.find((candidate) => candidate.id === teamPlayer.teamId)!;
+      const section = sections.find((candidate) => candidate.id === team.sectionId)!;
+      const season = seasons.find((candidate) => candidate.id === section.seasonId)!;
       const competition = competitions.find(
-        (c) => c.id === season.competitionId,
+        (candidate) => candidate.id === season.competitionId,
       )!;
       return {
         id: team.id,

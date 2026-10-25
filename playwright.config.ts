@@ -2,7 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 // End-to-end tests: the real frontend, backend and database, driven in a browser.
 // Locally they reuse servers you already have running (npm run dev:*), or start them.
-// The database must be running and seeded first: see README "How to run".
+// The database must be running and seeded first: see README "Running it on your computer".
 const IN_CI = Boolean(process.env.CI);
 
 export default defineConfig({

@@ -54,7 +54,7 @@ function useLoad<T>(load: Load<T>, identity: string) {
     data: current?.data,
     error: current?.error,
     loading: !current,
-    retry: () => setAttempt((n) => n + 1),
+    retry: () => setAttempt((attempt) => attempt + 1),
     setData,
   };
 }

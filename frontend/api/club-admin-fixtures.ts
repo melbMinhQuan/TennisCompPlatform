@@ -106,9 +106,9 @@ export function filterClubFixtures(fixtures: ClubAdminFixture[], { view, season,
         (team === "all" || fixture.homeTeam.id === team || fixture.awayTeam.id === team) &&
         (!query || matchesSearch(fixture)),
     )
-    .sort((a, b) =>
+    .sort((left, right) =>
       view === "results"
-        ? (b.date ?? "").localeCompare(a.date ?? "")
-        : (a.date ?? "9999").localeCompare(b.date ?? "9999"),
+        ? (right.date ?? "").localeCompare(left.date ?? "")
+        : (left.date ?? "9999").localeCompare(right.date ?? "9999"),
     );
 }

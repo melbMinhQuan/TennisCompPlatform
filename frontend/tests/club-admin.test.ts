@@ -244,7 +244,7 @@ function fixture(changes: Partial<ClubAdminFixture> = {}): ClubAdminFixture {
 }
 const recorded = { status: "FINALISED" as const, homeRubbers: 5, awayRubbers: 3, rubbers: [] };
 const ids = (fixtures: ClubAdminFixture[], changes: Partial<FixtureFilter> = {}) =>
-  filterClubFixtures(fixtures, { view: "fixtures", season: "all", team: "all", search: "", ...changes }).map((f) => f.id);
+  filterClubFixtures(fixtures, { view: "fixtures", season: "all", team: "all", search: "", ...changes }).map((fixture) => fixture.id);
 
 describe("FE-010: which fixtures and teams are the administrator's club's", () => {
   test("a fixture counts only when one of the club's teams plays in it, home or away", () => {
@@ -281,7 +281,7 @@ describe("FE-011: club administrator Fixtures and Results tabs", () => {
     const midWeek = fixture({ competition: "Mid-Week Mens" });
     const anotherClubs = fixture({ homeTeam: theirTeam("THEIR-C", "Syndal A"), awayTeam: theirTeam("THEIR-D", "Ashwood A") });
     const all = [thisSeason, lastSeason, awayGame, elsewhere, midWeek, anotherClubs];
-    expect(ids(all).sort()).toEqual([thisSeason, lastSeason, awayGame, elsewhere, midWeek].map((f) => f.id).sort());
+    expect(ids(all).sort()).toEqual([thisSeason, lastSeason, awayGame, elsewhere, midWeek].map((fixture) => fixture.id).sort());
     expect(ids(all, { season: "SEA01" })).toEqual([lastSeason.id]);
     expect(ids(all, { team: "OUR-B" })).toEqual([awayGame.id]);
     expect(ids(all, { search: "  MOUNT waverley " })).toEqual([elsewhere.id]);
